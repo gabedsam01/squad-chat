@@ -81,7 +81,7 @@ function ConsentErrorCard({ t, error, onRetry }: { t: TFunction; error: PageErro
           error === "indisponivel" && onRetry ? (
             <Button onClick={onRetry}>{t("common.retry")}</Button>
           ) : (
-            // A stale link or a refused app: a way into agentes.chat itself.
+            // A stale link or a refused app: a way into squadchat itself.
             <Link to="/" className="ac-link small">
               {t("apps.consent.goHome")}
             </Link>

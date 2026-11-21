@@ -583,7 +583,7 @@ test("a task's end in a thread names its computer only where the workspace has m
   f = await setup();
   const { bia } = await people();
   const root = await post(bia.id, "Can someone run the tests?");
-  const computer = "agentes.chat's computer";
+  const computer = "squadchat's computer";
   await f.db.insert(schema.machines).values({ orgId: f.org.id, name: computer, kind: "managed" });
   const task = {
     id: "00000000-0000-4000-8000-000000000001",

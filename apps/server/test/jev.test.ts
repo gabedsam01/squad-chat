@@ -81,7 +81,7 @@ test("only the installation's first account reaches it: signed out 401, anyone e
   });
 });
 
-test("on agentes.chat itself nobody has it", async () => {
+test("on squadchat itself nobody has it", async () => {
   const origin = "https://app.agentes.chat";
   t = await createTestServer({ env: { ALLOW_SIGNUP: "true", PUBLIC_URL: origin } });
   const first = browser(t);

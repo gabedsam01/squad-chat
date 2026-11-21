@@ -139,7 +139,7 @@ export interface StartOptions {
  * test that boots like a given setup (the Cloud) sets them the same way.
  */
 export function applyBootSwitches(config: Config) {
-  // On agentes.chat Cloud a restriction names its kind and how to contest it, elsewhere it reads as before.
+  // On squadchat Cloud a restriction names its kind and how to contest it, elsewhere it reads as before.
   setRestrictionNotices(config.PUBLIC_URL);
   // The links to messages that agents write and their tools return.
   setMessageLinkBase(config.PUBLIC_URL);
@@ -151,7 +151,7 @@ export function applyBootSwitches(config: Config) {
 }
 
 /**
- * Boots an agentes.chat server: config → database → migrations → adapters
+ * Boots an squadchat server: config → database → migrations → adapters
  * (core defaults, then module overrides) → HTTP + WebSocket → workers.
  * Shared by the self-hosted entrypoint (`src/main.ts`) and any entrypoint
  * that adds public modules (ADR 0002); only `modules` differ.
@@ -205,7 +205,7 @@ async function boot(
   release: string,
   errors: ErrorReporter,
 ) {
-  log.info("starting agentes.chat", { version: release, edition, config: redactConfig(config) });
+  log.info("starting squadchat", { version: release, edition, config: redactConfig(config) });
   log.info(
     "error reports",
     config.SENTRY_DSN
@@ -346,7 +346,7 @@ async function boot(
     modules,
     base,
     defaults,
-    // A workspace's own model endpoint (ADR 0146): on agentes.chat Cloud every call connects only to public addresses.
+    // A workspace's own model endpoint (ADR 0146): on squadchat Cloud every call connects only to public addresses.
     createModelProviders({
       endpointFetch: allowsPrivateEndpoints(config) ? undefined : publicHttpsFetch(),
       version: release,
@@ -820,7 +820,7 @@ function webPushSender(config: Config, db: Database, wrappers: () => KeyWrapper[
 }
 
 /**
- * GIF search (ADR 0091): on agentes.chat's own servers GIPHY only with `GIPHY_API_KEY`; elsewhere a provider that
+ * GIF search (ADR 0091): on squadchat's own servers GIPHY only with `GIPHY_API_KEY`; elsewhere a provider that
  * follows the installation's key (`GIPHY_API_KEY`, or the one its owner adds in Settings), there while it has one.
  */
 function gifProvider(config: Config, key: () => string | null): GifProvider | null {

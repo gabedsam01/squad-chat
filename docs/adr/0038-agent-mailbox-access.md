@@ -101,7 +101,7 @@ KMS is not a prerequisite for email. Gmail and Outlook through Composio store no
 ## Consequences
 
 - People get Gmail and Outlook without us going through Google's verification and CASA. In exchange:
-  - The consent screen says "Composio". Showing agentes.chat needs our own Google OAuth app, and then verification and CASA are ours.
+  - The consent screen says "Composio". Showing squadchat needs our own Google OAuth app, and then verification and CASA are ours.
   - Composio is a data processor under the LGPD, and sees email content (`SELF_HOSTING.md` lists what it receives).
   - We depend on their pricing:
     - Pro is $29 a month, then about $0.0003–0.0005 per call.

@@ -87,7 +87,7 @@ export function commandInReason(reason: string | null | undefined): string | nul
 export const toolOnCommand = (m: Pick<Machine, "mode">, tool: keyof MachineAccess["tools"]) =>
   `${m.mode === "system" ? "sudo " : ""}agentes-runner tools enable ${tool}`;
 
-/** A Mac or a PC: folders and tools are allowed in the agentes.chat app there. Any other may be a server without it. */
+/** A Mac or a PC: folders and tools are allowed in the squadchat app there. Any other may be a server without it. */
 export const allowsInApp = (os: string | null | undefined) => os === "darwin" || os === "windows";
 
 /** The switch of the program a brain runs on its computer: Claude Code's is "claude". */

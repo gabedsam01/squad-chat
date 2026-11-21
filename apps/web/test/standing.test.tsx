@@ -254,7 +254,7 @@ describe("a billing hold (ADR 0079): its own words, and its fix for whoever runs
 
 const CONTEST = "Para contestar, escreva para legal@agentes.chat.";
 
-describe("on agentes.chat Cloud: what it is, the Terms section and how to contest it", () => {
+describe("on squadchat Cloud: what it is, the Terms section and how to contest it", () => {
   test("the automatic hold reads the review line, an operator's reason how to contest it, a silent hold neither", async () => {
     const { set } = await open({ state: "hold", reason: "review", cloud: true }, false, null, { cloud: true });
     const banner = () => screen().getByRole("region", { name: STATUS });

@@ -13,7 +13,7 @@ name: Desktop
 #            updater bundle)
 #   Linux    agentes_<v>_{amd64,arm64}.deb (+ .sha256), agentes_<v>_{amd64,arm64}.AppImage (+ .sha256, + .sig)
 # Every app carries the runner and agent-browser (ADR 0040), and the server's own files, built once from the
-# same commit (the `server` job: JavaScript and WebAssembly, the same on every system), for "Run agentes.chat
+# same commit (the `server` job: JavaScript and WebAssembly, the same on every system), for "Run squadchat
 # on this computer" (ADR 0066; tauri.native.conf.json adds them to the resources). `none` only builds the
 # current version as artifacts. `platforms` can leave systems out, also from a release: the server gives each
 # system the newest release that has its download. macOS runners cost about 10x
@@ -134,7 +134,7 @@ jobs:
           echo "tag=${RELEASE_TAG:-}" >> "$GITHUB_OUTPUT"
           echo "ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-  # "Run agentes.chat on this computer" (ADR 0066): the server's server/ and web/ folders, from this commit, built
+  # "Run squadchat on this computer" (ADR 0066): the server's server/ and web/ folders, from this commit, built
   # once on Linux (the same files on every system; on Windows the build's own paths would lose the bundled
   # packages' licenses) and shipped among each app's resources (tauri.native.conf.json), signed with the app.
   server:
@@ -689,7 +689,7 @@ jobs:
           path: out/*
           retention-days: 14
 
-      # The AppImage opens on a virtual screen, as a first run and on agentes.chat (the site under the cover): it
+      # The AppImage opens on a virtual screen, as a first run and on squadchat (the site under the cover): it
       # must still run after 25 s. The screenshots and the app's output go up as `desktop-linux-look`.
       - name: Open the app once
         shell: bash
@@ -758,9 +758,9 @@ jobs:
         run: |
           git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG"
           git tag -l --format='%(contents)' "$TAG" | sed '/^-----BEGIN PGP SIGNATURE-----/,$d' > notes.txt
-          if [ ! -s notes.txt ] || ! grep -q '[^[:space:]]' notes.txt; then echo "agentes.chat $VERSION" > notes.txt; fi
+          if [ ! -s notes.txt ] || ! grep -q '[^[:space:]]' notes.txt; then echo "squadchat $VERSION" > notes.txt; fi
           # How to open it the first time while the builds aren't notarized/signed (ADR 0036 §10). It starts with
           # <!-- install -->, where the server cuts the notes the app shows on an update.
           { echo; sed -e "s|{{repo}}|$GITHUB_REPOSITORY|g" -e "s|{{version}}|$VERSION|g" .github/desktop-install.md; } >> notes.txt
           ls -l out
-          gh release create "$TAG" out/* --title "agentes.chat $VERSION" --notes-file notes.txt
+          gh release create "$TAG" out/* --title "squadchat $VERSION" --notes-file notes.txt

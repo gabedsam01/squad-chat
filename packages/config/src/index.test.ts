@@ -64,7 +64,7 @@ describe("loadConfig", () => {
     );
   });
 
-  test("agentes.chat's own servers have their legal links without extra settings", () => {
+  test("squadchat's own servers have their legal links without extra settings", () => {
     const app = loadConfig({ ...valid, PUBLIC_URL: "https://app.agentes.chat" });
     expect(app.TERMS_URL).toBe("https://app.agentes.chat/terms");
     expect(app.PRIVACY_URL).toBe("https://app.agentes.chat/privacy");
@@ -73,9 +73,9 @@ describe("loadConfig", () => {
     expect([selfHosted.TERMS_URL, selfHosted.PRIVACY_URL]).toEqual([undefined, undefined]);
   });
 
-  test("agentes.chat's own servers send from ping@agentes.chat, whichever of its addresses they are at", () => {
+  test("squadchat's own servers send from ping@agentes.chat, whichever of its addresses they are at", () => {
     for (const site of ["https://app.agentes.chat", "https://agentes.chat"]) {
-      expect(loadConfig({ ...valid, PUBLIC_URL: site }).EMAIL_FROM).toBe("agentes.chat <ping@agentes.chat>");
+      expect(loadConfig({ ...valid, PUBLIC_URL: site }).EMAIL_FROM).toBe("squadchat <ping@agentes.chat>");
     }
     const set = loadConfig({ ...valid, PUBLIC_URL: "https://app.agentes.chat", EMAIL_FROM: "ops@agentes.chat" });
     expect(set.EMAIL_FROM).toBe("ops@agentes.chat");
@@ -455,7 +455,7 @@ describe("GITHUB_APP_PRIVATE_KEY", () => {
 });
 
 describe("phone push settings", () => {
-  test("auto by default, through agentes.chat's relay unless told otherwise; the relay only over https", () => {
+  test("auto by default, through squadchat's relay unless told otherwise; the relay only over https", () => {
     const config = loadConfig(valid);
     expect(config.PUSH_SENDER).toBe("auto");
     expect(config.PUSH_RELAY_URL).toBe("https://app.agentes.chat/api/push-relay/v1");

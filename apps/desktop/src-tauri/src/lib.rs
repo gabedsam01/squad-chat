@@ -1,7 +1,7 @@
-//! agentes.chat for macOS, Windows and Linux: the main window on the server open now (agentes.chat or a
+//! squadchat for macOS, Windows and Linux: the main window on the server open now (squadchat or a
 //! server of the person's own, `servers`), the welcome window that finds one, and, only while agents work on
 //! this computer for a server of the person's own, the runners it spawns (one per organization), the menu bar
-//! popover and Preferences' tabs for this computer. On every system it can also run agentes.chat itself, as
+//! popover and Preferences' tabs for this computer. On every system it can also run squadchat itself, as
 //! its child (`local_server`, with this computer as its agents' computer, `host_sync`). Rust stays thin:
 //! windows, the tray, the server list, links, the children, single instance, start at login, notifications,
 //! native dialogs and self-update. Everything else lives in the runner and the server (TypeScript) and in the
@@ -127,7 +127,7 @@ fn make_window(app: &AppHandle, name: &str) -> Result<tauri::WebviewWindow, Stri
         .map_err(|e| e.to_string())?;
     // On Windows and Linux a new window starts with the bundle's icon: the person's pick (ADR 0179).
     app_icon::show(app);
-    // Named in the app's language (the Dock's list, the Window menu): never a second "agentes.chat".
+    // Named in the app's language (the Dock's list, the Window menu): never a second "squadchat".
     let key = match name {
         "welcome" => Some("windowWelcome"),
         "prefs" => Some("windowPrefs"),
@@ -576,7 +576,7 @@ async fn notch_place(app: AppHandle, width: f64, height: f64) -> Result<Option<n
     notch::place(&app, width, height)
 }
 
-/// The app was "agentes" before it became "agentes.chat", and the login item is named after the app: the old
+/// The app was "agentes" before it became "squadchat", and the login item is named after the app: the old
 /// one goes and, if it was on, the new one takes its place.
 fn migrate_login_item(app: &AppHandle) {
     #[cfg(target_os = "macos")]
@@ -726,7 +726,7 @@ pub fn run() {
             WindowEvent::Focused(false) if window.label() == main_window::LABEL => {
                 main_window::keep_lights(window.app_handle());
             }
-            // Closing it while agentes.chat is being set up only hides it: the setup goes on (Cancel stops it).
+            // Closing it while squadchat is being set up only hides it: the setup goes on (Cancel stops it).
             WindowEvent::CloseRequested { api, .. }
                 if window.label() == "welcome" && local_server::setting_up(window.app_handle()) =>
             {
@@ -841,7 +841,7 @@ pub fn run() {
     });
     let app = builder
         .build(tauri::generate_context!())
-        .expect("error while building agentes.chat");
+        .expect("error while building squadchat");
 
     app.run(|app, event| match event {
         RunEvent::ExitRequested { api, .. } => {

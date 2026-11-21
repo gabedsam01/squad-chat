@@ -117,7 +117,7 @@ describe("connectors gallery", () => {
     expect(suggestionsOf(catalog, items).map((d) => d.id)).toEqual(["linear", "drive", "sentry"]);
   });
 
-  test("'Em breve': a vendor that hasn't approved agentes.chat yet is last, greyed with a lock, and opens nothing", () => {
+  test("'Em breve': a vendor that hasn't approved squadchat yet is last, greyed with a lock, and opens nothing", () => {
     const asana = def("asana", { kind: "remote_mcp", available: false, soon: true });
     const slack = def("slack", { available: false });
     expect(
@@ -268,7 +268,7 @@ describe("the browser round trip", () => {
     expect(authAnswerOf("agenteschat://connectors/oauth?state=abc")).toBeNull();
   });
 
-  test("the agentes.chat GitHub app's install comes back with its installation, finished with the app's session", () => {
+  test("the squadchat GitHub app's install comes back with its installation, finished with the app's session", () => {
     expect(authAnswerOf("agenteschat://connectors/oauth?state=abc&code=123&installation_id=42")).toEqual({
       kind: "code",
       state: "abc",
@@ -386,7 +386,7 @@ describe("a connection's screen and the gallery, at a finger's reach", () => {
   });
 });
 
-describe("GitHub through the agentes.chat app (ADR 0156), as the web shows it", () => {
+describe("GitHub through the squadchat app (ADR 0156), as the web shows it", () => {
   const install = (login: string, over: Partial<GitHubAppInstallation> = {}): GitHubAppInstallation => ({
     id: `i-${login}`,
     installationId: login.length,

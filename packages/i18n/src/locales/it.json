@@ -549,7 +549,7 @@
     "recommended": "Consigliato",
     "free": "Gratis · open source",
     "cloud": {
-      "name": "agentes.chat Cloud",
+      "name": "squadchat Cloud",
       "short": "Sempre acceso, niente da installare.",
       "on": "Il computer degli agenti sempre acceso",
       "care": "Aggiornamenti e backup a carico nostro",
@@ -726,7 +726,7 @@
     "server": {
       "into": "Accesso a <b>{{server}}</b>",
       "intoHere": "Accesso allo squadchat <b>di questo {{device}}</b>",
-      "intoCloud": "Accesso a <b>agentes.chat Cloud</b>",
+      "intoCloud": "Accesso a <b>squadchat Cloud</b>",
       "change": "Cambia server"
     },
     "forgotHere": {
@@ -3662,7 +3662,7 @@
       }
     },
     "billing": "Un piano accede sul computer del workspace, e il computer arriva con un piano squadchat attivo.",
-    "billingWeb": "Scegline uno sul web, su agentes.chat.",
+    "billingWeb": "Scegline uno sul web, su squadchat.",
     "orPayGo": "Oppure paga a consumo",
     "pay": {
       "label": "Come paghi?",
@@ -17566,7 +17566,7 @@
       "rolesPersonal": "Cosa può fare ogni persona qui. Chi è proprietario può fare tutto."
     },
     "about": {
-      "basedOn": "Basato su <site>agentes.chat</site> di AGENTESCHAT, LLC",
+      "basedOn": "Basato su <site>squadchat</site> di AGENTESCHAT, LLC",
       "version": "Versione",
       "license": "Software libero sotto la <license>GNU Affero General Public License v3</license>, senza garanzia.",
       "source": "Codice sorgente",

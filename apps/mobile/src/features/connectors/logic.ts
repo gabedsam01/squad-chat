@@ -39,7 +39,7 @@ export function connectionOf(def: ConnectorDef, items: ConnectedItem[]): Connect
 
 /**
  * What an admin does with a connected account on its screen: rename it and sign it in again; an MCP server also
- * takes another account (a catalog connector has one). GitHub through the agentes.chat app alone has no sign-in to
+ * takes another account (a catalog connector has one). GitHub through the squadchat app alone has no sign-in to
  * renew: its accounts are the app's installations.
  */
 export function accountActions(
@@ -72,7 +72,7 @@ export const shownMailboxes = <T extends { status: string }>(accounts: T[]) =>
 
 /**
  * The gallery's tiles: the ones that open first, "Em breve" last (as on the web). A connected one opens its
- * connection, even one connected by its address whose vendor hasn't approved agentes.chat yet (`soon`); a `soon`
+ * connection, even one connected by its address whose vendor hasn't approved squadchat yet (`soon`); a `soon`
  * one not connected gets a lock and opens nothing. One that connects only through Composio, on a server without it,
  * isn't shown unless connected.
  */
@@ -169,7 +169,7 @@ export const APP_RETURN_URL = "agenteschat://connectors/oauth";
 
 /**
  * What the browser brought back to the app (`agenteschat://connectors/oauth?state=…&code=…` or `?error=…`); the
- * agentes.chat GitHub app's install adds the installation (`installation_id`), finished with `…/github-app/complete`.
+ * squadchat GitHub app's install adds the installation (`installation_id`), finished with `…/github-app/complete`.
  */
 export type AuthAnswer =
   | { kind: "code"; state: string; code: string; installationId?: number }
@@ -191,7 +191,7 @@ export function authAnswerOf(url: string): AuthAnswer | null {
   return installationId ? { kind: "code", state, code, installationId } : { kind: "code", state, code };
 }
 
-/** The agentes.chat GitHub app's installation an answer carries (`installation_id`), when it is one. */
+/** The squadchat GitHub app's installation an answer carries (`installation_id`), when it is one. */
 export function installationIdOf(value: string | null | undefined): number | undefined {
   const id = Number(value);
   return Number.isSafeInteger(id) && id > 0 ? id : undefined;

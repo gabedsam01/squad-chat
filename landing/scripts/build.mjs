@@ -1,5 +1,5 @@
 // Gera landing/dist a partir de landing/src. Sem dependências: só copia os arquivos estáticos.
-import { cpSync, existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,6 +14,19 @@ if (!existsSync(join(src, "index.html"))) {
 
 rmSync(dist, { recursive: true, force: true });
 cpSync(src, dist, { recursive: true });
+
+// O instalador de um comando e o compose que ele usa, servidos em /install e /install/docker-compose.yml
+// (as regras ficam em src/_redirects e src/_headers). Vêm da raiz do repositório, que é a fonte deles.
+const repo = join(root, "..");
+for (const name of ["install.sh", "docker-compose.yml"]) {
+  if (!existsSync(join(repo, name))) {
+    console.error(`${name} não encontrado na raiz do repositório.`);
+    process.exit(1);
+  }
+}
+cpSync(join(repo, "install.sh"), join(dist, "install.sh"));
+mkdirSync(join(dist, "install"), { recursive: true });
+cpSync(join(repo, "docker-compose.yml"), join(dist, "install", "docker-compose.yml"));
 
 let files = 0;
 let bytes = 0;

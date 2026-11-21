@@ -523,7 +523,7 @@
     "recommended": "Disarankan",
     "free": "Gratis · sumber terbuka",
     "cloud": {
-      "name": "agentes.chat Cloud",
+      "name": "squadchat Cloud",
       "short": "Selalu menyala, tanpa perlu instal apa pun.",
       "on": "Komputer agen selalu menyala",
       "care": "Pembaruan dan cadangan kami yang urus",
@@ -698,7 +698,7 @@
     "server": {
       "into": "Masuk ke <b>{{server}}</b>",
       "intoHere": "Masuk ke squadchat <b>di {{device}} ini</b>",
-      "intoCloud": "Masuk ke <b>agentes.chat Cloud</b>",
+      "intoCloud": "Masuk ke <b>squadchat Cloud</b>",
       "change": "Ganti server"
     },
     "forgotHere": {
@@ -3378,7 +3378,7 @@
       }
     },
     "billing": "Paket masuk di komputer workspace, dan komputer itu datang dengan paket squadchat yang aktif.",
-    "billingWeb": "Pilih satu di web, di agentes.chat.",
+    "billingWeb": "Pilih satu di web, di squadchat.",
     "orPayGo": "Atau bayar sesuai pemakaian",
     "pay": {
       "label": "Bagaimana kamu membayar?",
@@ -16481,7 +16481,7 @@
       "rolesPersonal": "Apa yang bisa dilakukan setiap orang di sini. Pemilik bisa melakukan semuanya."
     },
     "about": {
-      "basedOn": "Berdasarkan <site>agentes.chat</site> oleh AGENTESCHAT, LLC",
+      "basedOn": "Berdasarkan <site>squadchat</site> oleh AGENTESCHAT, LLC",
       "version": "Versi",
       "license": "Perangkat lunak bebas di bawah <license>GNU Affero General Public License v3</license>, tanpa jaminan.",
       "source": "Kode sumber",

@@ -80,7 +80,7 @@ describe("the desktop as screen text", () => {
     expect(Object.keys(l.targets).sort()).toEqual(o.elements.map((e) => e.ref).sort());
   });
 
-  test("the agentes.chat dock (ADR 0058 §15): the mark's menu, the pinned apps, then a button for each window", () => {
+  test("the squadchat dock (ADR 0058 §15): the mark's menu, the pinned apps, then a button for each window", () => {
     // On the 1280×900 desktop with the look: Chrome in front, a terminal and Thunar behind, the mark's menu open.
     const snap = fixture("dock");
     const chrome = snap.windows.find((w) => w.class[1] === "Chromium-browser");
@@ -354,11 +354,11 @@ describe("the desktop as screen text", () => {
     });
     const l = look(snap);
     expect(l.snapshot).toContain(
-      '- window "agentes.chat · Your team and your agents, in the same conversation - Chromium" [agent browser: use browser_do]',
+      '- window "squadchat · Your team and your agents, in the same conversation - Chromium" [agent browser: use browser_do]',
     );
     expect(l.snapshot).not.toContain("Pay now");
     expect(l.address).toBe("desktop://chromium/main");
-    expect(observe(l).elements.some((e) => e.name.includes("agentes.chat"))).toBe(false);
+    expect(observe(l).elements.some((e) => e.name.includes("squadchat"))).toBe(false);
   });
 
   test("a dialog in front is the address's dialog; a window in front with nothing readable says so", () => {

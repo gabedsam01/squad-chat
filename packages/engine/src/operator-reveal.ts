@@ -676,7 +676,7 @@ export async function operatorReveal(
         purpose,
         assistedByAi,
         ...facts,
-        // Who "the operator" is to the workspace's people: the apps name agentes.chat's own support there.
+        // Who "the operator" is to the workspace's people: the apps name squadchat's own support there.
         ...cloudNotice(),
       },
       onBehalfOfUserId: member,

@@ -998,7 +998,7 @@ export class CodexAppServers implements CodexAppRunner {
       await client.request(
         "initialize",
         {
-          clientInfo: { name: "agentes_runner", title: "agentes.chat runner", version: "1" },
+          clientInfo: { name: "agentes_runner", title: "squadchat runner", version: "1" },
           capabilities: {
             experimentalApi: false,
             requestAttestation: false,
@@ -1427,7 +1427,7 @@ export class CodexAppServers implements CodexAppRunner {
     return (tool: string, args: Record<string, unknown>): Promise<IpcReply> =>
       socketPath
         ? ipcCall(socketPath, { taskId: live.id, token, tool, args })
-        : Promise.resolve({ ok: false, error: "This computer can't ask agentes.chat (no local endpoint)." });
+        : Promise.resolve({ ok: false, error: "This computer can't ask squadchat (no local endpoint)." });
   }
 
   private armIdle(live: AppLive) {

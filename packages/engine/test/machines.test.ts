@@ -1192,7 +1192,7 @@ describe("tools on a connected machine", () => {
     const out = await call(ctx, "run_code", { language: "bash", code: "ls" });
     expect(out).toMatchObject({ isError: true });
     expect(out.content).toContain(
-      "Commands are turned off on the computer Ana's Mac: you can only read, write, list and upload files there. Tell the people: whoever connected Ana's Mac turns commands on with the button under your reply, or in the agentes.chat app there (Preferences › Tools, Commands).",
+      "Commands are turned off on the computer Ana's Mac: you can only read, write, list and upload files there. Tell the people: whoever connected Ana's Mac turns commands on with the button under your reply, or in the squadchat app there (Preferences › Tools, Commands).",
     );
     expect(out.content).not.toContain("--no-exec");
     // The reply carries the switch: the chat shows its one click under the agent's words.

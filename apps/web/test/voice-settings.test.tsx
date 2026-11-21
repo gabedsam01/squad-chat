@@ -40,7 +40,7 @@ describe("voice messages in Configurações (ADR 0100)", () => {
     expect(screen().getByRole("switch", { name: "Mensagens de voz" }).hasAttribute("disabled")).toBe(false);
   });
 
-  test("a tab of Workspace only on a self-hosted server: agentes.chat Cloud has no Voz, and its link opens Sua conta", async () => {
+  test("a tab of Workspace only on a self-hosted server: squadchat Cloud has no Voz, and its link opens Sua conta", async () => {
     const nav = () => within(screen().getByRole("navigation", { name: "Seções das configurações" }));
     await go({ authConfig: { cloud: false }, media: { voiceAvailable: true } });
     expect(nav().getByRole("link", { name: "Workspace" }).getAttribute("aria-current")).toBe("page");

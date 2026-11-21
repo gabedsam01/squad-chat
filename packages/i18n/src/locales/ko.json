@@ -523,7 +523,7 @@
     "recommended": "추천",
     "free": "무료 · 오픈 소스",
     "cloud": {
-      "name": "agentes.chat Cloud",
+      "name": "squadchat Cloud",
       "short": "항상 켜져 있고, 설치할 것이 없어요.",
       "on": "에이전트의 컴퓨터가 항상 켜져 있어요",
       "care": "업데이트와 백업은 저희가 맡아요",
@@ -698,7 +698,7 @@
     "server": {
       "into": "<b>{{server}}</b>에 로그인",
       "intoHere": "이 {{device}}의 <b>squadchat</b>에 로그인",
-      "intoCloud": "<b>agentes.chat Cloud</b>에 로그인 중",
+      "intoCloud": "<b>squadchat Cloud</b>에 로그인 중",
       "change": "서버 변경"
     },
     "forgotHere": {
@@ -3369,7 +3369,7 @@
       }
     },
     "billing": "플랜은 워크스페이스의 컴퓨터에 로그인하고, 그 컴퓨터는 활성 squadchat 요금제와 함께 제공돼요.",
-    "billingWeb": "웹의 agentes.chat에서 하나를 선택하세요.",
+    "billingWeb": "웹의 squadchat에서 하나를 선택하세요.",
     "orPayGo": "또는 사용한 만큼 결제",
     "pay": {
       "label": "어떻게 결제하나요?",
@@ -16420,7 +16420,7 @@
       "rolesPersonal": "여기 있는 사람마다 할 수 있는 일. 소유자는 모든 걸 할 수 있어요."
     },
     "about": {
-      "basedOn": "AGENTESCHAT, LLC의 <site>agentes.chat</site> 기반",
+      "basedOn": "AGENTESCHAT, LLC의 <site>squadchat</site> 기반",
       "version": "버전",
       "license": "<license>GNU Affero General Public License v3</license>에 따른 자유 소프트웨어이며 보증은 없습니다.",
       "source": "소스 코드",

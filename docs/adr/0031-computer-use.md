@@ -144,7 +144,7 @@ Resolution order: first the structure (choose among the elements of `read_page` 
 What it means: the agent does whatever the owner's session can do, with their logins, files and open apps. Treat it like giving someone remote control.
 
 - **Two opt-ins:** the machine offers it (`--desktop` at pairing, or later from the machine page, by the person who paired it), then that person gives it to a specific agent (§1a). The pairing screen spells out the consequence.
-- **Native part:** the runner is a JavaScript bundle and can't capture the screen or inject input. In the desktop app (ADR 0036) this lives in its Rust side, signed and notarized with the app, so permissions attach to the agentes.chat app and are asked once under our name. CLI-only installs download a small signed helper (`agentes-desktop`) when desktop mode is turned on.
+- **Native part:** the runner is a JavaScript bundle and can't capture the screen or inject input. In the desktop app (ADR 0036) this lives in its Rust side, signed and notarized with the app, so permissions attach to the squadchat app and are asked once under our name. CLI-only installs download a small signed helper (`agentes-desktop`) when desktop mode is turned on.
   - macOS: ScreenCaptureKit + CGEvent. Needs Screen Recording and Accessibility, granted by hand in System Settings (we show how). Unsigned builds lose them on every update, so this waits for signing.
   - Linux X11: `xdotool` + `xwd`/`import`, or the helper. Wayland: the RemoteDesktop/ScreenCast portal, which asks the user each session; documented as limited.
   - Windows: helper with `SendInput` and Desktop Duplication.

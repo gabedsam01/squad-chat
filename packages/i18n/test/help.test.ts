@@ -206,7 +206,7 @@ describe("links to the help pages", () => {
 });
 
 describe("the install page", () => {
-  test("is a self-hosted page, at agentes.chat/docs in English for the CLI and the settings", () => {
+  test("is a self-hosted page, at squadchat/docs in English for the CLI and the settings", () => {
     expect(HELP_PAGES[INSTALL_PAGE]).toBe("selfhost");
     expect(INSTALL_DOCS_URL).toBe("https://agentes.chat/docs/install-on-a-server");
     expect(helpDocsUrl(INSTALL_PAGE, "pt-BR")).toBe("https://agentes.chat/pt/docs/install-on-a-server");

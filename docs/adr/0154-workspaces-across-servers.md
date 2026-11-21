@@ -10,7 +10,7 @@
 
 ## Context
 
-People use more than one agentes.chat: a workspace on agentes.chat Cloud and their team's self-hosted server, say.
+People use more than one squadchat: a workspace on squadchat Cloud and their team's self-hosted server, say.
 The phone app kept one server and one session: moving to another signed out, its server screen opened only while
 signed out, and its workspace list showed the current server's alone. The desktop app kept a list of servers, each
 signed in through the window's per-origin cookies, but its workspace menu (the web sidebar's) showed only the server
@@ -38,10 +38,10 @@ One list of workspaces, grouped by server, in both apps; switching keeps every s
 - **Workspaces** in Você is always there, with the total unread. Its screen lists every workspace of every server signed
   in to, under a header per server, each with its unread count (`/me/unread`, the current server's live from its own
   data). Tapping one on another server switches to it without signing out.
-- **Adicionar workspace**, at the end, opens a pushed screen with two ways: a new workspace on agentes.chat (signed in
+- **Adicionar workspace**, at the end, opens a pushed screen with two ways: a new workspace on squadchat (signed in
   there already: its creation; otherwise sign in or create an account there, then its creation), or the team's server
   by address or QR code. Adding a server makes it the current one: signed in there already, its workspaces; otherwise
-  its sign-in, with a way back to the workspace before. Nothing signs out. On any server but agentes.chat, "Novo
+  its sign-in, with a way back to the workspace before. Nothing signs out. On any server but squadchat, "Novo
   workspace" comes first: a new workspace on that server, its creation over the app.
 - Signing out of a server signs out of that one only: its push registration, session and per-server values go, the
   others and the phone's own preferences (theme, sounds) stay.
@@ -56,8 +56,8 @@ One list of workspaces, grouped by server, in both apps; switching keeps every s
   `GET /api/app/me/unread` like the phone does (no `Origin`, `X-Agentes-Client: mobile`), every minute and when the
   window gains focus. The server open in the window reports its own from the page.
 - The web sidebar's **Seus workspaces** lists them grouped by server, with unread counts; "Adicionar workspace" opens
-  the welcome window in an add-a-workspace mode: a new workspace on agentes.chat, or the team's server. It takes the
-  place of "Novo workspace" on agentes.chat; on any other server "Novo workspace" stays, under that server's own
+  the welcome window in an add-a-workspace mode: a new workspace on squadchat, or the team's server. It takes the
+  place of "Novo workspace" on squadchat; on any other server "Novo workspace" stays, under that server's own
   workspaces, since that window can't make a workspace there. Choosing a workspace on another server switches the
   window there.
 - New unread notifications on a server not open in the window show as the system's notification, named after the

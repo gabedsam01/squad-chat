@@ -287,7 +287,7 @@ describe("Quem pensa: a coding plan's models", () => {
       ["DeepSeek V4 Pro", "Precisa da região Global no OpenCode."],
       ["DeepSeek V4.1 Flash", "Econômico", "Precisa da região Global no OpenCode."],
     ]);
-    // A model that trains on what it's sent: its provider does, never agentes.chat.
+    // A model that trains on what it's sent: its provider does, never squadchat.
     expect(
       brainRows(d)
         .find((r) => r.title === "Iceman Contributor Free")

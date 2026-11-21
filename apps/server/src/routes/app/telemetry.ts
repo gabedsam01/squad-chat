@@ -103,7 +103,7 @@ const Telemetry = z
   })
   .openapi("ServerTelemetry");
 
-/** The usage report's switch (ADR 0060 §5): only the installation's pinned owner, never on agentes.chat itself. */
+/** The usage report's switch (ADR 0060 §5): only the installation's pinned owner, never on squadchat itself. */
 export function telemetryRoutes(deps: AppDeps) {
   const { db, config } = deps;
   const app = createAppRouter(deps);
@@ -125,7 +125,7 @@ export function telemetryRoutes(deps: AppDeps) {
       tags,
       summary: "The usage report's switch, and the next report",
       description:
-        "404 for everyone but the installation's owner (its first account, kept once it is gone), and on agentes.chat itself.",
+        "404 for everyone but the installation's owner (its first account, kept once it is gone), and on squadchat itself.",
       security,
       responses: { 200: json(Telemetry), 401: errors[401], 404: errors[404] },
     }),

@@ -1,6 +1,6 @@
 # agentes (phone app)
 
-Expo + React Native app for agentes.chat (ADR 0035).
+Expo + React Native app for squadchat (ADR 0035).
 
 Code is checked in CI (`.github/workflows/ci.yml`: lint, typecheck,
 unit tests of the pure logic in `apps/mobile/test`). Android builds on the **Android build** workflow
@@ -99,11 +99,11 @@ Why the API URL must equal the public URL: React Native's WebSocket adds an `Ori
 `X-Agentes-Client: mobile`, and refuses a foreign `Origin` even with the header. So the app's host must be the
 one the server considers its own.
 
-People can point the app at their own server ("Servidor: agentes.chat · Trocar" on sign-in, a QR code from the web
+People can point the app at their own server ("Servidor: squadchat · Trocar" on sign-in, a QR code from the web
 app's "Abrir no celular", or an `agenteschat://connect?server=…` link). The app checks `GET /api/instance` first and,
 for the same reason, uses the address the server gives there (its `PUBLIC_URL`); when that address doesn't answer from
 the phone, the server is refused with that host in the message. Switching signs out of the previous server. Pushes from
-a self-hosted server reach the app from the stores, on Android and on the iPhone, through agentes.chat's push relay
+a self-hosted server reach the app from the stores, on Android and on the iPhone, through squadchat's push relay
 (`PUSH_SENDER`, ADR 0152, ADR 0178).
 
 Push on the iPhone comes straight from Apple (APNs), with no Expo service in between: the app registers the system's

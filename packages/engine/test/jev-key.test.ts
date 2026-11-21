@@ -359,7 +359,7 @@ describe("Jev through OpenRouter (ADR 0073 §9)", () => {
     });
     expect(sent?.headers.get("authorization")).toBe("Bearer sk-or-v1-secret");
     expect(sent?.headers.get("http-referer")).toBe("https://agentes.chat");
-    expect(sent?.headers.get("x-openrouter-title")).toBe("agentes.chat");
+    expect(sent?.headers.get("x-openrouter-title")).toBe("squadchat");
 
     const ts = recorder();
     await call("ts_live_key_1", ts.fetch);

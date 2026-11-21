@@ -221,10 +221,10 @@ const CONTAINERS_LOG = "agentes-containers";
 
 /** Podman's banner before every `docker compose` (an external provider's) off. */
 const CONTAINERS_CONF =
-  "# agentes.chat wrote this once: change it as you like.\n[engine]\ncompose_warning_logs = false\n";
+  "# squadchat wrote this once: change it as you like.\n[engine]\ncompose_warning_logs = false\n";
 /** Images, containers and volumes in the agent's home: its disk, which moves with the workspace. */
 const storageConf = (home: string) =>
-  `# agentes.chat wrote this once: change it as you like.\n[storage]\ndriver = "overlay"\ngraphroot = "${home}/.local/share/containers/storage"\n`;
+  `# squadchat wrote this once: change it as you like.\n[storage]\ndriver = "overlay"\ngraphroot = "${home}/.local/share/containers/storage"\n`;
 
 /**
  * adb's server port for an agent (`ANDROID_ADB_SERVER_PORT`, which adb, the Android Gradle plugin, Expo and React
@@ -671,7 +671,7 @@ export function containersCommand(
  */
 export function ensureContainers(u: AgentUser, run: RunCommand = runSync): string | null {
   const [file = "", ...args] = containersCommand(u);
-  const description = `agentes.chat containers ${createHash("sha256")
+  const description = `squadchat containers ${createHash("sha256")
     .update([file, ...args].join("\0"))
     .digest("hex")
     .slice(0, 16)}`;

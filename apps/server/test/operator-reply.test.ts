@@ -296,7 +296,7 @@ test("each sentence and a free text reach the outbox for the account's address a
     expect(sent[0]?.text).toContain(`\n\n${IN_PORTUGUESE[template]}\n\n`);
     expect(sent[0]?.html).toContain('<html lang="pt-BR"');
     // Who answers and how to answer back, and no word of an AI assistant when none wrote it.
-    expect(sent[0]?.text).toContain("\n\nRespondido por quem cuida do servidor do agentes.chat em localhost:3000.\n\n");
+    expect(sent[0]?.text).toContain("\n\nRespondido por quem cuida do servidor do squadchat em localhost:3000.\n\n");
     expect(sent[0]?.text).toContain(`\n\nPara responder, escreva para ${SUPPORT}.\n\n`);
     expect(sent[0]?.text).not.toContain("assistente de IA");
   }
@@ -330,16 +330,16 @@ test("each sentence and a free text reach the outbox for the account's address a
       SUBJECT,
       "The export stopped at the size limit.",
       "It works again since this morning.",
-      "Answered by the people who run the agentes.chat server at localhost:3000.",
+      "Answered by the people who run the squadchat server at localhost:3000.",
       "An AI assistant wrote this answer.",
       `To answer, write to ${SUPPORT}.`,
-      "You got this email because you asked for help on agentes.chat.\nSent by the agentes.chat server at localhost:3000.\n",
+      "You got this email because you asked for help on squadchat.\nSent by the squadchat server at localhost:3000.\n",
     ].join("\n\n"),
   );
   expect(mail?.html).toContain(`<a class="ln-m" href="mailto:${SUPPORT}"`);
-  // On agentes.chat's own server the same job names agentes.chat.
+  // On squadchat's own server the same job names squadchat.
   const onCloud = renderEmail(job?.payload.template as EmailTemplate, emailArtAt("https://agentes.chat"));
-  expect(onCloud.text).toContain("\n\nAnswered by agentes.chat.\n\n");
+  expect(onCloud.text).toContain("\n\nAnswered by squadchat.\n\n");
 
   // A server with no address to write to names none.
   await forget();
@@ -351,8 +351,8 @@ test("each sentence and a free text reach the outbox for the account's address a
       SUBJECT,
       "The export stopped at the size limit.",
       "It works again since this morning.",
-      "Answered by the people who run the agentes.chat server at localhost:3000.",
-      "You got this email because you asked for help on agentes.chat.\nSent by the agentes.chat server at localhost:3000.\n",
+      "Answered by the people who run the squadchat server at localhost:3000.",
+      "You got this email because you asked for help on squadchat.\nSent by the squadchat server at localhost:3000.\n",
     ].join("\n\n"),
   );
   expect(plain?.html).not.toContain("mailto:");
@@ -452,7 +452,7 @@ test("the record: an event in the operator's feed and a line in the workspace's 
   ]);
   expect(JSON.stringify([await events(), await auditLines()])).not.toContain("canary");
 
-  // On agentes.chat's own server the line says so, for the apps to name who answered.
+  // On squadchat's own server the line says so, for the apps to name who answered.
   setRestrictionNotices("https://agentes.chat");
   try {
     expect(await outcome(call(reply(requests.byHand, { template: "received" })))).toBe(200);

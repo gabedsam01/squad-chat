@@ -64,7 +64,7 @@ const VOICE_TYPES = [
   "audio/wav",
 ];
 
-/** Limits on agentes.chat's own servers (ADR 0100); null everywhere else. Zero turns a limit off. */
+/** Limits on squadchat's own servers (ADR 0100); null everywhere else. Zero turns a limit off. */
 export interface VoiceLimits {
   personMinutesPerDay: number;
   orgMinutesPerMember: number;

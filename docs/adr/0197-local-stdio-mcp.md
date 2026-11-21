@@ -8,7 +8,7 @@ Custom connectors use Streamable HTTP and require a public HTTPS address. A stdi
 
 ## Decision
 
-Add Local · stdio to the existing custom connector flow. The operator must set `MCP_STDIO_ENABLED=true`; it is off by default and refused on agentes.chat Cloud and with public sign-up enabled. Enabling it trusts **every workspace administrator** to execute programs as the server's OS user. An organization administrator cannot enable it from the API. The capability endpoint and connection/reconnection require `manage_connectors`.
+Add Local · stdio to the existing custom connector flow. The operator must set `MCP_STDIO_ENABLED=true`; it is off by default and refused on squadchat Cloud and with public sign-up enabled. Enabling it trusts **every workspace administrator** to execute programs as the server's OS user. An organization administrator cannot enable it from the API. The capability endpoint and connection/reconnection require `manage_connectors`.
 
 The form takes an executable, argv, an optional absolute directory and explicit environment. The official MCP SDK starts the process without evaluating a shell command and inherits its safe environment allow-list, not the server's credentials. An administrator can deliberately choose an interpreter or shell as the executable: this feature is program execution, not a sandbox. Commands, arguments and environment are encrypted in the existing `ConnectionSecret` envelope and never returned in list responses or audit details. No migration: `auth_type` is text and encrypted secrets are JSON.
 

@@ -1156,8 +1156,8 @@ export async function buildRunContext(
     {
       text: [
         personal
-          ? `You work in "${org.name}" on agentes.chat, a personal workspace: one person, and maybe their family, with the AI agents that help them with their life and work. The app shows its channels to them as group conversations.`
-          : `You work in "${org.name}" on agentes.chat, a workspace where people and AI agents work together.`,
+          ? `You work in "${org.name}" on squadchat, a personal workspace: one person, and maybe their family, with the AI agents that help them with their life and work. The app shows its channels to them as group conversations.`
+          : `You work in "${org.name}" on squadchat, a workspace where people and AI agents work together.`,
         org.context.trim() ? `# About ${personal ? "the person" : "the organization"}\n${org.context.trim()}` : "",
         teamMemory,
         options.workspaceComputer ? workspaceComputerText(options.workspaceComputer) : "",
@@ -1502,7 +1502,7 @@ function routineAsks(level: ApprovalsLevel, place: string): string {
   }
   const what =
     level === "always"
-      ? "You are set to always ask: every change asks a person first, inside agentes.chat too (an issue, a file, a post, a command)"
+      ? "You are set to always ask: every change asks a person first, inside squadchat too (an issue, a file, a post, a command)"
       : "A send, a delete, a payment, an invite or another change in a connected app that its tool marks as asking asks a person first";
   return `${what}: an approval card in ${place}, with your reason.${level === "always" ? "" : " Merge, deploy and rollback always do."} When its instructions ask you to fix or resolve things and the fix is such a change, hand off your report first (saying what you're asking for), then call that tool with your reason: your run waits for the person's decision, so anything after it waits too.`;
 }
@@ -1622,7 +1622,7 @@ async function routineContext(
   const block = [
     `# This is a routine run\nYour routine «${name}» started this run: background work that nobody watches. Nobody waits for a reply here and nothing you write here is posted; your message reaches people only through hand_off, which posts it in ${place}.`,
     `Its instructions, set up by ${creator ?? "its creator"}:\n${(row?.prompt ?? trigger.body).trim()}`,
-    `What it may do: what you can do in any other run. Besides reading, you may change things inside agentes.chat that people can undo (issues, memory, wiki, Drive files) and work on your own branches (agentes/${agent.handle}/…) and their pull requests. ${routineAsks(agent.approvalsLevel, place)} You may also reach other agents and post where ${who} can: tell_agent leaves an agent a note (it wakes and works on it), ask_agent asks one something (the answer reaches you, or ${place} once this run ended), post_message posts in a channel ${who} can post in (an @mention there wakes that agent), and send_dm writes only to ${who}; only agents ${who} can talk to are reached. An @mention in your hand_off message also wakes an agent of ${place} to work on it, as asked by ${who} (one outside it hears nothing: use tell_agent): mention an agent there only when it should act, and not one you already handed it to with tell_agent. The web is yours to read (search, open pages, your browser) like anywhere else.`,
+    `What it may do: what you can do in any other run. Besides reading, you may change things inside squadchat that people can undo (issues, memory, wiki, Drive files) and work on your own branches (agentes/${agent.handle}/…) and their pull requests. ${routineAsks(agent.approvalsLevel, place)} You may also reach other agents and post where ${who} can: tell_agent leaves an agent a note (it wakes and works on it), ask_agent asks one something (the answer reaches you, or ${place} once this run ended), post_message posts in a channel ${who} can post in (an @mention there wakes that agent), and send_dm writes only to ${who}; only agents ${who} can talk to are reached. An @mention in your hand_off message also wakes an agent of ${place} to work on it, as asked by ${who} (one outside it hears nothing: use tell_agent): mention an agent there only when it should act, and not one you already handed it to with tell_agent. The web is yours to read (search, open pages, your browser) like anywhere else.`,
     listed("approved")
       ? `Approved ahead for this run: a person already approved these exact actions for this time. Do each now with run_approved_action and its id: it goes out without asking. Don't do them any other way, then report how it went.\n${listed("approved")}`
       : "",
@@ -2256,7 +2256,7 @@ export function devicesText(devices: {
       devices.computers.some((c) => c.os === "windows") ? " Commands on Windows run in cmd.exe." : ""
     }`,
     devices.computers.some((c) => c.os === "darwin")
-      ? 'A screenshot of a person\'s Mac, when commands are on there: run `screencapture -x screen.png` in your folder there (run_code with `computer`), then upload_file it with the same `computer`. If it is refused or comes out blank, ask the person to allow Screen Recording in the agentes.chat app there (Preferences › General › Permissions). A file there refused with "Operation not permitted" or "Permission denied" needs Full Disk Access, turned on in the same place. Never suggest terminal flags, restarting programs or saving a file for you to read.'
+      ? 'A screenshot of a person\'s Mac, when commands are on there: run `screencapture -x screen.png` in your folder there (run_code with `computer`), then upload_file it with the same `computer`. If it is refused or comes out blank, ask the person to allow Screen Recording in the squadchat app there (Preferences › General › Permissions). A file there refused with "Operation not permitted" or "Permission denied" needs Full Disk Access, turned on in the same place. Never suggest terminal flags, restarting programs or saving a file for you to read.'
       : "",
   ]
     .filter(Boolean)
@@ -2421,7 +2421,7 @@ export function taskNotice(m: Pick<Message, "body" | "meta">, current = false, p
 
 /**
  * A person's message sent from an AI app (ADR 0119, `meta.via`): the agent learns the person reads the reply there,
- * maybe not in agentes.chat. "" for anything else.
+ * maybe not in squadchat. "" for anything else.
  */
 function viaLine(m: Message, who: string): string {
   const via =
@@ -2435,7 +2435,7 @@ function viaLine(m: Message, who: string): string {
       : `\n(sent by ${who} through ${name}; the reply is read there)`;
   }
   if (via?.kind !== "app" || typeof via.name !== "string") return "";
-  return `\n(sent by ${who} through ${promptName(via.name)}, an app connected to agentes.chat; the reply is read there)`;
+  return `\n(sent by ${who} through ${promptName(via.name)}, an app connected to squadchat; the reply is read there)`;
 }
 
 const promptName = (name: string) => name.replace(/[\p{Cc}\p{Cf}]/gu, "").slice(0, 64);
@@ -2449,7 +2449,7 @@ async function surfaceTurnLine(
   const found = turn ? await turn : null;
   if (!found || !surface) return "";
   const who = names.get(found.userId) ?? "this person";
-  return `\n${who} reads this conversation on ${promptName(surface.name)} right now, not in agentes.chat. Keep it short. Plain text with bold, italics, lists and links; pictures and files go through. No cards, blocks, polls or choices: ask in words. Deleting, roles, budgets, money, merges, deploys and routines that post elsewhere are done in the app: say so in one line and give no other way.`;
+  return `\n${who} reads this conversation on ${promptName(surface.name)} right now, not in squadchat. Keep it short. Plain text with bold, italics, lists and links; pictures and files go through. No cards, blocks, polls or choices: ask in words. Deleting, roles, budgets, money, merges, deploys and routines that post elsewhere are done in the app: say so in one line and give no other way.`;
 }
 
 /** `meta.actionNotes` (undo/redo of the agent's changes) as one bracketed line each; "" when none. */

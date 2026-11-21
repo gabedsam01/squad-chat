@@ -228,7 +228,7 @@ test("the prompt tool: a person says no; nobody answers in time; the server is u
 test("the prompt tool: the runner restarting or reconnecting is waited out, not a silent deny", async () => {
   const replies: IpcReply[] = [
     { ok: false, error: "The runner closed the connection.", transient: true },
-    { ok: false, error: "The computer is not connected to agentes.chat right now", transient: true },
+    { ok: false, error: "The computer is not connected to squadchat right now", transient: true },
     { ok: true, text: JSON.stringify({ status: "pending", request_id: "r9" }) },
     { ok: false, error: "The runner closed the connection.", transient: true },
     { ok: true, text: JSON.stringify({ behavior: "allow" }) },

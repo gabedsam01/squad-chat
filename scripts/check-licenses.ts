@@ -86,7 +86,7 @@ if (import.meta.main) {
   }
   if (problems.length > 0) {
     console.error(
-      `Dependencies under a license agentes.chat can't ship (add one to REVIEWED only after reading its terms):\n${problems.join("\n")}`,
+      `Dependencies under a license squadchat can't ship (add one to REVIEWED only after reading its terms):\n${problems.join("\n")}`,
     );
     process.exit(1);
   }

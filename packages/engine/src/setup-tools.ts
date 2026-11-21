@@ -242,7 +242,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * A catalog connector or one-click MCP server by its id or name ("GitHub", "google-drive"). With `server`, as this
- * server's "Adicionar conector" lists it, whether it connects here (`soon`: its vendor hasn't approved agentes.chat).
+ * server's "Adicionar conector" lists it, whether it connects here (`soon`: its vendor hasn't approved squadchat).
  */
 export function catalogConnector(
   name: string,
@@ -882,7 +882,7 @@ export function createSetupToolSource(deps: {
           if (listed && !listed.available) {
             return {
               content: listed.soon
-                ? `${listed.label} doesn't let agentes.chat connect in one click yet. If it gives an API key, ask the person for its MCP server's https address and pass it as \`url\` (the dialog asks for the key).`
+                ? `${listed.label} doesn't let squadchat connect in one click yet. If it gives an API key, ask the person for its MCP server's https address and pass it as \`url\` (the dialog asks for the key).`
                 : `${listed.label} isn't available on this installation: whoever runs it has to turn it on first. Tell the person.`,
               isError: true,
             };

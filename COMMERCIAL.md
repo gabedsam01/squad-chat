@@ -1,6 +1,6 @@
-# Licensing agentes.chat
+# Licensing squadchat
 
-agentes.chat comes under two licenses. You pick the one that fits.
+squadchat comes under two licenses. You pick the one that fits.
 
 ## The AGPL (free)
 
@@ -11,18 +11,18 @@ say they are MIT in their own LICENSE file.
 
 Under it you can, at no charge and without asking:
 
-- run agentes.chat on your own server and use it in your company, for as many people as you like;
+- run squadchat on your own server and use it in your company, for as many people as you like;
 - change the code;
 - install and run it for clients and charge for your work;
 - offer a changed version to others, as long as you publish your changes under the AGPL and show
   its users where to get the source code.
 
-The AGPL always asks you to keep the license and the attribution, and the agentes.chat name and
+The AGPL always asks you to keep the license and the attribution, and the squadchat name and
 logo stay ours ([TRADEMARKS.md](TRADEMARKS.md)): a fork needs a name, a logo and apps of its own.
 
 ## The commercial license
 
-AGENTESCHAT, LLC also licenses agentes.chat on commercial terms, by contract, for those who:
+AGENTESCHAT, LLC also licenses squadchat on commercial terms, by contract, for those who:
 
 - change it and offer it to others without publishing their changes;
 - sell it under their own brand, without the attribution;

@@ -175,7 +175,7 @@ describe("feedback about what was clicked", () => {
     expect(sent.files).toHaveLength(1);
   });
 
-  test("where it goes to the agentes.chat team, the form says so and takes photos only", async () => {
+  test("where it goes to the squadchat team, the form says so and takes photos only", async () => {
     const { state } = await open(seedState({ authConfig: { feedback: true, feedbackRelay: true } }));
     await click(screen().getByRole("button", { name: "Enviar feedback" }));
     const form = screen().getByRole("dialog", { name: "O que faltou, quebrou ou incomodou?" });

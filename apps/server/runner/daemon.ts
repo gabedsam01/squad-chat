@@ -719,7 +719,7 @@ export class RunnerDaemon implements RequestObserver {
     if (!session) {
       throw new RunnerError(
         "internal",
-        "This computer isn't connected to agentes.chat right now. Try again in a minute.",
+        "This computer isn't connected to squadchat right now. Try again in a minute.",
       );
     }
     const { tools } = this.access();
@@ -2694,7 +2694,7 @@ export class RunnerDaemon implements RequestObserver {
       const byName = (typeof req.byName === "string" ? req.byName : "").slice(0, 80);
       this.emit({ kind: "access.allowed", tool, byName });
       this.opts.print?.(
-        `${byName || "Its owner"} turned on ${tool} from agentes.chat. To turn it off: agentes-runner tools disable ${tool}`,
+        `${byName || "Its owner"} turned on ${tool} from squadchat. To turn it off: agentes-runner tools disable ${tool}`,
       );
     }
     return { access: this.access() };

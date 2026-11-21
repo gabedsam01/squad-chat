@@ -24,7 +24,7 @@ On the message itself, one line of the words sits under the wave, in the player'
 
 A server of one's own is told more than a provider ever is: the workspace each recording comes from (`X-Agentes-Org`), so one server can route or count by workspace, and, with `LOCAL_SPEECH_WARM=on`, that someone is about to record (`POST /warm` when the app asks whether it may), so a model loaded on demand is ready when the recording arrives. Every server of the OpenAI format gets half a minute plus twice the recording's length to answer; past that it counts as busy and the next engine tries.
 
-The key is the server's, not the workspace's. On agentes.chat's servers it comes from the environment and nobody chooses. Elsewhere the installation's owner may also pick a provider and paste its key in Settings, kept like the Jev key (ADR 0073): sealed, tried with a second of silence before it is stored, never returned.
+The key is the server's, not the workspace's. On squadchat's servers it comes from the environment and nobody chooses. Elsewhere the installation's owner may also pick a provider and paste its key in Settings, kept like the Jev key (ADR 0073): sealed, tried with a second of silence before it is stored, never returned.
 
 ### 4. The finished recording first
 
@@ -42,7 +42,7 @@ A recording is part of its message, so it lives in `voice_clips` on the workspac
 
 ### 7. Fair use, invisible
 
-On agentes.chat's servers only: a person and a workspace have a number of minutes in a rolling 24 hours (`VOICE_LIMIT_*`, 60 per person; 20 per member, at least 300, per workspace; 0 turns one off). It is checked before a recording starts and when it arrives, never cutting one short. Nobody sees a counter or a price. It is counted from `voice_clips`, not `usage_records`, so nothing reaches the Usage screens. A self-hosted server has no limit.
+On squadchat's servers only: a person and a workspace have a number of minutes in a rolling 24 hours (`VOICE_LIMIT_*`, 60 per person; 20 per member, at least 300, per workspace; 0 turns one off). It is checked before a recording starts and when it arrives, never cutting one short. Nobody sees a counter or a price. It is counted from `voice_clips`, not `usage_records`, so nothing reaches the Usage screens. A self-hosted server has no limit.
 
 ### 8. Recordings expire
 
@@ -55,7 +55,7 @@ On agentes.chat's servers only: a person and a workspace have a number of minute
 
 ## Addendum (2026-11-07): Parakeet on our own server, the language heard in the audio
 
-**The decision.** agentes.chat's Cloud turns voice into text on its own production server: NVIDIA's Parakeet TDT 0.6B v3
+**The decision.** squadchat's Cloud turns voice into text on its own production server: NVIDIA's Parakeet TDT 0.6B v3
 (int8, on ONNX Runtime) in the compose file's `speech` profile (`deploy/speech`), with `SPEECH_ENGINES=local,deepinfra`.
 When that service is busy, down, or not for the language spoken, DeepInfra's `whisper-large-v3-turbo` takes the
 recording, the cheapest hosted engine (below). No model runs on the workspaces' computers, which are the agents' to work

@@ -43,7 +43,7 @@ describe("the list", () => {
     ]);
   });
 
-  test("on agentes.chat Cloud Devices is the seventh entry, and Advanced holds the rest", async () => {
+  test("on squadchat Cloud Devices is the seventh entry, and Advanced holds the rest", async () => {
     await go("settings", seedState({ authConfig: { cloud: true } }));
     expect(rows()).toEqual([
       "Sua conta",

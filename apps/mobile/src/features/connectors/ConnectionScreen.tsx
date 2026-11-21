@@ -68,7 +68,7 @@ const openRename = (id: string) => router.push({ pathname: "/connectors/rename",
  * tools as one row (what waits on you under it, in amber; a screen of their own); the account (which, Reconectar,
  * another account of an MCP server, each in a sheet, and under them the request headers a server by address also
  * sends, by name); and Desconectar, alone in red, behind the system's confirmation. GitHub also lists its
- * repositories through the agentes.chat app, under who uses it. Connecting a new service stays in its sheet.
+ * repositories through the squadchat app, under who uses it. Connecting a new service stays in its sheet.
  */
 export function ConnectionScreen({ id }: { id: string }) {
   return (

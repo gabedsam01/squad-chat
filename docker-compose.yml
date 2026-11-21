@@ -1,4 +1,4 @@
-# agentes.chat: the app and Postgres with pgvector. To set it up, in an empty directory:
+# squadchat: the app and Postgres with pgvector. To set it up, in an empty directory:
 #   npx @agenteschat/setup
 # By hand, and everything else: SELF_HOSTING.md.
 #
@@ -154,7 +154,7 @@ services:
   embeddings:
     # Search's vectors on this machine (ADR 0167), so a request finds a memory written in another language or other
     # words: Hugging Face's text-embeddings-inference on the CPU, with EMBEDDING_MODEL (Qwen3-Embedding-0.6B, as on
-    # agentes.chat Cloud, by default). On with embeddings in COMPOSE_PROFILES, EMBEDDINGS_PROVIDER=openai and
+    # squadchat Cloud, by default). On with embeddings in COMPOSE_PROFILES, EMBEDDINGS_PROVIDER=openai and
     # EMBEDDINGS_URL=http://embeddings:8080/v1: SELF_HOSTING.md, Search across languages. Its first start downloads
     # the model from Hugging Face into its volume, so its network reaches the internet. Nothing waits for it: while it
     # starts, or if it is down, search goes on with words alone.

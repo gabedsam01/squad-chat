@@ -117,7 +117,7 @@ export async function machineGitSetup(
   return {
     proxy: { base: gitProxyBase(deps.git.publicUrl, orgId, connection.id), token },
     author: bot
-      ? { name: `${agent.name} (agentes.chat)`, email: bot.email }
+      ? { name: `${agent.name} (squadchat)`, email: bot.email }
       : { name: `${agent.name} (agentes)`, email: agentCommitEmail(deps.git.publicUrl, agent.handle) },
     agent: scope ?? { id: agent.id, handle: agent.handle, name: agent.name },
   };

@@ -382,7 +382,7 @@ export function Sidebar() {
     .flatMap((s) => (s.work ? [`${s.agentId}:${s.work.state}`] : []))
     .sort()
     .join();
-  // The tab's title: "(3) agentes.chat", what the sidebar's numbers add up to (agents it doesn't list left out).
+  // The tab's title: "(3) squadchat", what the sidebar's numbers add up to (agents it doesn't list left out).
   const hiddenAgents = useMemo(() => hiddenAgentIds(org, dir.agents), [org, dir.agents]);
   useUnreadTitle(orgId, hiddenAgents);
   const dms = useDms(orgId);
@@ -2371,7 +2371,7 @@ function useWorkspaceLook() {
 /**
  * Your workspaces in the account menu of a personal workspace (ADR 0159): the workspace menu's list, then New
  * workspace when the person may make one. In the desktop app (ADR 0154) by server, then Add workspace; New workspace
- * (it makes one here) sits under this server's workspaces only on a server of one's own, since on agentes.chat Add
+ * (it makes one here) sits under this server's workspaces only on a server of one's own, since on squadchat Add
  * workspace makes one (`offersNewWorkspace`). Mounted only while the menu is open: the counts load then. No role beside
  * each: one person's own workspaces.
  */

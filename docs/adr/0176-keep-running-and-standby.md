@@ -46,7 +46,7 @@ The runner (system mode, under systemd) takes each hold as root, in a scope in t
 
 ```
 systemd-run --scope --unit=agentes-keep-<hold id> --slice=agents-<uid>.slice -- \
-  systemd-inhibit --what=idle --mode=block --who=agentes.chat --why=keep_running <wait>
+  systemd-inhibit --what=idle --mode=block --who=squadchat --why=keep_running <wait>
 ```
 
 - Never through the agent's launcher, and never as the agent's user. The agent's view may hide the system bus the

@@ -298,7 +298,7 @@ test.if(posix)("service install --system: a system home, and it starts only when
   expect(agentTmpCleanupPath()).toBe("/etc/tmpfiles.d/agentes-runner.conf");
   expect(agentTmp(21003)).toBe("/run/agentes-runner-tmp/21003/tmp");
   expect(readFileSync(agentTmpCleanupPath(unitPath), "utf8").split("\n")).toEqual([
-    "# agentes.chat runner: each agent's own temporary folders",
+    "# squadchat runner: each agent's own temporary folders",
     "e /run/agentes-runner-tmp/*/* - - - 10d",
     "x /run/agentes-runner-tmp/*/run",
     "e /var/lib/agentes-runner-tmp/*/* - - - 30d",
@@ -743,7 +743,7 @@ test.if(posix)(
 
     // --system alone, on Debian 12: the names as they are.
     // Without a terminal: the title, then each wait once and its line, whole.
-    const head = "agentes.chat connect this computer\n";
+    const head = "squadchat connect this computer\n";
     r = step(false);
     expect(r.status).toBe(0);
     expect(r.out).toBe(

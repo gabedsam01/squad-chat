@@ -382,7 +382,7 @@ html:not([data-pointer]) .auth__quiet:focus-visible {
   color: var(--ink);
   overflow-wrap: anywhere;
 }
-/* "Powered by agentes.chat": one quiet line under the form. */
+/* "Powered by squadchat": one quiet line under the form. */
 .auth__powered {
   margin: var(--space-8) 0 0;
   font-size: 12.5px;

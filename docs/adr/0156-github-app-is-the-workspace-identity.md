@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-11-07
 - Amends: 0033 (the app is a connection by itself, removing an installation uninstalls it, the panel reconciles, only
-  an installation made from agentes.chat links),
+  an installation made from squadchat links),
   0024 (the proxy's upstream permissions), 0116 (agents' commits are the app's bot's)
 - Code: `packages/engine/src/git/github-app.ts` (tokens by permission sets, `installationToken`, `botIdentity`,
   `uninstallInstallation`, `installationStatus`, `installationOrigin`), `github-app-installs.ts` (binding, removal,
@@ -45,7 +45,7 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
    unbinds every installation and uninstalls them. The last installation unbound ends it, as disconnecting does.
 3. **Signature.** Every body an agent writes to GitHub ends with one line, in the workspace owner's language, naming
    the agent and the person it works for (who asked, a routine's creator, else the agent's responsável; members only):
-   "Theo, agente de Ana no agentes.chat", inside `<sub>` after the marker `<!-- agentes.chat -->`, names escaped so
+   "Theo, agente de Ana no squadchat", inside `<sub>` after the marker `<!-- squadchat -->`, names escaped so
    they never mention or link anyone. An edit takes our earlier line out (the marker on a line of its own and the
    line under it), nothing else: a signed comment quoted in a reply stays the reply's text. It is added whichever
    token the call goes with, when the call runs: approval cards show the agent's own words. The tools that sign say so in the
@@ -55,11 +55,11 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
    their email; no linked account or no answer, no trailer. API commits (`push_files`, `create_or_update_file`) get it
    in their message; on agents' computers each turn says it next to where the turn starts, for the person behind the
    turn's run as the signature names them.
-5. **Agents' computers.** With an installation bound, commits are authored as `{agent} (agentes.chat)` at the bot's
+5. **Agents' computers.** With an installation bound, commits are authored as `{agent} (squadchat)` at the bot's
    noreply address, so GitHub shows them as the app's; pushes already went through the proxy with the app's token.
    Fetch tokens stay read-only. No token is handed to `gh` (below).
-6. **The server's own app.** `GITHUB_APP_*` win. Without them the server's pinned owner, never on agentes.chat, creates
-   the app from Settings with GitHub's manifest flow: a server page posts the manifest (agentes.chat's own app's
+6. **The server's own app.** `GITHUB_APP_*` win. Without them the server's pinned owner, never on squadchat, creates
+   the app from Settings with GitHub's manifest flow: a server page posts the manifest (squadchat's own app's
    permissions, in the addendum below; its addresses from `PUBLIC_URL`; the webhook off without https) to GitHub,
    which creates the app under their account and returns a code; `POST /app-manifests/{code}/conversions` gives its
    id, slug, client id and secret, private key and webhook secret, kept sealed in `instance_secrets` (`github_app`,
@@ -77,7 +77,7 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
    comes back without our state and lands on the web app with nothing to finish.
 
 9. **The app first, in every place GitHub is connected.** Where the server has the app, connecting GitHub (Settings ›
-   Conectores, an agent's connect card, the phone's sheet) offers **O app agentes.chat** (recommended) before **Uma
+   Conectores, an agent's connect card, the phone's sheet) offers **O app squadchat** (recommended) before **Uma
    conta do GitHub**, which stays for what the app can't reach (a personal account's GitHub Projects).
    **Repositórios do GitHub** lists each account the app is installed on with its reach, **Gerenciar no GitHub** (GitHub's page of the installation, where
    its repositories are picked) and **Remover** (asked first, it uninstalls, and says when GitHub didn't confirm,
@@ -85,9 +85,9 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
    alone has no Reconectar and offers **Conectar uma conta do GitHub**; Desconectar says what happens to the app. The
    phone does the same: the install opens GitHub in the browser and comes back to the app, which finishes it. The
    server's own app is a card for its pinned owner (`setup`), made in the web's browser session; the other admins
-   are told the owner can make it (`ownerCreates`, false on agentes.chat).
+   are told the owner can make it (`ownerCreates`, false on squadchat).
 
-10. **Only an installation made from agentes.chat links.** Seeing an installation proves little:
+10. **Only an installation made from squadchat links.** Seeing an installation proves little:
     `GET /user/installations` shows an organization's installation to every member who can read one of its
     repositories, so a read-only member could link one made on GitHub itself (or kept there when its uninstall was
     refused) to their own workspace and write to every repository it covers. A new link therefore also needs GitHub's
@@ -107,7 +107,7 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
       new permission, and it covers personal accounts and refused uninstalls the same way.
     - **The request flow.** A member without rights on the account asks its owner (`setup_action=request`). The owner
       approves later on GitHub, after the member's state expired, so that installation is older than every state and
-      never links: an owner starting the install from agentes.chat is shown the existing installation and refused. The
+      never links: an owner starting the install from squadchat is shown the existing installation and refused. The
       account's owner installs from Conectores › GitHub in the workspace instead (as one of its admins), after
       removing an installation already approved on GitHub. The member's notice says who installs it and where.
 
@@ -116,8 +116,8 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
 - An agent's writing on GitHub says whose agent it is, on repositories the app doesn't cover too.
 - One GitHub account's installation still belongs to one workspace (ADR 0033); a second one is refused with
   `other_workspace`.
-- An installation made on GitHub itself never links, configured from agentes.chat or not (ADR 0033 bound it then): it
-  is removed on GitHub and installed again from agentes.chat. So is one whose uninstall GitHub refused, or one approved
+- An installation made on GitHub itself never links, configured from squadchat or not (ADR 0033 bound it then): it
+  is removed on GitHub and installed again from squadchat. So is one whose uninstall GitHub refused, or one approved
   from a request.
 - The server's clock must stay within two minutes of GitHub's, or fresh installations are refused as made outside.
 - Branch protections that restrict who may push or merge must allow the app.
@@ -140,7 +140,7 @@ next to a person's connection. GitHub's MCP tools, which do most of the writing,
 Agents read and write on GitHub without a person in the loop, within their grants, as the app. The app holds wide
 permissions; each call still gets a token with only what its tool needs, and what is destructive asks a person.
 
-- **The app's permissions** (agentes.chat's own app, and `githubAppManifest` for a server's): on repositories,
+- **The app's permissions** (squadchat's own app, and `githubAppManifest` for a server's): on repositories,
   Actions, Administration, Attestations, Checks, Code scanning alerts (`security_events`), Commit statuses
   (`statuses`), Contents, Custom properties (`repository_custom_properties`), Dependabot alerts
   (`vulnerability_alerts`), Dependabot secrets, Deployments, Discussions, Environments, Issues, Merge queues, Packages,
@@ -247,7 +247,7 @@ to the owners) still holds a fresh state while an owner makes the installation o
   Conectores › GitHub in this workspace. The personal account rule and the time rule stay as they are. A return for
   an installation already linked to this workspace (a refresh) links nothing new and asks no owner. Nothing changes
   for agents: tokens are minted as before once it is linked.
-- **The permission.** The call is made with the organization permission Members (read), which agentes.chat's app and
+- **The permission.** The call is made with the organization permission Members (read), which squadchat's app and
   `githubAppManifest` already ask (first addendum of 2026-11-08): no installation accepts anything new. Whether
   GitHub answers it to an app without that permission isn't in its documentation and wasn't probed. This revisits
   "Why not Members: read" in decision 10: the role is asked besides the state, not instead of it, and of the person,
@@ -265,10 +265,10 @@ to the owners) still holds a fresh state while an owner makes the installation o
 
 Every commit an agent makes ends with `Co-authored-by: Nick <noreply@agentes.chat>`, the agent's name (its handle when
 the name has nothing left once made one line without `<`, `>` or control characters, as for a person) at
-`AGENT_CO_AUTHOR_EMAIL` in `signature.ts`. That address is verified on agentes.chat's own GitHub account, so GitHub
+`AGENT_CO_AUTHOR_EMAIL` in `signature.ts`. That address is verified on squadchat's own GitHub account, so GitHub
 links every agent's line to it. It stacks with the coding CLI's own trailer (Claude Code's `Co-Authored-By: Claude …`)
 and with the person's credit of decision 4: the agent's line, then the person's, each never twice (compared in any
-capitals). On by default on agentes.chat and on every server.
+capitals). On by default on squadchat and on every server.
 
 - **API commits.** `push_files` and `create_or_update_file` end their message with both (`runCoAuthors`,
   `creditedMessage`), and so does a merge's `commit_message` when the agent writes one (`merge_pull_request`, the

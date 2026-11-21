@@ -1,6 +1,6 @@
 # 0185. Each agent's /tmp on the system disk
 
-- Status: Accepted (built: core's runner, off unless a computer's config turns it on). The agentes.chat Cloud turns
+- Status: Accepted (built: core's runner, off unless a computer's config turns it on). The squadchat Cloud turns
   it on per host, one VM first
 - Date: 2026-11-14
 - Amends: ADR 0096 §3 (each agent's /tmp was in its tmpfs, in memory)

@@ -237,7 +237,7 @@ describe("sending", () => {
     expect(http.calls).toEqual([]);
   });
 
-  test("even on agentes.chat domains, TELEMETRY=off or unset TELEMETRY_URL sends nothing", async () => {
+  test("even on squadchat domains, TELEMETRY=off or unset TELEMETRY_URL sends nothing", async () => {
     const { clock, http } = await start({ PUBLIC_URL: "https://agentes.chat", TELEMETRY: "off" });
     await setTelemetryEnabled(db, true);
     expect(clock.delays()).toEqual([]);
@@ -361,7 +361,7 @@ describe("the switch in Settings", () => {
     expect(view).toMatchObject({ enabled: true, envOff: true });
   });
 
-  test("on agentes.chat itself nobody has it", async () => {
+  test("on squadchat itself nobody has it", async () => {
     const origin = "https://agentes.chat";
     t = await createTestServer({ env: { ALLOW_SIGNUP: "true", PUBLIC_URL: origin } });
     const first = browser(t);

@@ -113,7 +113,7 @@ export async function operatorReply(
       actor: { type: "system", id: null },
       action: "operator.support_replied",
       target: { type: "support_request", id: request.id },
-      // Who "the operator" is to the workspace's people: the apps name agentes.chat's own support there.
+      // Who "the operator" is to the workspace's people: the apps name squadchat's own support there.
       details: { ...said, ...cloudNotice() },
       onBehalfOfUserId: request.userId,
     });

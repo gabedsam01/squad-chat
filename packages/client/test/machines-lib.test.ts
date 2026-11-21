@@ -409,8 +409,8 @@ describe("connected computers helpers (ADR 0036)", () => {
       new TypeError("Failed to fetch"),
       new ApiError(502, "http_502", "Bad Gateway"),
       new ApiError(521, "http_521", "Web server is down"),
-      new ApiError(409, "machine.offline", "The computer agentes.chat isn't answering right now."),
-      new ApiError(502, "machine.timeout", "the computer agentes.chat did not answer in time"),
+      new ApiError(409, "machine.offline", "The computer squadchat isn't answering right now."),
+      new ApiError(502, "machine.timeout", "the computer squadchat did not answer in time"),
     ])
       expect(loginReadPasses(error)).toBe(true);
     // The sign-in gone from the server or the computer, the session over, or the server's own error.
@@ -675,7 +675,7 @@ describe("one click where a tool is off (ADR 0036 §8)", () => {
 
   test("the runner's refusal of a browser that is off is read in every runner version's words", () => {
     expect(
-      browserOffMessage("Browser is turned off on this computer (its owner can turn it on from agentes.chat)"),
+      browserOffMessage("Browser is turned off on this computer (its owner can turn it on from squadchat)"),
     ).toBe(true);
     expect(
       browserOffMessage(

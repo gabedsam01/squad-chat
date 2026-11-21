@@ -289,7 +289,7 @@ describe("bringing the team from an app that answers in its chat", () => {
     }
   });
 
-  test("on agentes.chat Cloud, before its first plan, an app that takes MCP brings its file and says why MCP waits", async () => {
+  test("on squadchat Cloud, before its first plan, an app that takes MCP brings its file and says why MCP waits", async () => {
     // A workspace on a hold refuses an app's sign-in: MCP couldn't bring anyone yet.
     await open(settingUp({ cloud: true }));
     await click(answer("Outro app"), 4);
@@ -313,7 +313,7 @@ describe("bringing the team from an app that answers in its chat", () => {
     expect(document.querySelector(".onb__say")?.textContent).toBe("Solte aqui o que o app exportou. O resto é comigo.");
   });
 
-  test("on agentes.chat Cloud the team brought goes on to the plan", async () => {
+  test("on squadchat Cloud the team brought goes on to the plan", async () => {
     const state = settingUp({ cloud: true });
     await open(state);
     await throughTheAnswer(fenced(grokReply()));

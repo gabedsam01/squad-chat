@@ -279,7 +279,7 @@ describe("team templates", () => {
       createdAt: new Date().toISOString(),
     });
     const api = createFakeApi(state);
-    // agentes.chat Cloud, where each workspace's own computer waits for the plan: only there is a hold.
+    // squadchat Cloud, where each workspace's own computer waits for the plan: only there is a hold.
     fakeMachinesOf.get(api)?.setSetup({ state: null });
     await renderApp(`/org/${ORG_ID}/c/${ENG_ID}`, { api });
     await settle(10);

@@ -290,8 +290,8 @@ describe("the look", () => {
   test("the join code: first in the subject, large in a well, alone on its line, and no button", () => {
     const sample = EMAIL_SAMPLES["join_code.en"] as Extract<EmailTemplate, { kind: "join_code" }>;
     for (const [locale, subject, body] of [
-      ["en", "482913 is your agentes.chat code", "Type this code on the page to ask to join"],
-      ["pt-BR", "482913 é seu código do agentes.chat", "Digite este código na página para pedir para entrar na"],
+      ["en", "482913 is your squadchat code", "Type this code on the page to ask to join"],
+      ["pt-BR", "482913 é seu código do squadchat", "Digite este código na página para pedir para entrar na"],
     ] as const) {
       const e = renderEmail({ ...sample, locale, orgName: "Acme evil.com" }, art);
       expect(e.subject).toBe(subject);
@@ -305,41 +305,41 @@ describe("the look", () => {
     }
   });
 
-  test("without EMAIL_FROM, the sender is agentes.chat at this server's host", () => {
-    expect(defaultEmailFrom("https://agentes.chat")).toBe("agentes.chat <ping@agentes.chat>");
-    expect(defaultEmailFrom("https://chat.acme.com:8443/")).toBe("agentes.chat <ping@chat.acme.com>");
+  test("without EMAIL_FROM, the sender is squadchat at this server's host", () => {
+    expect(defaultEmailFrom("https://agentes.chat")).toBe("squadchat <ping@agentes.chat>");
+    expect(defaultEmailFrom("https://chat.acme.com:8443/")).toBe("squadchat <ping@chat.acme.com>");
   });
 
-  test("the footer says who sent it: agentes.chat, or a self-hosted server by its host", () => {
-    expect(renderEmail(verify, emailArtAt("https://agentes.chat")).text).toContain("\nSent by agentes.chat.\n");
+  test("the footer says who sent it: squadchat, or a self-hosted server by its host", () => {
+    expect(renderEmail(verify, emailArtAt("https://agentes.chat")).text).toContain("\nSent by squadchat.\n");
     expect(renderEmail(verify, emailArtAt("https://chat.acme.com/")).text).toContain(
-      "\nSent by the agentes.chat server at chat.acme.com.\n",
+      "\nSent by the squadchat server at chat.acme.com.\n",
     );
     expect(renderEmail({ ...verify, locale: "pt-BR" }, emailArtAt("https://chat.acme.com")).text).toContain(
-      "Enviado pelo servidor do agentes.chat em chat.acme.com.",
+      "Enviado pelo servidor do squadchat em chat.acme.com.",
     );
   });
 
   test("on a narrow screen the host moves to the next line whole, with the word before it, never split at a hyphen", () => {
     const box = emailArtAt("https://161-97-103-35.sslip.io");
     expect(renderEmail(verify, box).html).toContain(
-      'Sent by the agentes.chat server <span style="display:inline-block">at 161-97-103-35.sslip.io.</span></p>',
+      'Sent by the squadchat server <span style="display:inline-block">at 161-97-103-35.sslip.io.</span></p>',
     );
     expect(renderEmail({ ...verify, locale: "pt-BR" }, box).html).toContain(
-      'Enviado pelo servidor do agentes.chat <span style="display:inline-block">em 161-97-103-35.sslip.io.</span></p>',
+      'Enviado pelo servidor do squadchat <span style="display:inline-block">em 161-97-103-35.sslip.io.</span></p>',
     );
-    expect(renderEmail(verify, box).text).toContain("\nSent by the agentes.chat server at 161-97-103-35.sslip.io.\n");
+    expect(renderEmail(verify, box).text).toContain("\nSent by the squadchat server at 161-97-103-35.sslip.io.\n");
     // Too long to share a 320 px line with the word before it, which would split it again or leave the word alone on
     // a line: it moves down alone.
     for (const host of ["ec2-203-0-113-25.compute-1.amazonaws.com", "agentes.consultoriaempresarialpaulista.com.br"]) {
       const far = emailArtAt(`https://${host}`);
       expect(renderEmail(verify, far).html).toContain(
-        `Sent by the agentes.chat server at <span style="display:inline-block">${host}.</span></p>`,
+        `Sent by the squadchat server at <span style="display:inline-block">${host}.</span></p>`,
       );
       expect(renderEmail({ ...verify, locale: "pt-BR" }, far).html).toContain(
-        `Enviado pelo servidor do agentes.chat em <span style="display:inline-block">${host}.</span></p>`,
+        `Enviado pelo servidor do squadchat em <span style="display:inline-block">${host}.</span></p>`,
       );
-      expect(renderEmail(verify, far).text).toContain(`\nSent by the agentes.chat server at ${host}.\n`);
+      expect(renderEmail(verify, far).text).toContain(`\nSent by the squadchat server at ${host}.\n`);
     }
   });
 
@@ -364,7 +364,7 @@ describe("the look", () => {
     const html = (id: string) => renderEmail(EMAIL_SAMPLES[id] as EmailTemplate, art).html;
     expect(html("verify_email.pt-BR")).toContain(`pode ignorar ${nobr}este e-mail.</span></p>`);
     expect(html("join_request.pt-BR")).toContain(`e pediu ${nobr}para entrar.</span></p>`);
-    expect(html("join_code.en")).toContain(`Souza Bakery ${nobr}on agentes.chat.</span></p>`);
+    expect(html("join_code.en")).toContain(`Souza Bakery ${nobr}on squadchat.</span></p>`);
     // A name in bold moves down with its period, still bold.
     expect(html("join_code.en")).toContain(
       `to ask to join ${nobr}<b class="ink" style="font-weight:600;color:#12102b">Souza Bakery</b>.</span></p>`,
@@ -750,7 +750,7 @@ describe("where the pictures come from", () => {
 describe("jobs queued before this look", () => {
   test("old payloads, with no language or new fields, still render (in English, every language's fallback)", () => {
     const e = renderEmail({ kind: "verify_email", url: "u" });
-    expect(e.subject).toBe("Confirm your email for agentes.chat");
+    expect(e.subject).toBe("Confirm your email for squadchat");
     expect(e.html).toContain('<html lang="en"');
     const old: EmailTemplate[] = [
       { kind: "invitation", orgName: "Acme", inviterName: "", url: "https://x/invite/t", role: "member" },

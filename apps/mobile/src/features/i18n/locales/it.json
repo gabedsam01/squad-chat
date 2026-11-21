@@ -1177,7 +1177,7 @@
     "notificationsOnHint": "Arrivano anche nel browser e nell'app desktop, se lì sono attive.",
     "notificationsOffHint": "Attivale per ricevere notifiche qui. I tipi qui sotto valgono per tutti i tuoi dispositivi.",
     "notificationsKindsHint": "Attività recenti tiene tutto. Vale per questo spazio di lavoro, su tutti i tuoi dispositivi.",
-    "version": "agentes.chat · versione {{version}}",
+    "version": "squadchat · versione {{version}}",
     "edit": "Modifica",
     "status": "Stato",
     "workspace": "Spazio di lavoro",
@@ -1197,11 +1197,11 @@
     "workspacesUnreachable": "Nessuna risposta ora",
     "addWorkspace": "Aggiungi workspace",
     "addWorkspaceCreate": "Crea un nuovo workspace",
-    "addWorkspaceCreateSub": "Su agentes.chat",
+    "addWorkspaceCreateSub": "Su squadchat",
     "addWorkspaceTeam": "Entra nel server del tuo team",
     "addWorkspaceTeamSub": "Con il suo indirizzo o il codice QR mostrato sul computer",
     "teamServer": "Server del team",
-    "teamServerLead": "L’indirizzo agentes.chat del tuo team, lo stesso che vedi nel browser.",
+    "teamServerLead": "L’indirizzo squadchat del tuo team, lo stesso che vedi nel browser.",
     "teamServerFoot": "Non esci da nessun workspace: il server del tuo team entra nella tua lista, con il tuo account lì.",
     "workspacesHoldHint": "Tieni premuto per cambiare spazio di lavoro",
     "workspacesSheetFoot": "Resti connesso a tutti. Le notifiche di ciascuno ti arrivano qui.",
@@ -1262,7 +1262,7 @@
     "blocked": "Sei l'unico proprietario di {{names}}. Sul sito, in Persone, rendi proprietario qualcun altro, poi torna qui.",
     "addPasswordFirst": "Prima aggiungi una password al tuo account sul sito, poi scrivila qui.",
     "addPasswordWeb": "Aggiungi una password sul sito",
-    "onThisComputer": "Eliminalo nell'app agentes.chat sul computer su cui gira questo server.",
+    "onThisComputer": "Eliminalo nell'app squadchat sul computer su cui gira questo server.",
     "otherAccount": "Hai fatto l'accesso con un altro account. Non è stato eliminato nulla.",
     "hold": "Tieni premuto per eliminare"
   },
@@ -1967,8 +1967,8 @@
       "serverText": "Una riga da incollare nel suo terminale",
       "computer": "Un altro computer",
       "computerText": "Installa l'app lì",
-      "appNote": "Su un Mac o un PC che usi, lo collega anche l'app desktop di agentes.chat.",
-      "appStep1": "Installa lì l'app agentes.chat",
+      "appNote": "Su un Mac o un PC che usi, lo collega anche l'app desktop di squadchat.",
+      "appStep1": "Installa lì l'app squadchat",
       "appStep2": "Aprila e accedi con il tuo account",
       "appStep3": "Fai clic su Consenti quando chiede di far usare il computer agli agenti di {{org}}",
       "appShows": "Compare qui da solo, solo per te finché non lo condividi.",
@@ -1991,7 +1991,7 @@
       "connecting": "Connessione a {{host}}",
       "computer": "Computer",
       "noHost": "Questo telefono funziona tramite un tuo computer. Collegane prima uno.",
-      "hostOffline": "{{host}} è offline. Accendilo e apri agentes.chat lì.",
+      "hostOffline": "{{host}} è offline. Accendilo e apri squadchat lì.",
       "step1": "Attiva Opzioni sviluppatore",
       "step1Text": "Tocca 7 volte Numero build, poi inserisci il PIN. Sui Samsung: Informazioni software › Numero build.",
       "openAbout": "Apri Informazioni sul telefono",
@@ -2016,9 +2016,9 @@
       "wifi1Text": "Spunta Consenti sempre su questa rete, poi tocca Consenti.",
       "wifi2": "Scansiona il codice su un computer",
       "wifi2Text": "Da Debug wireless › Accoppia dispositivo con codice QR. Non usare la fotocamera: legge il codice come una rete Wi-Fi e toglie il telefono dalla tua rete.",
-      "wifi2Hint": "In agentes.chat su un computer, apri Collega un dispositivo › Telefono Android › Tramite Wi-Fi e scegli {{host}}.",
+      "wifi2Hint": "In squadchat su un computer, apri Collega un dispositivo › Telefono Android › Tramite Wi-Fi e scegli {{host}}.",
       "codeHead": "Accoppia con un codice di accoppiamento",
-      "codeNote": "Da Debug wireless › Accoppia dispositivo con codice di accoppiamento. Apri Impostazioni e agentes.chat affiancati, così il codice resta sullo schermo.",
+      "codeNote": "Da Debug wireless › Accoppia dispositivo con codice di accoppiamento. Apri Impostazioni e squadchat affiancati, così il codice resta sullo schermo.",
       "wifiNote": "Il Wi-Fi può cadere dopo un riavvio. Un cavo è più affidabile.",
       "done": "{{name}} è collegato",
       "openFailed": "Questo telefono non ha aperto quella schermata. Cercala in Impostazioni."
@@ -2075,7 +2075,7 @@
         "openXcode": "Apri Xcode",
         "opened": "Xcode si è aperto su {{host}}. Guarda di nuovo in Impostazioni, poi chiudi Xcode lì.",
         "unlock": "L'hai attivata e si è riavviato? L'avviso con Attiva compare quando questo iPhone è sbloccato.",
-        "outdated": "L'app agentes.chat su {{host}} non è aggiornata. Aggiornala su quel Mac."
+        "outdated": "L'app squadchat su {{host}} non è aggiornata. Aggiornala su quel Mac."
       }
     },
     "notice": {
@@ -2174,7 +2174,7 @@
     "usedBy_other": "{{names}} lo usano",
     "fromAgent": "Collega un servizio",
     "githubApp": {
-      "useApp": "Usa l'app agentes.chat",
+      "useApp": "Usa l'app squadchat",
       "useAccount": "Usa un account GitHub",
       "createInBrowser": "Crea nel browser"
     },
@@ -2269,11 +2269,11 @@
     "zoneTitle": "Fuso orario",
     "anotherTitle": "Come si chiama il nuovo spazio di lavoro?",
     "anotherPurpose": "A cosa serve il nuovo spazio di lavoro?",
-    "anotherLead": "Su agentes.chat. Resti in {{org}} e puoi cambiare quando vuoi.",
+    "anotherLead": "Su squadchat. Resti in {{org}} e puoi cambiare quando vuoi.",
     "suggested": "In base alla tua email di {{domain}}, ho suggerito {{org}}.",
     "create": "Crea",
     "enter": "Entra nello spazio di lavoro",
-    "shareMessage": "Entra in {{org}} su agentes.chat: {{url}}",
+    "shareMessage": "Entra in {{org}} su squadchat: {{url}}",
     "failed": "Non è stato possibile salvare. Riprova."
   },
   "ai": {

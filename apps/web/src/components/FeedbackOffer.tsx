@@ -19,7 +19,7 @@ export function FeedbackOfferRow({ message }: { message: Message }) {
   const { org } = useOrg();
   const meId = useMe().data?.user.id;
   const auth = useAuthConfig().data;
-  // Read by the agentes.chat team: on its own servers, and from one whose operator gave no address.
+  // Read by the squadchat team: on its own servers, and from one whose operator gave no address.
   const cloud = auth?.cloud === true || auth?.feedbackRelay === true;
   const offer = message.author.type === "agent" ? feedbackOfferFor(message.meta, meId) : null;
   const decide = useFeedbackOffer(org.id, {

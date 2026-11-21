@@ -13,7 +13,7 @@ import "./apps-download.css";
 const PHONE_STORES: { appStore: string | null; googlePlay: string | null } = { appStore: null, googlePlay: null };
 
 /**
- * Configurações › Apps do agentes.chat: the desktop app for the computer this page is open on (its build, version and
+ * Configurações › Apps do squadchat: the desktop app for the computer this page is open on (its build, version and
  * size, the other systems in a menu, the public `/download` page for the install steps), and the phone apps once the
  * stores list them. Inside the desktop app, the computer part says so instead of offering it again.
  */

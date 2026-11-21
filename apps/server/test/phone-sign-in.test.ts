@@ -120,7 +120,7 @@ describe("GET /api/instance", () => {
     expect(first.status).toBe(200);
     expect(first.headers.get("access-control-allow-origin")).toBe("*");
     expect(await first.json()).toEqual({
-      name: "agentes.chat",
+      name: "squadchat",
       version: "test",
       api: 1,
       minApi: 1,
@@ -144,7 +144,7 @@ describe("GET /api/instance", () => {
     });
   });
 
-  test("agentes.chat's own servers say they are the Cloud", async () => {
+  test("squadchat's own servers say they are the Cloud", async () => {
     t = await createTestServer({ env: { PUBLIC_URL: "https://app.agentes.chat" } });
     expect(await (await t.app.request("/api/instance")).json()).toMatchObject({
       url: "https://app.agentes.chat",

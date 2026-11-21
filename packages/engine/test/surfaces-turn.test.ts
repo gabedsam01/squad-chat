@@ -34,7 +34,7 @@ afterEach(async () => {
 });
 
 const LINK = "0190a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b";
-const ON_SURFACE = "reads this conversation on Example Chat right now, not in agentes.chat";
+const ON_SURFACE = "reads this conversation on Example Chat right now, not in squadchat";
 const tool = (name: string, sensitive = false) => ({ name, scope: "", sensitive });
 const executor = (actions: string[] | null) => ({
   name: "gmail_COMPOSIO_MULTI_EXECUTE_TOOL",
@@ -202,7 +202,7 @@ describe("through the gateway: a surface turn refuses each class, an app turn go
       expect(res.output.isError).toBe(true);
       expect(res.output.data).toMatchObject({ code: "tool.surface", refusal: "surface" });
       expect(res.output.content).toBe(
-        `This can't be done from Example Chat: tell ${f.owner.name} in one line to do it in the agentes.chat app. Don't try another way.`,
+        `This can't be done from Example Chat: tell ${f.owner.name} in one line to do it in the squadchat app. Don't try another way.`,
       );
       const [audit] = await f.db
         .select()

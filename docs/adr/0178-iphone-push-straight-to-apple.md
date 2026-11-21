@@ -74,7 +74,7 @@ server must not need that key for its people to get pushes.
 ## Consequences
 
 - No third party stands between a server and an iPhone: straight to Apple, only Apple sees the push; through the
-  relay, agentes.chat's server sees each push's token, bundle id, title, text and deep link ids on the way, as
+  relay, squadchat's server sees each push's token, bundle id, title, text and deep link ids on the way, as
   SELF_HOSTING.md lists. `PUSH_SENDER=off` keeps them home.
 - An iPhone build made before this change registers an Expo token, which the route now refuses: it gets no push until
   it is updated. Those builds got none before either (no APNs key was ever given to Expo), so nothing that worked

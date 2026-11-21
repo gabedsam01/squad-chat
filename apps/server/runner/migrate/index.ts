@@ -12,13 +12,13 @@ import { ZipWriter } from "./zip";
 /**
  * `agentes-runner migrate` (ADR 0055, addendum 2026-11-16): reads the agents another app keeps on this computer and
  * writes one .zip the import page reads. It sends nothing and connects to nothing: the person drops the file on
- * agentes.chat, where they see what comes before anything is made. Built to be run by a coding assistant too: no
+ * squadchat, where they see what comes before anything is made. Built to be run by a coding assistant too: no
  * question without a terminal, `--json` for one document on stdout, and an exit code that says how it went.
  */
 
 export const MIGRATE_HELP = `Usage: agentes-runner migrate [--from APP] [--out FOLDER] [--json] [--no-files]
 
-Reads the agents another app keeps on this computer and writes one .zip to drop on agentes.chat.
+Reads the agents another app keeps on this computer and writes one .zip to drop on squadchat.
 It only reads, and it sends nothing.
 
   --from APP       ${SOURCES.join(", ")} (asked, or the only one found, when left out)
@@ -232,7 +232,7 @@ export async function migrate(args: MigrateArgs, io: Io): Promise<number> {
     } else {
       say("");
       say(`Written to ${tilde(file, io.home)}`);
-      say("Drop that file on agentes.chat, on the import screen. Nothing was sent.");
+      say("Drop that file on squadchat, on the import screen. Nothing was sent.");
       if (io.interactive) io.reveal?.(file);
     }
     return 0;

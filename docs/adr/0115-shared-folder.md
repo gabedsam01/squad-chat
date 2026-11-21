@@ -22,7 +22,7 @@ Agents on one computer each work in their own folder, and in system mode (ADR 00
 
 - Agents on one computer can read and change each other's shared work, by design: the folder is for what they choose to share. Their own folders, `/tmp` and ports stay private (ADR 0057).
 - The runner changed: an older runner has no shared folder, and the prompt says nothing of one.
-- agentes.chat Cloud's computers need the `acl` package in their image; without it the folder works, but files stay read-only to the group until an agent runs `chmod g+w`.
+- squadchat Cloud's computers need the `acl` package in their image; without it the folder works, but files stay read-only to the group until an agent runs `chmod g+w`.
 - A big shared folder costs one `du` walk an hour, at the lowest priority.
 
 ## Addendum (2026-11-11): the shared `bin/` is reached by full path in system mode

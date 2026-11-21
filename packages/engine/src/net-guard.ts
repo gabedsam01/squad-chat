@@ -228,7 +228,7 @@ export async function fetchPublicDocument(
         path: `${url.pathname}${url.search}`,
         method: "GET",
         servername: host,
-        headers: { accept: "application/json", "user-agent": "agentes.chat" },
+        headers: { accept: "application/json", "user-agent": "squadchat" },
         lookup: pinnedLookup(pinned.address, pinned.family) as never,
       },
       (res) => {

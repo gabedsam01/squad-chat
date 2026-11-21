@@ -71,7 +71,7 @@ else's, perhaps only some of them, and whose own log should say which agent aske
 7. **What the server checks.** The signature under its secret, with the algorithm pinned to HS256; `aud` equal to
    its own host and `iss` to the instance it expects; `exp` not passed, with little slack for clocks; a `jti` it
    hasn't seen within the statement's life, so each is used once; then `org` and `agent` against whatever its key is
-   meant to serve. A call it refuses should come back as a tool error: an HTTP 401 tells agentes.chat the
+   meant to serve. A call it refuses should come back as a tool error: an HTTP 401 tells squadchat the
    connection's own sign-in stopped working, and it asks a person to reconnect.
 
 ## Consequences

@@ -38,7 +38,7 @@ import { readZip } from "./zip";
  * messaging connection emptied), what hands a routine's answer to another agent (`settings.routineFlows`, from
  * `routine_flow_links`), and the skills of its library that no agent has (`<data>/local-skills/<id>/<revision>/
  * bundle.zip`, the latest revision, as `sharedSkills` in `library/<slug>/`). Its messaging connections are named only
- * (`settings.messagingConnections`, this command's own): they have nothing to connect to on agentes.chat.
+ * (`settings.messagingConnections`, this command's own): they have nothing to connect to on squadchat.
  *
  * Never read: the values of MCP variables and headers, a webhook's address and secret, provider sign-ins, browser
  * data, chats. An MCP address keeps only its origin, as the app's own export does (a path can hold a key). A value a
@@ -230,7 +230,7 @@ function read(query: Query, options: OpenBotOptions): Collected {
   if (!has("projection_agents")) {
     throw new MigrateError(
       "unsupported",
-      "This OpenBot keeps its agents in a way this command doesn't read. In OpenBot, open Server settings › Transfer › Export from this server, and drop that .zip on agentes.chat instead.",
+      "This OpenBot keeps its agents in a way this command doesn't read. In OpenBot, open Server settings › Transfer › Export from this server, and drop that .zip on squadchat instead.",
     );
   }
   const left = noLeft();
@@ -382,9 +382,9 @@ function read(query: Query, options: OpenBotOptions): Collected {
     };
   });
   if (mcpServers.length === 1) {
-    notes.push("1 MCP server comes by name only: connect it again on agentes.chat.");
+    notes.push("1 MCP server comes by name only: connect it again on squadchat.");
   } else if (mcpServers.length > 1) {
-    notes.push(`${mcpServers.length} MCP servers come by name only: connect them again on agentes.chat.`);
+    notes.push(`${mcpServers.length} MCP servers come by name only: connect them again on squadchat.`);
   }
 
   const workflows = workflowsOf(all, keys, channelKeyOf);
@@ -395,9 +395,9 @@ function read(query: Query, options: OpenBotOptions): Collected {
     ),
   ).length;
   hookCount += hookFlows;
-  if (hookCount === 1) notes.push("1 routine starts from a webhook: it gets a new address on agentes.chat.");
+  if (hookCount === 1) notes.push("1 routine starts from a webhook: it gets a new address on squadchat.");
   else if (hookCount > 1)
-    notes.push(`${hookCount} routines start from a webhook: each gets a new address on agentes.chat.`);
+    notes.push(`${hookCount} routines start from a webhook: each gets a new address on squadchat.`);
 
   // What hands a routine's answer on: only between agents that came.
   const routineFlows = all("routine_flow_links", "created_at, link_id").flatMap((l) => {
@@ -412,16 +412,16 @@ function read(query: Query, options: OpenBotOptions): Collected {
   counts.skills += library.skills.length;
   entries.push(...library.entries);
 
-  // Messaging connections, by platform and name: there is nothing to connect them to on agentes.chat.
+  // Messaging connections, by platform and name: there is nothing to connect them to on squadchat.
   const messagingConnections = all("projection_messaging_connections", "created_at, connection_id").map((m) => ({
     platform: str(m.platform),
     name: str(m.workspace_name),
   }));
   if (messagingConnections.length === 1)
-    notes.push("1 messaging connection is named only: it has no match on agentes.chat.");
+    notes.push("1 messaging connection is named only: it has no match on squadchat.");
   else if (messagingConnections.length > 1) {
     notes.push(
-      `${messagingConnections.length} messaging connections are named only: they have no match on agentes.chat.`,
+      `${messagingConnections.length} messaging connections are named only: they have no match on squadchat.`,
     );
   }
 

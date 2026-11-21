@@ -242,7 +242,7 @@ test("pair --enroll-file refused: why is the last line of stderr, where a provis
   expect(r.exit).toBe(1);
   const last = r.stderr.trimEnd().split("\n").pop() ?? "";
   expect(last).toStartWith("■  The enrollment code was withdrawn");
-  expect(r.stdout).toBe("agentes.chat connect this computer\n◒  Connecting with the code issued for this computer\n");
+  expect(r.stdout).toBe("squadchat connect this computer\n◒  Connecting with the code issued for this computer\n");
 }, 20_000);
 
 test("pair --link: who may use the computer, its page, and the warning when other people's agents share this user", async () => {
@@ -378,7 +378,7 @@ test("status, never connected: each state with its mark, and where the config li
   });
   const out = run.stdout.toString();
   expect(run.exitCode).toBe(0);
-  expect(out).toStartWith("agentes.chat agentes-runner ");
+  expect(out).toStartWith("squadchat agentes-runner ");
   expect(out).toContain("— this command's version: no runner is running");
   expect(out).toContain("\n■  Not connected.\n▲  Running: no\n▲  Service: not installed\n");
   expect(out).toContain(`\n   Config: ${path.join(home, "config.json")}\n`);
@@ -397,7 +397,7 @@ test("service install's refusals keep their words as ■: a frame of its own by 
   const byHand = install();
   expect(byHand.exitCode).toBe(1);
   // Without a terminal nothing follows the failure: it's the line a log ends on.
-  expect(byHand.stdout.toString()).toBe(`agentes.chat service install\n■  ${usage}\n`);
+  expect(byHand.stdout.toString()).toBe(`squadchat service install\n■  ${usage}\n`);
   const framed = install({ AGENTES_FRAME: "1" });
   expect(framed.exitCode).toBe(1);
   expect(framed.stdout.toString()).toBe(`■  ${usage}\n`);
@@ -410,7 +410,7 @@ test("desktop-check without an agent says how to run it in its frame", () => {
     env: { ...process.env, HOME: home },
   });
   expect(run.exitCode).toBe(1);
-  expect(run.stdout.toString()).toBe("agentes.chat desktop-check\n");
+  expect(run.stdout.toString()).toBe("squadchat desktop-check\n");
   expect(run.stderr.toString()).toBe("■  Usage: agentes-runner desktop-check --agent <handle>\n");
 });
 
@@ -458,7 +458,7 @@ test("update: the new runner is a step done, and a service that won't start is t
     expect(exit).toBe(1);
     expect(readFileSync(script, "utf8")).toContain("a newer one");
     const lines = stdout.trimEnd().split("\n");
-    expect(lines.slice(0, 2)).toEqual(["agentes.chat update", `◇  Updated ${script}.`]);
+    expect(lines.slice(0, 2)).toEqual(["squadchat update", `◇  Updated ${script}.`]);
     expect(lines[2]).toMatch(/^■ {2}(systemctl --user daemon-reload failed|launchctl couldn't load)/);
     // The new runner drives the computer's own Google Chrome (Chromium on Linux on ARM): one without it is told
     // where to get it.
@@ -515,7 +515,7 @@ test("a connect link: sent with the device, its maker and workspace read back; a
 test("connecting from another workspace says which one the computer left", () => {
   const org = { id: "o2", name: "Studio" };
   expect(movedFrom({ token: "agm_x", orgId: "o1", orgName: "Atelier" }, org)).toBe(
-    "This computer was connected to Atelier. It works for Studio now, and Atelier no longer reaches it. One connection serves one workspace: for several, use the agentes.chat app.",
+    "This computer was connected to Atelier. It works for Studio now, and Atelier no longer reaches it. One connection serves one workspace: for several, use the squadchat app.",
   );
   // Never connected, connected again to the same workspace, or one that left before: nothing to say.
   expect(movedFrom(null, org)).toBeNull();

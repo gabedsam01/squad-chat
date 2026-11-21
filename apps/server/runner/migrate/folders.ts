@@ -140,7 +140,7 @@ export function collectOpenClaw(options: { dir: string; home: string; noFiles?: 
     throw new MigrateError("nothing", `No OpenClaw workspace in ${tilde(root, options.home)}.`);
   }
   if (existsSync(path.join(root, "cron"))) {
-    notes.push("Scheduled jobs stay in OpenClaw: set them up again as routines on agentes.chat.");
+    notes.push("Scheduled jobs stay in OpenClaw: set them up again as routines on squadchat.");
   }
   return { source: "openclaw", where: tilde(root, options.home), entries, counts, left, notes };
 }

@@ -212,7 +212,7 @@ describe("a suspended organization on the phone", () => {
     expect(suspendedOf(orgs, "d")?.reason).toBeNull();
   });
 
-  test("its line: why, and on agentes.chat Cloud how to contest it", async () => {
+  test("its line: why, and on squadchat Cloud how to contest it", async () => {
     const t = await translator("pt-BR");
     expect(suspendedText(t, suspendedOf(orgs, "a"))).toBe("Este workspace está suspenso: uso fora dos termos");
     const cloud = [{ id: "e", name: "Eco", standing: { state: "suspended", reason: "Termos 5: spam", cloud: true } }];

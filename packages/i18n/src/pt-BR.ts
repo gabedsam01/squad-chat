@@ -558,7 +558,7 @@ export const ptBR = {
     recommended: "Recomendado",
     free: "Grátis · código aberto",
     cloud: {
-      name: "agentes.chat Cloud",
+      name: "squadchat Cloud",
       short: "Sempre ligado, sem nada para instalar.",
       on: "Computador dos agentes sempre ligado",
       care: "Atualizações e backups por nossa conta",
@@ -740,7 +740,7 @@ export const ptBR = {
     server: {
       into: "Entrando em <b>{{server}}</b>",
       intoHere: "Entrando no squadchat <b>deste {{device}}</b>",
-      intoCloud: "Entrando no <b>agentes.chat Cloud</b>",
+      intoCloud: "Entrando no <b>squadchat Cloud</b>",
       /** Trocar's name for screen readers: the e-mail's Trocar sits on the same screen. */
       change: "Trocar de servidor",
     },
@@ -2436,7 +2436,7 @@ export const ptBR = {
       people: "Você já fixou 5 pessoas. Tire uma do topo para fixar esta.",
     },
   },
-  /** Configurações › Apps do agentes.chat (`AppsDownload.tsx`): the desktop app for this computer and the phone apps. */
+  /** Configurações › Apps do squadchat (`AppsDownload.tsx`): the desktop app for this computer and the phone apps. */
   appsDownload: {
     computer: "Computador",
     computerText: "O workspace numa janela própria, com os avisos do sistema.",
@@ -3724,7 +3724,7 @@ export const ptBR = {
       },
     },
     billing: "Um plano entra no computador do workspace, e o computador vem com um plano ativo do squadchat.",
-    billingWeb: "Escolha um na web, em agentes.chat.",
+    billingWeb: "Escolha um na web, em squadchat.",
     orPayGo: "Ou pague pelo uso",
     /** The two ways to pay, on a control the width of a phone: keep them short. */
     pay: {
@@ -13252,13 +13252,13 @@ export const ptBR = {
     installed: "App squadchat instalado.",
     /**
      * Someone without rights on that GitHub account asked its owner to install (`github_app_error=requested`).
-     * Approving it on GitHub never links it here: the owner installs it from agentes.chat.
+     * Approving it on GitHub never links it here: the owner installs it from squadchat.
      */
     requested:
       "Só o dono da conta do GitHub pode instalar o app. Peça para essa pessoa instalar em Conectores › GitHub neste workspace.",
     notVisible: "Sua conta do GitHub não vê essa instalação. Instale com uma conta que tenha acesso a ela.",
     otherWorkspace: "Essa conta do GitHub já está ligada a outro workspace. Remova o app de lá antes de instalar aqui.",
-    /** O app foi instalado no próprio GitHub, não pelo agentes.chat (`github_app_error=installed_outside`). */
+    /** O app foi instalado no próprio GitHub, não pelo squadchat (`github_app_error=installed_outside`). */
     installedOutside:
       "O app foi instalado nessa conta do GitHub fora do squadchat. Remova o app no GitHub e instale de novo em Conectores › GitHub.",
     /**
@@ -13276,7 +13276,7 @@ export const ptBR = {
       "O app do GitHub está com a chave secreta errada no servidor, então a instalação não conclui. Quem cuida do servidor precisa trocar a chave nas configurações do app.",
     /** O GitHub é só o app: conectar uma conta também (os agentes usam onde o app não está e no GitHub Projects). */
     connectAccount: "Conectar uma conta do GitHub",
-    /** Para os admins que não são o dono do servidor, num servidor sem o app (nunca no agentes.chat). */
+    /** Para os admins que não são o dono do servidor, num servidor sem o app (nunca no squadchat). */
     ownerHint: "O dono deste servidor pode criar o app do GitHub aqui em Conectores.",
     /** A linha de um GitHub conectado só pelo app: as contas onde ele está instalado. */
     viaApp: "Pelo app squadchat em {{accounts}}",
@@ -13293,7 +13293,7 @@ export const ptBR = {
       title: "Criando o app do GitHub",
       continue: "Continuar no GitHub",
     },
-    /** Configurações › Conectores para o dono do servidor (nunca no agentes.chat): o app que os workspaces daqui instalam. */
+    /** Configurações › Conectores para o dono do servidor (nunca no squadchat): o app que os workspaces daqui instalam. */
     server: {
       title: "App do GitHub deste servidor",
       lead: "Com ele, os agentes aparecem no GitHub como o app, não como a conta de alguém.",
@@ -14758,7 +14758,7 @@ export const ptBR = {
     namePlaceholder: "Ex.: Suporte",
     continueIn: "Continuar no {{name}}",
     continueInComposio: "Continuar na Composio",
-    /** Conectar o GitHub onde o servidor tem o app agentes.chat: o app primeiro, uma conta depois. */
+    /** Conectar o GitHub onde o servidor tem o app squadchat: o app primeiro, uma conta depois. */
     github: {
       how: "Como os agentes entram no GitHub",
       app: "O app squadchat",
@@ -15943,7 +15943,7 @@ export const ptBR = {
       noReport: "Este {{device}} ainda não informou o que libera. Atualize o app.",
       update: "Atualizar o app",
     },
-    // The server's own computer (`HOST_COMPUTER_TOKEN`): the machine agentes.chat is installed on.
+    // The server's own computer (`HOST_COMPUTER_TOKEN`): the machine squadchat is installed on.
     host: {
       label: "Computador deste servidor",
       desc: "Onde o squadchat está instalado.",
@@ -17631,7 +17631,7 @@ export const ptBR = {
       agentOn: "{{name}} manda GIFs e figurinhas",
       agentsNever: "Com Nunca, nenhum agente manda por conta própria. Quando alguém pede, os ligados aqui mandam.",
       noAgents: "Nenhum agente no workspace ainda.",
-      /** The installation's GIPHY key, for its owner on a server that isn't agentes.chat's own (ADR 0091). */
+      /** The installation's GIPHY key, for its owner on a server that isn't squadchat's own (ADR 0091). */
       giphy: {
         title: "Chave do GIPHY",
         lead: "Com ela, as pessoas mandam GIFs em todos os workspaces deste servidor.",
@@ -19568,7 +19568,7 @@ export const ptBR = {
       teamReady: "Seu time está pronto. Falta um plano do squadchat para ele começar.",
       invites: "Os convites abrem com o plano do squadchat.",
     },
-    /** agentes.chat Cloud only: what the restriction is, the Terms section and how to contest it (`restrictionLine`). */
+    /** squadchat Cloud only: what the restriction is, the Terms section and how to contest it (`restrictionLine`). */
     cloud: {
       review:
         "Pausado para uma análise de segurança, até a nossa equipe olhar o caso. As nossas verificações automáticas detectaram uma atividade que pode violar os nossos Termos (seção 5). Para contestar, escreva para {{email}}.",
@@ -20011,7 +20011,7 @@ export const ptBR = {
       notice: "Os programas do computador do {{name}} veem a tela e o que você digita ou cola.",
       notice_female: "Os programas do computador da {{name}} veem a tela e o que você digita ou cola.",
     },
-    /** The ⓘ beside the control line, on agentes.chat Cloud only (ADR 0076). */
+    /** The ⓘ beside the control line, on squadchat Cloud only (ADR 0076). */
     session: {
       check: "Verificações de segurança",
       screening:

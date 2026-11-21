@@ -1,6 +1,6 @@
 # 0096. Each agent reaches its own local ports, and only its own
 
-- Status: Accepted (built: core's runner). The agentes.chat Cloud takes it with a new runner pin, after the acceptance run in §7
+- Status: Accepted (built: core's runner). The squadchat Cloud takes it with a new runner pin, after the acceptance run in §7
 - Date: 2026-11-01
 - Amends: ADR 0057 (Consequences: the two paragraphs on browser ports and loopback listeners, and the launcher's environment), ADR 0058 §1 (an agent's display lock is in its own /tmp), ADR 0060 (the server's own computer needs systemd with `BPF_FRAMEWORK` too)
 - Code: `apps/server/runner/loopback-guard.ts`, `browser-bind-policy.ts` (`applyBindPolicy`, `ensureBrowserBindPolicy`, `prepareAgents`), `browser-bind-check.ts`, `browser-ports.ts` (`browserBand`), `agent-users.ts` (`systemLauncher`, `adbServerPort`, the cron and at deny), `service.ts` (`AGENT_RAM_ROOT`, `AGENT_TMP_ROOT`, the tmpfiles lines), `supervisor.ts` (a start that fails), `desktop-session.ts` (`abstractDisplays`), `config.ts` (`services`), `main.ts` (`agentes-runner services`, `bind-check`), `install-script.ts` (`ISOLATION_APT_PACKAGES`, the `BPF_FRAMEWORK` check), `packages/setup` (`computerOffer`); the root test `apps/server/test/runner/isolation.root.test.ts` and CI's `isolation-root` job (`scripts/isolation-vm.sh`)

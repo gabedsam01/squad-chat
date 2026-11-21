@@ -1,4 +1,4 @@
-# 0075. Limits on public routes, and agentes.chat Cloud's bot check
+# 0075. Limits on public routes, and squadchat Cloud's bot check
 
 - Status: Accepted (built: server, web, the shared client and the phone app)
 - Date: 2026-10-27
@@ -6,14 +6,14 @@
 
 ## Context
 
-Every route a signed-out person reaches has a limit per IP, but the key was the whole address: an IPv6 /64, which one customer usually holds, gave 2^64 fresh counts. Reset and confirmation emails had no cap per address, so a mailbox could be flooded from many addresses. Behind a public proxy, our own limits counted every request as the proxy's. And agentes.chat Cloud, open to anyone, wants a bot check in front of its forms that most people never see, while self-hosted servers keep nothing of it.
+Every route a signed-out person reaches has a limit per IP, but the key was the whole address: an IPv6 /64, which one customer usually holds, gave 2^64 fresh counts. Reset and confirmation emails had no cap per address, so a mailbox could be flooded from many addresses. Behind a public proxy, our own limits counted every request as the proxy's. And squadchat Cloud, open to anyone, wants a bot check in front of its forms that most people never see, while self-hosted servers keep nothing of it.
 
 ## Decision
 
 1. **Per IP means IPv6 by its /64** (`limitIp`), as Better Auth counts its own: sign-in options, the ask and its code, the waiting list, a new invitation, a computer's pairing and its host sync, desktop and native downloads. The address a pairing records stays whole.
 2. **`TRUSTED_PROXIES` counts for our limits too.** Walking `x-forwarded-for` from the right, its addresses and ranges are skipped like internal hops. An entry that isn't an address or a range is skipped.
 3. **Reset and confirmation emails: at most 3 an hour per address.** More go nowhere, and Better Auth answers the same, so nothing tells whether an email went out. Counted in memory, like Better Auth's own counts per IP.
-4. **The bot check is Cloudflare Turnstile, on only with both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.** Half a pair stops the server at boot. Without them there is no script, no widget, no check and no request to Cloudflare. Both descriptions start "For agentes.chat Cloud. Unset by default." It is public code switched on by env vars (ADR 0002).
+4. **The bot check is Cloudflare Turnstile, on only with both `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`.** Half a pair stops the server at boot. Without them there is no script, no widget, no check and no request to Cloudflare. Both descriptions start "For squadchat Cloud. Unset by default." It is public code switched on by env vars (ADR 0002).
 5. **Six actions:** email lookup, sign-in, sign-up, password reset, the code to ask to join (ADR 0072), the waiting list. The widget is Managed with `appearance: interaction-only`: a checkbox shows only when Cloudflare doubts someone. The token travels in `x-captcha-response`. Each route checks it after its per-IP limit and before any count people share, such as a link's or the whole server's, so refused bots don't spend those. Better Auth's hook runs after Better Auth's own limits, and sign-up checks it before its policy.
 6. **Our own siteverify call**, an adapter. A missing or refused token is a 403 `human_check`. A token counts only for its action, seen on `PUBLIC_URL`'s host, except the answers of Cloudflare's test keys. One retry, with the same idempotency key, on no answer within 5 s, a 5xx or `internal-error`. Cloudflare out of reach lets the request through, logged: nobody is locked out by someone else's outage, and every limit still holds.
 7. **A page that can't make a token** (the script didn't load, the widget failed, nothing in 30 s) sends `unavailable`, with Turnstile's error code when it gave one. It goes through only while this server can't reach Cloudflare either, asked again at most once a minute: the dummy token to siteverify and the widget's script. Otherwise it is a 403 `human_check_blocked`, read as "The check didn't load. Try another browser or network.", which doesn't blame the browser, since a widget down while siteverify answers looks the same from here. Turnstile's codes for a wrong site key or a host it doesn't allow (110100, 400020, 110200) are logged, at most once a minute, since any client can send them.

@@ -644,7 +644,7 @@ test("the export's file name, as the web saves it", () => {
   expect(exportFileName(new Date("2026-10-28T12:00:00.000Z"))).toBe("agentes-chat-2026-10-28.json");
 });
 
-test("Sobre o agentes.chat in Você: on every self-hosted server, old ones too; never on agentes.chat Cloud", () => {
+test("Sobre o squadchat in Você: on every self-hosted server, old ones too; never on squadchat Cloud", () => {
   const server = (cloud?: boolean): AuthConfig => ({
     socialProviders: { google: false, github: false },
     signupOpen: false,
@@ -708,7 +708,7 @@ test("Auditoria says an operator's answer to a support request as the web does: 
   expect(auditSentence(en, assisted, "en").text).toBe("Whoever runs this server answered by email");
   // The row's own screen says it whole in the reason's place: the list's line is one line there.
   expect(auditReason(en, assisted)).toBe(`support request from ${name} · with an AI assistant`);
-  // On agentes.chat's own servers, with no AI assistant, of an account that is gone since.
+  // On squadchat's own servers, with no AI assistant, of an account that is gone since.
   const plain = replied({ template: "received", chars: 0, assistedByAi: false, cloud: true }, null);
   expect(auditSentence(en, plain, "en").text).toBe("squadchat support answered by email");
   expect(auditSubLine(en, plain)).toBe("support request from Removed");

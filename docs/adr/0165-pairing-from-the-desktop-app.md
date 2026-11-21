@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-11-09
-- Supersedes: ADR 0066 §3 ("a link never pairs this computer") and §4/§5 (agentes.chat is a plain client, agents
+- Supersedes: ADR 0066 §3 ("a link never pairs this computer") and §4/§5 (squadchat is a plain client, agents
   here only for your own server), for the devices people bring
 - Extends: ADR 0025 (connected computers), ADR 0036 (desktop app), ADR 0066 (one desktop app)
 - Code: engine `device-links.ts` (`connectLinkInfo`); server `routes/devices.ts` (`registerConnectLinkInfo`,
@@ -15,7 +15,7 @@
 
 ## Context
 
-ADR 0066 made agentes.chat a plain client in the desktop app: every Cloud workspace had a computer of its own, so the
+ADR 0066 made squadchat a plain client in the desktop app: every Cloud workspace had a computer of its own, so the
 app never paired the computer it runs on there, and a link could never pair it. Since then people bring their own
 computers and phones to every workspace, the Cloud included, through a line pasted in a terminal (`curl … | sh`,
 a connect link that works once for 10 minutes and only asks to join). That is fine for a server and hard for everyone
@@ -23,7 +23,7 @@ else, while the app already pairs this computer in one click behind the system's
 
 ## Decision
 
-1. **Agents here on Cloud too.** `agents_here(origin, server_here)` drops its agentes.chat exclusion: the app may pair
+1. **Agents here on Cloud too.** `agents_here(origin, server_here)` drops its squadchat exclusion: the app may pair
    this computer with any server, except one on this computer itself (a loopback address, the server the app runs
    here), which is set up with it already. The site's `useAgentsHere` follows the app's answer, so "This computer"
    in the connect dialog is the one-click button on Cloud as on a self-hosted server.
@@ -45,7 +45,7 @@ else, while the app already pairs this computer in one click behind the system's
    Codes stay hashed at rest and are looked up by hash, as `/i/{code}` does, with the same limit per address (30 a
    minute).
 5. **The web's connect dialog** offers This computer, Another computer and A server or VPS on every setup. This
-   computer in a browser makes a connect link (kind computer) and offers "Open the agentes.chat app" (the link above)
+   computer in a browser makes a connect link (kind computer) and offers "Open the squadchat app" (the link above)
    for as long as it waits, with the downloads for after installing, the waiting line, today's join card, and one
    line for a terminal as the way out. Only where the app takes such a link (`appPairsWith`: https, not on this
    computer); a page served over plain http or from this computer itself offers the one line, as before. Another
@@ -75,7 +75,7 @@ else, while the app already pairs this computer in one click behind the system's
    app. Screen Recording's button is Allow the first time (the system's prompt), then Open Settings; its row says macOS
    asks again about once a month. Full Disk Access replaces per-folder grants (Desktop, Documents, Downloads), whose
    prompts stopped agents mid-task: no prompt can ask for it, so its button always opens System Settings on its list
-   (`Privacy_AllFiles`) and the row says to turn agentes.chat on there. Its state comes from opening the privacy
+   (`Privacy_AllFiles`) and the row says to turn squadchat on there. Its state comes from opening the privacy
    database (`TCC.db`, the user's or else the system's), which opens only with it and never prompts. Local Network
    (macOS 15 and later, no row before that) covers adb, the runner's child, finding and connecting Android phones over
    Wi-Fi (mDNS and the TCP connect). macOS has no call that reads it: Allow raises its prompt with a short Bonjour

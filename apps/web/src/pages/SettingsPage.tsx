@@ -186,7 +186,7 @@ function Settings({
   const visible = SETTINGS_SECTIONS.filter((s) => s.allowed(org, server));
   // A section a link names that this person can't open: their first one, their account, saying why. Opening the
   // settings with no section named has nothing to explain. Billing where no billing service runs, or Sobre and Voz on
-  // agentes.chat Cloud, isn't about their role.
+  // squadchat Cloud, isn't about their role.
   const wanted = section ?? "general";
   const current = visible.some((s) => s.id === wanted) ? wanted : (visible[0]?.id ?? "account");
   const serverLacks =

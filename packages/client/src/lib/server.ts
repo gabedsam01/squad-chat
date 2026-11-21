@@ -6,7 +6,7 @@ import type { Instance } from "../api/types";
 /**
  * Choosing a server in the phone and desktop apps ("Seu servidor"): the address a person types, the connect
  * link that the web app's QR code and the self-host setup print, and the check that an address is an
- * agentes.chat server these apps can talk to.
+ * squadchat server these apps can talk to.
  */
 
 export const CLOUD_SERVER = "https://app.agentes.chat";
@@ -162,10 +162,10 @@ export type ServerCheck =
   | { ok: true; server: string; instance: Instance }
   | { ok: false; server: string; problem: ServerProblem };
 
-/** What `GET /api/instance` answered: an agentes.chat server these apps can use, or why not. */
+/** What `GET /api/instance` answered: an squadchat server these apps can use, or why not. */
 export function readInstance(server: string, body: unknown): ServerCheck {
   const instance = (body ?? {}) as Partial<Instance>;
-  if (instance.name !== "agentes.chat" || typeof instance.api !== "number")
+  if (instance.name !== "squadchat" || typeof instance.api !== "number")
     return { ok: false, server, problem: "not-agentes" };
   if (instance.api < APP_API) return { ok: false, server, problem: "server-too-old" };
   if ((instance.minApi ?? 1) > APP_API) return { ok: false, server, problem: "app-too-old" };

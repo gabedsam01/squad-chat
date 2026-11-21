@@ -59,7 +59,7 @@ describe("finding the settings", () => {
     expect(document.documentElement.hasAttribute("data-menu-overlay")).toBe(false);
   });
 
-  test("New workspace only for whoever can make one (on agentes.chat Cloud, by invitation for now)", async () => {
+  test("New workspace only for whoever can make one (on squadchat Cloud, by invitation for now)", async () => {
     for (const [can, offered] of [
       [undefined, true],
       [false, false],
@@ -132,14 +132,14 @@ describe("finding the settings", () => {
     expect(org.textContent).toBe(name);
   });
 
-  test("Sobre o agentes.chat: for a member too, with the license's attribution, the version and the source", async () => {
+  test("Sobre o squadchat: for a member too, with the license's attribution, the version and the source", async () => {
     const state = seedState();
     if (state.me?.organizations[0]) state.me.organizations[0].role = "member";
     state.instance = { version: "2026.11.06.1", sourceUrl: "https://git.example.com/fork" };
     await go("settings/about", state);
     expect(screen().getAllByRole("heading", { level: 2, name: "Sobre o squadchat" }).length).toBeGreaterThan(0);
-    const site = screen().getByRole("link", { name: "agentes.chat" });
-    expect(site.closest("h2")?.textContent).toBe("Baseado no agentes.chat da AGENTESCHAT, LLC");
+    const site = screen().getByRole("link", { name: "squadchat" });
+    expect(site.closest("h2")?.textContent).toBe("Baseado no squadchat da AGENTESCHAT, LLC");
     expect(site.getAttribute("href")).toBe("https://agentes.chat");
     expect(screen().getByText("2026.11.06.1")).toBeTruthy();
     expect(screen().getByRole("link", { name: "GNU Affero General Public License v3" }).getAttribute("href")).toBe(
@@ -153,7 +153,7 @@ describe("finding the settings", () => {
     expect(screen().getByText("Copyright © 2026 AGENTESCHAT, LLC e colaboradores")).toBeTruthy();
   });
 
-  test("Sobre o agentes.chat only on a self-hosted server: agentes.chat Cloud lists it nowhere, its link opens Sua conta", async () => {
+  test("Sobre o squadchat only on a self-hosted server: squadchat Cloud lists it nowhere, its link opens Sua conta", async () => {
     const nav = () => within(screen().getByRole("navigation", { name: "Seções das configurações" }));
     const license = () => screen().queryByRole("link", { name: "GNU Affero General Public License v3" });
     const inPalette = async () => {

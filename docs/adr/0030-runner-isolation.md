@@ -27,7 +27,7 @@ Three levels. Level 1 is the default for every connected machine; level 2 is a c
 The runner builds each command's environment for the requesting agent, without touching the owner's files:
 
 - **Git config:** `GIT_CONFIG_GLOBAL=<agent folder>/.agentes/gitconfig`. A `configure_git` op (from a tool) writes that file: name and email of the agent, a credential helper, `insteadOf` rules. The owner's `~/.gitconfig` is never read for writing and never changed.
-- **Authorship:** commits are authored as the agent (`Dev (agentes.chat) <dev+<org>@agents.agentes.chat>`) with a `Co-authored-by` trailer for the person who started the work.
+- **Authorship:** commits are authored as the agent (`Dev (squadchat) <dev+<org>@agents.agentes.chat>`) with a `Co-authored-by` trailer for the person who started the work.
 - **GitHub access, preferred:** a short-lived token minted by our server from the org's GitHub connection (GitHub App installation token, ADR 0016/0024), scoped to the repos the agent may use, delivered to the runner per task through the credential helper (`agentes-runner git-credential`), never written to disk in plaintext. The policy lives server-side, like the git proxy: push only to `agentes/{handle}/*` and mission branches, no force push to protected refs, no direct push to the default branch. Merges go through our GitHub connector after an approval card. This makes approvals binding.
 - **GitHub access, fallback:** a token the person hands over with `request_secret` (ADR 0027), stored in the agent's secrets, used through the same credential helper.
 - **SSH:** if a remote needs it, an agent-only key under the agent's secrets via `GIT_SSH_COMMAND="ssh -i … -o IdentitiesOnly=yes"`.
@@ -66,7 +66,7 @@ The runner builds each command's environment for the requesting agent, without t
 
 ## Addendum: browser start page and network options
 
-The agent browser opens an offline agentes.chat new tab. Its language follows the agent's responsible person
+The agent browser opens an offline squadchat new tab. Its language follows the agent's responsible person
 (Portuguese or English, with English as the fallback). The clock uses the computer's time zone. No external
 font, image or page request is needed. System installs keep the extension files outside agent-owned homes,
 under `/opt/agentes-runner/browser/start/<uid>`; a regular install uses the runner's own home. Existing profiles

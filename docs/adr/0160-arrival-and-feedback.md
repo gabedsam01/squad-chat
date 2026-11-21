@@ -15,7 +15,7 @@ need to know at once: the product is in beta, and their agents answer nothing un
 was a row among five, opening a picker of two controls made for people who already know what a plan and a key are.
 
 There was also no way to tell us what went wrong. The product is open source and one image serves every server
-(ADR 0002), so a feedback channel must not send anything to agentes.chat from a server someone else runs, must work
+(ADR 0002), so a feedback channel must not send anything to squadchat from a server someone else runs, must work
 with Postgres alone, and must not need a third-party widget in the apps.
 
 ## Decision
@@ -42,8 +42,8 @@ with Postgres alone, and must not need a third-party widget in the apps.
 
 5. **Feedback is an email to whoever runs the server.** `FEEDBACK_EMAIL` names the address. Unset, which is the
    default, the apps show no form and the route answers 404: a self-hosted server sends nothing anywhere unless its
-   operator asks for it. agentes.chat sets it to its own address. (Superseded for the unset case by §13: it then
-   goes to the agentes.chat team, when a person sends one.)
+   operator asks for it. squadchat sets it to its own address. (Superseded for the unset case by §13: it then
+   goes to the squadchat team, when a person sends one.)
 
 6. **What a feedback carries.** The text the person typed; their name and address (the email's reply-to, so the
    answer goes to them); the workspace's name and their role when they are a member of the one the app named; what
@@ -129,22 +129,22 @@ with Postgres alone, and must not need a third-party widget in the apps.
     - **Not here yet.** A run that dies before any reply (the server's own error) has no message for the row to ride
       on, so it offers nothing.
 
-13. **With no address, it goes to the agentes.chat team** (added 2026-11-12). Almost no self-hosted server set
+13. **With no address, it goes to the squadchat team** (added 2026-11-12). Almost no self-hosted server set
     `FEEDBACK_EMAIL`, and one that did also needed outgoing email, so the people most likely to hit a rough edge
     had no way to say so. A feedback is not like a report the server sends by itself: a person writes it, reads who
     will get it, and presses Send. So §5's default changes.
-    - **Where it goes.** To the agentes.chat team's inbox (`FEEDBACK_URL`), unless `FEEDBACK_RELAY=false`, which
+    - **Where it goes.** To the squadchat team's inbox (`FEEDBACK_URL`), unless `FEEDBACK_RELAY=false`, which
       is §5's old default (no form, no route, no tools). The feedback is about the app, so its makers read it:
       `FEEDBACK_EMAIL` is no longer something a self-hosted server sets. It is the team's own address, on
-      agentes.chat's servers; a server that does set it still mails its feedback there and sends nothing out. `auth-config.feedbackRelay` tells the apps, which then say "to the
-      agentes.chat team" wherever they said "to whoever runs this server", in the form and on an agent's offer.
+      squadchat's servers; a server that does set it still mails its feedback there and sends nothing out. `auth-config.feedbackRelay` tells the apps, which then say "to the
+      squadchat team" wherever they said "to whoever runs this server", in the form and on an agent's offer.
     - **Same job, another way out.** The route still only queues `feedback.send`; where the destination is the
       inbox the job posts the feedback as JSON instead of mailing it, so the server needs no email of its own. A
       refusal fails the job; an inbox that can't be reached is tried again with the outbox's backoff, then dropped.
     - **Pictures only, inside the message.** A link to a file on a server in someone's private network opens for
       nobody outside it, so the pictures travel with the feedback, as many as fit an email together, and the form
       there offers no video. The sending server keeps them only while the job may run again (six hours).
-    - **The inbox** is a route of the same image, on only on agentes.chat's own servers (the ones `isAgentesCloud`
+    - **The inbox** is a route of the same image, on only on squadchat's own servers (the ones `isAgentesCloud`
       names, which already read feedback at `FEEDBACK_EMAIL`). It needs no setting; `FEEDBACK_INBOX=false` turns it off. It needs no session, since its sender is a server it knows nothing of, so it
       counts requests by where they come from (thirty an hour) and in all (sixty), reads at most what the
       pictures of one email weigh, takes a picture by its own bytes as an upload is, and mails the feedback at
@@ -158,7 +158,7 @@ with Postgres alone, and must not need a third-party widget in the apps.
 
 - A server with neither `FEEDBACK_EMAIL` nor the relay has no feedback channel in the apps; its people use whatever
   its operator gives them.
-- A self-hosted server's feedback reaches agentes.chat by default, with the name and address of the person who sent
+- A self-hosted server's feedback reaches squadchat by default, with the name and address of the person who sent
   it. The form says so before they send, and `SELF_HOSTING.md` lists what it holds and how to turn it off.
 - Whoever can reach the inbox can write to the team's address, within its hourly limits; the email marks it as
   unverified.

@@ -543,7 +543,7 @@ export function agentRoutes(deps: AppDeps) {
       security,
       summary: "What a workspace's own endpoint lists (ADR 0146), before it is saved (admins)",
       description:
-        "Reads `GET {baseURL}/models` (Chat Completions) or `GET {baseURL}/v1/models` (Anthropic) with the key, which is not stored. On agentes.chat Cloud only public https addresses are reached (`url.https_required`, `url.internal`). A list the endpoint doesn't give comes back empty with `error`: the admin types ids instead.",
+        "Reads `GET {baseURL}/models` (Chat Completions) or `GET {baseURL}/v1/models` (Anthropic) with the key, which is not stored. On squadchat Cloud only public https addresses are reached (`url.https_required`, `url.internal`). A list the endpoint doesn't give comes back empty with `error`: the admin types ids instead.",
       request: {
         params: OrgParams,
         body: body(

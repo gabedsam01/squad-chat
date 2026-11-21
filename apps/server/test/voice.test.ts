@@ -155,7 +155,7 @@ test("the provider is only for the installation's owner", async () => {
   expect(JSON.stringify(view)).not.toContain("good-key");
 });
 
-test("on agentes.chat the provider can't be chosen", async () => {
+test("on squadchat the provider can't be chosen", async () => {
   const origin = "https://app.agentes.chat";
   const server = await createTestServer({ env: { ALLOW_SIGNUP: "true", PUBLIC_URL: origin }, speechFetch: groq });
   t = server;

@@ -91,7 +91,7 @@ está visível.
 
 ## Licença e atribuição
 
-Faz parte do squadchat, um fork do agentes.chat, e segue a mesma licença: GNU AGPL-3.0-only. O rodapé mantém a
+Faz parte do squadchat, um fork do squadchat, e segue a mesma licença: GNU AGPL-3.0-only. O rodapé mantém a
 atribuição exigida pela seção 7(b) do NOTICE: "Based on agentes.chat by AGENTESCHAT, LLC".
 `src/assets/vendor/agent-engine.js` é uma cópia sem alterações de `packages/ui/src/agent/engine.js`. As fontes são
 OFL, com os arquivos de licença em `src/assets/fonts/`.

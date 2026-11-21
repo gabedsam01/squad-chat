@@ -32,7 +32,7 @@ export const openRouterJevModel = (model: string) =>
 
 const OPENROUTER_URL = "https://openrouter.ai";
 /** OpenRouter's attribution: the product, never a self-hosted server's own address (as for its models, ADR 0087 §5). */
-const OPENROUTER_HEADERS = { "HTTP-Referer": "https://agentes.chat", "X-OpenRouter-Title": "agentes.chat" };
+const OPENROUTER_HEADERS = { "HTTP-Referer": "https://agentes.chat", "X-OpenRouter-Title": "squadchat" };
 
 export interface JevKeyView {
   source: "env" | "settings" | null;

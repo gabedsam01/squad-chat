@@ -130,7 +130,7 @@ export function githubAppInstallDeps(deps: AppDeps): GitHubAppInstallDeps {
 /** Limits starting the manifest flow, like the installation's other keys. */
 const MANIFEST_STARTS = { limit: 10, windowMs: 60_000 };
 
-const ownerOnly = "404 for everyone but the server's pinned owner (ADR 0073), and on agentes.chat itself.";
+const ownerOnly = "404 for everyone but the server's pinned owner (ADR 0073), and on squadchat itself.";
 
 /**
  * Our public GitHub App (ADR 0033, 0156): organizations install it from the app, which binds the installation to them;
@@ -152,7 +152,7 @@ export function githubAppRoutes(deps: AppDeps) {
   const base = deps.config.PUBLIC_URL.replace(/\/$/, "");
   const settings = deps.extras?.githubApp;
 
-  /** The holder for the server's owner, off agentes.chat; null for anyone else. */
+  /** The holder for the server's owner, off squadchat; null for anyone else. */
   const ownerSettings = async (userId: string): Promise<GitHubAppSettings | null> =>
     settings && !isAgentesCloud(deps.config.PUBLIC_URL) && (await pinnedOwner(deps.db)) === userId ? settings : null;
   const setupOf = async (holder: GitHubAppSettings) => {
@@ -169,7 +169,7 @@ export function githubAppRoutes(deps: AppDeps) {
       tags,
       security,
       summary: "The GitHub App: whether it can be installed here, this organization's installations, the server's app",
-      description: `Installations are checked with GitHub first, at most once a minute per organization: one uninstalled there is gone here. \`setup\`: the server's own app, for its pinned owner only (null for anyone else, and on agentes.chat). \`ownerCreates\`: the server has no app and its owner can make one in Settings, so the admins can be told who to ask (false on agentes.chat).`,
+      description: `Installations are checked with GitHub first, at most once a minute per organization: one uninstalled there is gone here. \`setup\`: the server's own app, for its pinned owner only (null for anyone else, and on squadchat). \`ownerCreates\`: the server has no app and its owner can make one in Settings, so the admins can be told who to ask (false on squadchat).`,
       request: { params: OrgParams },
       responses: {
         200: json(

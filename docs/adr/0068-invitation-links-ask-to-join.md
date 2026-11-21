@@ -8,7 +8,7 @@
 
 A workspace's invitation link let anyone signed in who opened it join as a member, with nobody asked, and its token
 opened sign-up on a server with closed sign-up. Links get pasted in group chats and forwarded. Any account can create
-a workspace, and on agentes.chat, where public sign-up stays closed until billing ships, every workspace gets a paid
+a workspace, and on squadchat, where public sign-up stays closed until billing ships, every workspace gets a paid
 computer: a leaked link handed computers to strangers. Email invitations are bound to one address and accepted only
 by an account with it.
 

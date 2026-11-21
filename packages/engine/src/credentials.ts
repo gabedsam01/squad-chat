@@ -309,7 +309,7 @@ function passedCheck(providerId: string, result: KeyCheck | undefined) {
 /** A key is no way around a billing hold: it would only sit there reading as ready. */
 async function assertKeysOpen(db: Database, orgId: string) {
   if (await billingHold(db, orgId)) {
-    throw new ForbiddenError("API keys open with the workspace's agentes.chat plan", "credentials.plan_hold");
+    throw new ForbiddenError("API keys open with the workspace's squadchat plan", "credentials.plan_hold");
   }
 }
 

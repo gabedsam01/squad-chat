@@ -63,7 +63,7 @@ export interface AppExtras {
   /** The installation's optional decision model, for its owner's routes (ADR 0195); absent = 404. */
   decisionModel?: DecisionModel;
   /**
-   * The installation's GIPHY key, for its owner's routes (ADR 0091, amended 2026-10-31); absent (agentes.chat's own
+   * The installation's GIPHY key, for its owner's routes (ADR 0091, amended 2026-10-31); absent (squadchat's own
    * servers) = those routes answer 404.
    */
   gifKey?: GifKey;

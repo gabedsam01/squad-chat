@@ -34,7 +34,7 @@ enough for a small server.
 6. **Capabilities.** Each model records the inputs it takes (text, image, audio, video, file), read from the
    provider's own model or the local runtime. Pictures go to the chosen model only when it reads them; box always
    goes to Jev. Audio, video and PDF are carried by the Gemini adapter; no caller sends them today.
-7. **Security and cost.** The route is for the pinned owner only, 404 on agentes.chat Cloud, rate limited and audited.
+7. **Security and cost.** The route is for the pinned owner only, 404 on squadchat Cloud, rate limited and audited.
    The key is sealed with envelope encryption and never returned. Usage is recorded as an external call with the
    provider and the input tokens: OpenAI and Gemini at US$ 0.10 per million input tokens and no output, Jev at its own
    price, local at zero.

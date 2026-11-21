@@ -844,7 +844,7 @@ function PathList({
   );
 }
 
-/** Another agentes.chat workspace: where its file is downloaded (one click away when it's on this server), then the file. */
+/** Another squadchat workspace: where its file is downloaded (one click away when it's on this server), then the file. */
 function WorkspaceAsk({ flow, orgId }: { flow: ImportFlowState; orgId: string }) {
   const { t } = useTranslation();
   const orgs = useMe().data?.organizations ?? [];

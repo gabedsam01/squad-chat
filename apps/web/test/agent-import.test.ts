@@ -1170,7 +1170,7 @@ const ourBundle = {
   leftOut: [{ kind: "projects", label: "Q4 planning" }],
 };
 
-describe("agentes.chat bundle", () => {
+describe("squadchat bundle", () => {
   test("our own shape is read like any other source: nothing in it is trusted", () => {
     const b = parseImport([{ name: "agentes-chat-export.json", text: JSON.stringify(ourBundle) }], { models: MODELS });
     expect(b.source).toEqual({

@@ -821,7 +821,7 @@ describe("what the workspace itself tells: nobody's face, its own", () => {
     expect(css).toMatch(/\.nt-item:not\(\.is-unread\) \.nt-what:not\(:has\(b\)\) \{[^}]*font-weight: 500/);
   });
 
-  test("an agent held on agentes.chat Cloud: its name, then the hold's whole line, never its reason", async () => {
+  test("an agent held on squadchat Cloud: its name, then the hold's whole line, never its reason", async () => {
     const held = notification({
       id: "n-held",
       kind: "org_standing",
@@ -842,7 +842,7 @@ describe("what the workspace itself tells: nobody's face, its own", () => {
     expect(row.getAttribute("aria-label")).toBe("Ada está em pausa, não lida");
   });
 
-  test("the workspace held or suspended on agentes.chat Cloud reads as the restriction, never 'review'", async () => {
+  test("the workspace held or suspended on squadchat Cloud reads as the restriction, never 'review'", async () => {
     const contest = "Para contestar, escreva para legal@agentes.chat.";
     const standing = (id: string, latest: AppNotification["latest"]) =>
       notification({ id, kind: "org_standing", latest, updatedAt: ago(2) });

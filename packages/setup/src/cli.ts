@@ -1,5 +1,5 @@
 /**
- * `npx @agenteschat/setup`: from an empty directory to a running agentes.chat, on a tailnet by default.
+ * `npx @agenteschat/setup`: from an empty directory to a running squadchat, on a tailnet by default.
  * Inside the app image (`docker run … agentes setup`) there is no Docker to drive, so it prepares the
  * directory and prints the commands that finish the job.
  */
@@ -111,7 +111,7 @@ import {
 } from "./lib";
 import { createTerm, type ListStyle, type Spinner } from "./term";
 
-const HELP = `agentes.chat setup: a self-hosted agentes.chat with Docker, in the current directory.
+const HELP = `squadchat setup: a self-hosted squadchat with Docker, in the current directory.
 
 Usage: npx @agenteschat/setup [options]
 
@@ -140,7 +140,7 @@ It asks only for what it needs and fills in only what's missing, so running it a
                                       every agent as the user ${SIMPLE_USER}, without sudo
   --requirements <all|none|list>      What to install there for the agents when missing, without
                                       asking: ${REQUIREMENTS.join(", ")} (default: asked, yes each)
-  --telemetry <on|off>                Send anonymous usage statistics to agentes.chat (default on)
+  --telemetry <on|off>                Send anonymous usage statistics to squadchat (default on)
   --typesafe-key <key>                TypeSafe key for Jev, or an OpenRouter key (sk-or-…), optional (${TYPESAFE_KEYS})
   --no-start                          Write .env and docker-compose.yml, start nothing
   --timeout <seconds>                 How long each wait may take (default 300)
@@ -585,7 +585,7 @@ type Env = { read(): string | null; save(content: string): void };
 
 /** The wait for `docker compose up -d`: the first time it pulls the images. */
 const STARTING = {
-  label: "Starting agentes.chat (docker compose up -d)",
+  label: "Starting squadchat (docker compose up -d)",
   detail: "The first time downloads about 2 GB.",
 };
 
@@ -799,7 +799,7 @@ async function run(opts: Options, ui: Ui, image: boolean): Promise<Result> {
     saveSecret(tokenFile, envValue(env.read(), "HOST_COMPUTER_TOKEN") ?? "");
   } else if (computer.state === "off" && computer.wasOn) {
     rmSync(tokenFile, { force: true });
-    ui.note("This machine stops being your agents' computer once agentes.chat restarts. To remove what ran them here:");
+    ui.note("This machine stops being your agents' computer once squadchat restarts. To remove what ran them here:");
     ui.command(`${files.command} service uninstall --host`);
   }
 
@@ -825,7 +825,7 @@ async function run(opts: Options, ui: Ui, image: boolean): Promise<Result> {
   ui.wait(STARTING.label, STARTING.detail);
   await composeUp(ui);
   const app = await waitForApp(opts.timeout);
-  ui.ok(`agentes.chat ${app.health.version ?? ""} is up`);
+  ui.ok(`squadchat ${app.health.version ?? ""} is up`);
   return finish(ui, network, envValue(env.read(), "PUBLIC_URL") ?? `http://localhost:${port}`, app, null, choices);
 }
 
@@ -1151,9 +1151,9 @@ async function startTailscale(opts: Options, ui: Ui, env: Env, choices: Choices)
   await ensureServe(opts, ui, env, host);
   await waitForCertificate(opts, ui, host);
   ui.ok("HTTPS certificate ready");
-  ui.wait("Waiting for agentes.chat to answer");
+  ui.wait("Waiting for squadchat to answer");
   const app = await waitForApp(opts.timeout);
-  ui.ok(`agentes.chat ${app.health.version ?? ""} is up`);
+  ui.ok(`squadchat ${app.health.version ?? ""} is up`);
   return finish(ui, "tailscale", tailnet.url, app, tailnet.keyExpiry, choices);
 }
 
@@ -1285,10 +1285,10 @@ async function startDomain(opts: Options, ui: Ui, domain: string, env: Env, choi
   if (envValue(env.read(), "PUBLIC_URL") !== url) {
     const port = envValue(env.read(), "HOST_PORT") || "3000";
     const { steps } = privateStart({ domain, port, ssh: sshTarget(process.env) });
-    ui.wait("Starting agentes.chat privately first (docker compose up -d)", STARTING.detail);
+    ui.wait("Starting squadchat privately first (docker compose up -d)", STARTING.detail);
     await composeUp(ui);
     const app = await waitForApp(opts.timeout);
-    ui.ok(`agentes.chat ${app.health.version ?? ""} is up, on this server only`);
+    ui.ok(`squadchat ${app.health.version ?? ""} is up, on this server only`);
     if (app.firstRun) {
       if (!ui.interactive) {
         const again =
@@ -1421,7 +1421,7 @@ const succeeds = (command: string, args: string[]) =>
   spawnSync(command, args, { stdio: "ignore", timeout: 10_000 }).status === 0;
 
 /**
- * The agents' computer, once agentes.chat answers: the server's installer for it, then up to
+ * The agents' computer, once squadchat answers: the server's installer for it, then up to
  * `COMPUTER_WAIT_S` for its first answer to the server, read from its own log. Not answering yet is a
  * warning: it keeps trying on its own. One kept from an earlier run is left alone while it's up to date.
  */
@@ -1437,7 +1437,7 @@ async function prepareSimpleUser(): Promise<number> {
       throw new SetupError({
         check: "computer.user",
         error: `Making the user ${SIMPLE_USER} failed: ${lastLine(made.stderr)}`,
-        fix: `Make it yourself (useradd -m -s /bin/bash ${SIMPLE_USER}), then run the setup again: agentes.chat itself is up.`,
+        fix: `Make it yourself (useradd -m -s /bin/bash ${SIMPLE_USER}), then run the setup again: squadchat itself is up.`,
       });
     }
   }
@@ -1450,7 +1450,7 @@ async function prepareSimpleUser(): Promise<number> {
     throw new SetupError({
       check: "computer.user",
       error: `The user ${SIMPLE_USER}'s services didn't start (loginctl enable-linger ${SIMPLE_USER}): ${lastLine(linger.stderr) || `no ${bus}`}`,
-      fix: "Check that systemd-logind runs here, then run the setup again: agentes.chat itself is up.",
+      fix: "Check that systemd-logind runs here, then run the setup again: squadchat itself is up.",
     });
   }
   writeFileSync(SIMPLE_TOKEN_FILE, readFileSync(join(process.cwd(), HOST_TOKEN_FILE)), { mode: 0o600 });
@@ -1491,7 +1491,7 @@ async function setUpComputer(
       throw new SetupError({
         check: "computer.install",
         error: `Couldn't download the agents' computer's installer from ${computer.install.script}: ${(error as Error).message}`,
-        fix: "Run the setup again: agentes.chat itself is up.",
+        fix: "Run the setup again: squadchat itself is up.",
       });
     }
   };
@@ -1504,7 +1504,7 @@ async function setUpComputer(
       throw new SetupError({
         check: "computer.requirements",
         error: `Installing what the agents need failed: ${lastLine(run.output)}`,
-        fix: `Fix what the output above says, then run the setup again (or ${requirementsCommand(computer.install, requirements)}): agentes.chat itself is up.`,
+        fix: `Fix what the output above says, then run the setup again (or ${requirementsCommand(computer.install, requirements)}): squadchat itself is up.`,
       });
     }
     ui.ok(`Installed for the agents: ${requirements.join(", ")}`);
@@ -1569,10 +1569,10 @@ async function setUpComputer(
     throw new SetupError({
       check: "computer.install",
       error: `Setting up the agents' computer failed: ${lastLine(run.output)}`,
-      fix: "Fix what the output above says, then run the setup again: agentes.chat itself is up.",
+      fix: "Fix what the output above says, then run the setup again: squadchat itself is up.",
     });
   }
-  ui.wait(`Waiting for ${what} to answer agentes.chat`);
+  ui.wait(`Waiting for ${what} to answer squadchat`);
   const deadline = Date.now() + COMPUTER_WAIT_S * 1000;
   for (;;) {
     const state = hostState(await log(since));
@@ -1583,7 +1583,7 @@ async function setUpComputer(
     if (state === "off" || state === "refused" || state === "no_token") throw new SetupError(COMPUTER_PROBLEMS[state]);
     if (Date.now() > deadline) {
       const where = files.log ?? `journalctl ${unit.join(" ")}`;
-      ui.warn(`Agents' computer: set up, but it hasn't answered agentes.chat yet. It keeps trying. Its log: ${where}`);
+      ui.warn(`Agents' computer: set up, but it hasn't answered squadchat yet. It keeps trying. Its log: ${where}`);
       return;
     }
     await sleep(2000);
@@ -1620,14 +1620,14 @@ async function finish(
     ssh: sshTarget(process.env),
   });
   // Inside the image the app isn't started yet: this is the address it will have.
-  ui.heading(app ? "agentes.chat is up" : "agentes.chat's address");
+  ui.heading(app ? "squadchat is up" : "squadchat's address");
   ui.command(url);
   if (end.link) {
     ui.gap();
     ui.command(end.link, "App:");
     ui.gap();
     ui.qr(end.link);
-    ui.note("Open the App link where the agentes.chat app is installed, or point your phone's camera here.");
+    ui.note("Open the App link where the squadchat app is installed, or point your phone's camera here.");
   }
   ui.list("Next", end.steps, "numbered");
   return end.result;

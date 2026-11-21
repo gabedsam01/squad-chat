@@ -21,7 +21,7 @@ beforeAll(() => {
   mkdirSync(join(dir, "runner"));
   writeFileSync(join(dir, "runner", "agentes-runner.mjs"), "#!/usr/bin/env node\nconsole.log('runner')");
   writeFileSync(join(dir, "sw.js"), "self.addEventListener('push', () => {})");
-  writeFileSync(join(dir, "manifest.webmanifest"), '{"name":"agentes.chat"}');
+  writeFileSync(join(dir, "manifest.webmanifest"), '{"name":"squadchat"}');
   writeFileSync(join(dir, "favicon.svg"), "<svg xmlns='http://www.w3.org/2000/svg'/>");
   writeFileSync(join(dir, "unavailable.html"), "<!doctype html><p>Unavailable</p>");
   app = createApp({ edition: "cloud", version: "test", modules: [], pingDatabase: async () => {}, webDir: dir });
@@ -85,11 +85,11 @@ describe("web app serving", () => {
   });
 
   test("a well-known file the build does ship is served", async () => {
-    writeFileSync(join(dir, "llms.txt"), "# agentes.chat");
+    writeFileSync(join(dir, "llms.txt"), "# squadchat");
     try {
       const res = await app.request("/llms.txt");
       expect(res.status).toBe(200);
-      expect(await res.text()).toBe("# agentes.chat");
+      expect(await res.text()).toBe("# squadchat");
       expect(res.headers.get("x-robots-tag")).toBeNull();
     } finally {
       rmSync(join(dir, "llms.txt"));

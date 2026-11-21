@@ -357,7 +357,7 @@ export function OnboardingPage() {
     markPlan.mutate(orgId);
   });
 
-  // On agentes.chat Cloud, while sign-up is by invitation, only accounts early access allowed make workspaces (ADR 0078).
+  // On squadchat Cloud, while sign-up is by invitation, only accounts early access allowed make workspaces (ADR 0078).
   const inviteOnly = me.data?.user.canCreateWorkspace === false && orgId === null;
   const emails = sendsEmail(authConfig);
   const email = me.data?.user.email ?? "";
@@ -1095,7 +1095,7 @@ export function OnboardingPage() {
   );
 }
 
-/** The two answers to "What will you use agentes.chat for?" (ADR 0159), in this order. */
+/** The two answers to "What will you use squadchat for?" (ADR 0159), in this order. */
 
 /**
  * The AI step and its stage inside the workspace's context and Connect an AI (ADR 0160), which the onboarding has

@@ -31,7 +31,7 @@ afterEach(async () => {
 type Request = Extract<ServerFrame, { type: "request" }>;
 
 /** What the fake runner's browser shows after any command. */
-const PAGE = { snapshot: '- heading "agentes.chat" [ref=e1]', origin: "https://app.agentes.chat/" };
+const PAGE = { snapshot: '- heading "squadchat" [ref=e1]', origin: "https://app.agentes.chat/" };
 
 /**
  * A runner over an in-memory socket that answers the live view's ops. `dead`: its socket's close never
@@ -510,7 +510,7 @@ test("a computer whose runner is dialing again: the browser waits for it and ope
   expect(offline).toEqual(["browser.batch"]);
   expect(out.content).not.toContain("isn't answering");
   expect(out.isError).toBeFalsy();
-  expect(out.content).toContain("agentes.chat");
+  expect(out.content).toContain("squadchat");
   expect(fresh.batches()).toHaveLength(1);
 
   await hub.close(fresh.conn);

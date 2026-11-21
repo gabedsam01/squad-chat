@@ -1,17 +1,17 @@
-# agentes.chat Contributor License Agreement
+# squadchat Contributor License Agreement
 
 Version 1.1
 
 AGENTESCHAT, LLC succeeded Codari Global, LLC, and agreements accepted under version 1.0 carry over.
 
-Thank you for contributing to agentes.chat. This agreement is between you and AGENTESCHAT, LLC
-("AGENTESCHAT"), which maintains agentes.chat. It lets AGENTESCHAT distribute your contribution under the
+Thank you for contributing to squadchat. This agreement is between you and AGENTESCHAT, LLC
+("AGENTESCHAT"), which maintains squadchat. It lets AGENTESCHAT distribute your contribution under the
 project's open source license and also under other terms, commercial ones included, while you keep
 the copyright in your work. It is based on the Apache Software Foundation's Individual Contributor
 License Agreement.
 
 You accept it by commenting on your pull request with the sentence the CLA bot asks for. Once you
-have accepted it, it covers every contribution you submit to AGENTESCHAT's agentes.chat repositories: those you submitted
+have accepted it, it covers every contribution you submit to AGENTESCHAT's squadchat repositories: those you submitted
 before accepting it and those you submit later, until a new version of this agreement asks you to
 accept again.
 
@@ -23,8 +23,8 @@ is controlled by or is under common control with it. "Control" means owning more
 of the voting shares or other interests of an entity, or the power to direct its management.
 
 "Contribution" means any original work of authorship, including any changes or additions to an
-existing work, that You intentionally submit to AGENTESCHAT for inclusion in agentes.chat, in any of
-the agentes.chat repositories AGENTESCHAT owns or manages (the "Work"), whether You Submitted it before or
+existing work, that You intentionally submit to AGENTESCHAT for inclusion in squadchat, in any of
+the squadchat repositories AGENTESCHAT owns or manages (the "Work"), whether You Submitted it before or
 after accepting this agreement. "Submit" means any form of electronic, verbal or
 written communication sent to AGENTESCHAT or its representatives, including pull requests, commits,
 patches, issues and comments in its repositories, mailing lists and issue trackers, made in order

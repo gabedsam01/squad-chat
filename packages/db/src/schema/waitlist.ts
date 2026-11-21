@@ -36,7 +36,7 @@ export const waitlistEntries = pgTable(
 
 /**
  * People who want to join the partner program (agencies and consultants who
- * would set agentes.chat up for their own clients), from the landing page's
+ * would set squadchat up for their own clients), from the landing page's
  * partner page. Its own list: nobody here is invited to the product, and the
  * email provider keeps them apart from the product's waiting list (contact
  * property `partner_waitlist`, never `waitlist`). Not tenant-owned: it exists

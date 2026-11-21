@@ -1263,7 +1263,7 @@
     "value": "Free · open source"
   },
   "hosting.cloud.name": {
-    "value": "agentes.chat Cloud"
+    "value": "squadchat Cloud"
   },
   "hosting.cloud.short": {
     "value": "Always on, nothing to install."
@@ -1725,7 +1725,7 @@
     "value": "Signing in to the squadchat <b>on this {{device}}</b>"
   },
   "auth.server.intoCloud": {
-    "value": "Signing in to <b>agentes.chat Cloud</b>"
+    "value": "Signing in to <b>squadchat Cloud</b>"
   },
   "auth.server.change": {
     "value": "Change server"
@@ -8702,7 +8702,7 @@
     "value": "A plan signs in on the workspace's computer, and the computer comes with an active squadchat plan."
   },
   "connectAi.billingWeb": {
-    "value": "Choose one on the web, at agentes.chat."
+    "value": "Choose one on the web, at squadchat."
   },
   "connectAi.orPayGo": {
     "value": "Or pay as you go"
@@ -41898,7 +41898,7 @@
     "value": "What each person here can do. The owner can do everything."
   },
   "settings.about.basedOn": {
-    "value": "Based on <site>agentes.chat</site> by AGENTESCHAT, LLC"
+    "value": "Based on <site>squadchat</site> by AGENTESCHAT, LLC"
   },
   "settings.about.version": {
     "value": "Version"

@@ -1,5 +1,5 @@
-# agentes.chat image: API, WebSocket, workers and the web app in one Bun process.
-# Self-hosting runs it with docker-compose.yml; agentes.chat Cloud runs the same image.
+# squadchat image: API, WebSocket, workers and the web app in one Bun process.
+# Self-hosting runs it with docker-compose.yml; squadchat Cloud runs the same image.
 # Cross-built natively on $BUILDPLATFORM so linux/arm64 and linux/amd64 both build cleanly without QEMU stalls.
 FROM --platform=$BUILDPLATFORM oven/bun:1.4.4 AS build-assets
 WORKDIR /app
