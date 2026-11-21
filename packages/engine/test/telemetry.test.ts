@@ -379,13 +379,13 @@ test("the instance id is made once and kept; TELEMETRY=on, TELEMETRY_URL and the
   expect(telemetrySends(active, false)).toBe(false);
   expect(telemetrySends({ ...active, TELEMETRY: "off" }, true)).toBe(false);
   expect(telemetrySends({ ...active, TELEMETRY_URL: undefined }, true)).toBe(false);
-  // Zero forced telemetry even on agentes.chat domains when off or unconfigured.
+  // Zero forced telemetry even on squadchat domains when off or unconfigured.
   const cloudOff = { TELEMETRY: "off" as const, TELEMETRY_URL: undefined, PUBLIC_URL: "https://agentes.chat" };
   expect(telemetrySends(cloudOff, false)).toBe(false);
   expect(telemetrySends(cloudOff, true)).toBe(false);
   expect(isAgentesCloud("https://www.agentes.chat")).toBe(true);
   expect(isAgentesCloud("https://agentes.chat.example.com")).toBe(false);
-  expect(isAgentesCloud("https://notagentes.chat")).toBe(false);
+  expect(isAgentesCloud("https://notsquadchat")).toBe(false);
 });
 
 test("the server's own computer is one machine, however many organizations it serves", async () => {

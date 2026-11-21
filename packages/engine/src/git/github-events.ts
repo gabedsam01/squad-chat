@@ -254,9 +254,9 @@ function eventLine(e: GitHubAppEvent, who: string) {
           ? `${who} asked for changes on ${item} on GitHub`
           : `${who} reviewed ${item} on GitHub`;
     case "review_requested":
-      return `${who} asked the agentes.chat app to review ${item} on GitHub`;
+      return `${who} asked the squadchat app to review ${item} on GitHub`;
     case "opened":
-      return `${who} opened ${item} on GitHub, naming the agentes.chat app`;
+      return `${who} opened ${item} on GitHub, naming the squadchat app`;
     case "merged":
       return `${who} merged ${item} on GitHub`;
     case "closed":

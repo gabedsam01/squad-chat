@@ -320,7 +320,7 @@ describe("Rotinas: each routine's state, with its one-tap fix", () => {
   });
 
   test("a run's record reads as Markdown, folded when long, and Ver mais opens it in place for good", async () => {
-    const record = `Contou o que achou\n\n- **Verificado:** PRs abertos em \`agentes.chat\`\n- ${"Nada novo. ".repeat(40)}`;
+    const record = `Contou o que achou\n\n- **Verificado:** PRs abertos em \`squadchat\`\n- ${"Nada novo. ".repeat(40)}`;
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", { configurable: true, value: 400 });
     await open([routine({ id: "rt-md", name: "Revisar PRs" })], {
       "rt-md": [routineRun({ at: ago(5), status: "silent", summary: record })],
@@ -329,7 +329,7 @@ describe("Rotinas: each routine's state, with its one-tap fix", () => {
     await runsTab(panel);
     const words = panel.querySelector(".routine-runs__words") as HTMLElement;
     expect(words.querySelector("strong")?.textContent).toBe("Verificado:");
-    expect(words.querySelector("code")?.textContent).toBe("agentes.chat");
+    expect(words.querySelector("code")?.textContent).toBe("squadchat");
     expect(words.textContent).not.toContain("**");
     expect(words.querySelector("[data-folded]")).toBeTruthy();
     await click(within(words).getByRole("button", { name: "Ver mais" }));

@@ -411,7 +411,7 @@ describe("live: machine.provisioning, org.standing and org.limits", () => {
       state: "suspended",
       reason: "Pagamento",
     });
-    // agentes.chat Cloud says so, and the apps add how to contest it.
+    // squadchat Cloud says so, and the apps add how to contest it.
     applyWorkspaceEvent(qc, "o1", {
       type: "org.standing",
       orgId: "o1",
@@ -509,7 +509,7 @@ describe("the workspace's standing in words (ADR 0056 §8)", () => {
     expect(errorText(t, new ApiError(403, "agent.paused", "This agent is paused for now."))).toBe(
       "standing.agentPaused",
     );
-    // On agentes.chat Cloud, the hold's kind and how to contest it; a run's values say "true".
+    // On squadchat Cloud, the hold's kind and how to contest it; a run's values say "true".
     const email = '{"email":"legal@agentes.chat"}';
     expect(restrictionLine(t, "run.agent_paused", { kind: "network", cloud: "true" })).toBe(
       `standing.cloud.agentNetwork ${email}`,

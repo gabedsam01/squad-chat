@@ -18,7 +18,7 @@ import { until } from "./until";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 const REACH_TEXT =
-  "With Tailscale, a private network for your devices: your phone and the people you invite join it, and nobody else can reach agentes.chat.";
+  "With Tailscale, a private network for your devices: your phone and the people you invite join it, and nobody else can reach squadchat.";
 const USAGE_TEXT =
   "Counts such as people, agents, machine sizes, AI tokens used and how much data the agents' browsers send and receive. Never messages, files, names or sites.";
 
@@ -56,7 +56,7 @@ async function firstRun(
         </I18nextProvider>,
       ),
     );
-    // Whether this build runs agentes.chat here arrives from the host first.
+    // Whether this build runs squadchat here arrives from the host first.
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     await check(screenOf(el, opened, tailscale, host));
   } finally {
@@ -100,7 +100,7 @@ function switchRows(el: HTMLElement) {
   });
 }
 
-describe("Run agentes.chat on this Mac", () => {
+describe("Run squadchat on this Mac", () => {
   test("the title, one sentence, the two fields alone, two one-line switches with their ⓘ, and Start", () =>
     firstRun("first", async ({ el, press, until, button }) => {
       await press("On this Mac");
@@ -138,8 +138,8 @@ describe("Run agentes.chat on this Mac", () => {
           line: null,
         },
         {
-          label: "Send anonymous usage statistics to agentes.chat",
-          about: "About Send anonymous usage statistics to agentes.chat",
+          label: "Send anonymous usage statistics to squadchat",
+          about: "About Send anonymous usage statistics to squadchat",
           hint: USAGE_TEXT,
           same: true,
           line: null,
@@ -229,7 +229,7 @@ describe("Run agentes.chat on this Mac", () => {
       });
       await until(() => el.querySelector("form.dk-fr__here .dk-fr__who"));
       expect(el.querySelector(".dk-lead")?.textContent).toBe(
-        "Erased. Its old data is in ~/agentes.chat erased 2026-11-14.",
+        "Erased. Its old data is in ~/squadchat erased 2026-11-14.",
       );
     }));
 
@@ -254,7 +254,7 @@ describe("Run agentes.chat on this Mac", () => {
     firstRun("here", async ({ el, press, until }) => {
       await press("On this Mac");
       await press("Get this Mac ready");
-      await until(() => el.querySelector("h1")?.textContent === "agentes.chat already runs on this Mac");
+      await until(() => el.querySelector("h1")?.textContent === "squadchat already runs on this Mac");
       expect(el.querySelector(".dk-lead")?.textContent).toBe("This app runs it. Open it to sign in.");
     }));
 
@@ -389,7 +389,7 @@ describe("Where will your workspace live?", () => {
         expect(place()).toBe("box");
         expect(el.querySelector(".ac-place canvas.ac-computer")?.getAttribute("data-kind")).toBe("linux");
         expect(button("See how to install")).toBeDefined();
-        await press("In the agentes.chat cloud");
+        await press("In the squadchat cloud");
         await press("Continue in the cloud");
         expect(chosen).toEqual(["/login"]);
       },
@@ -441,11 +441,11 @@ describe("Install on a computer that's always on", () => {
           "On the computer that stays on, open the Terminal and paste this",
           "At the end a link shows up. Open it here and that's it.",
         ]);
-        expect(el.querySelector(".dk-fr__ways code")?.textContent).toBe("curl -fsSL https://agentes.chat/install | sh");
+        expect(el.querySelector(".dk-fr__ways code")?.textContent).toBe("curl -fsSL https://squad-chat-6wd.pages.dev/install | sh");
         await press("Copy the instructions");
         await until(() => button("Instructions copied"));
         expect(copied).toHaveLength(1);
-        expect(copied[0]).toContain("curl -fsSL https://agentes.chat/install | sh");
+        expect(copied[0]).toContain("curl -fsSL https://squad-chat-6wd.pages.dev/install | sh");
         expect(copied[0]).toContain("At the end a link shows up.");
         await press("Sign in by its address");
         expect(el.querySelector("h1")?.textContent).toBe("Sign in to a workspace that already exists");
@@ -534,11 +534,11 @@ describe("Setting it up here", () => {
       async (screen) => {
         const { el, until } = screen;
         await startSetup(screen);
-        await until(() => stepOf(el, "Turning agentes.chat on")?.dataset.state === "active");
+        await until(() => stepOf(el, "Turning squadchat on")?.dataset.state === "active");
         setSystemTime(new Date(Date.now() + 31_000));
         try {
-          await until(() => stepOf(el, "Turning agentes.chat on")?.querySelector(".dk-fr__steptime"));
-          const step = stepOf(el, "Turning agentes.chat on") as HTMLElement;
+          await until(() => stepOf(el, "Turning squadchat on")?.querySelector(".dk-fr__steptime"));
+          const step = stepOf(el, "Turning squadchat on") as HTMLElement;
           expect(step.querySelector(".dk-fr__steptime")?.textContent).toBe("0:31");
           expect(step.querySelector(".dk-fr__steptime")?.getAttribute("aria-hidden")).toBe("true");
           expect(step.querySelector(".dk-fr__stepline")?.textContent).toBe(
@@ -574,7 +574,7 @@ describe("Setting it up here", () => {
         async (screen) => {
           const { el, until } = screen;
           await startSetup(screen);
-          await until(() => stepOf(el, "Turning agentes.chat on")?.dataset.state === "active");
+          await until(() => stepOf(el, "Turning squadchat on")?.dataset.state === "active");
           const lead = () =>
             (el.querySelector(".dk-fr__setup") as HTMLElement).style.getPropertyValue("--dk-setup-lead");
           expect(lead()).toBe("94px");
@@ -582,7 +582,7 @@ describe("Setting it up here", () => {
           room = 82.6;
           setSystemTime(new Date(Date.now() + 31_000));
           try {
-            await until(() => stepOf(el, "Turning agentes.chat on")?.querySelector(".dk-fr__stepline"));
+            await until(() => stepOf(el, "Turning squadchat on")?.querySelector(".dk-fr__stepline"));
             expect(lead()).toBe("94px");
           } finally {
             setSystemTime();
@@ -771,10 +771,10 @@ describe("Setting it up here", () => {
         const { el, until, button, press } = screen;
         await startSetup(screen);
         await until(() => button("Try again"));
-        const step = stepOf(el, "Turning agentes.chat on") as HTMLElement;
+        const step = stepOf(el, "Turning squadchat on") as HTMLElement;
         expect(step.dataset.state).toBe("failed");
         expect(step.querySelector(".dk-honest")?.textContent).toBe(
-          "agentes.chat didn't start on this Mac. Copy details",
+          "squadchat didn't start on this Mac. Copy details",
         );
         expect(runButtons(el)).toEqual(["Cancel", "Try again"]);
         expect(document.activeElement).toBe(button("Try again") ?? null);
@@ -869,7 +869,7 @@ describe("Setting it up here", () => {
 });
 
 describe("Add a workspace", () => {
-  /** The welcome window opened by the site's "Add workspace", with agentes.chat signed in here or not. */
+  /** The welcome window opened by the site's "Add workspace", with squadchat signed in here or not. */
   const adding = (cloud: boolean, chosen: (string | undefined)[]) => (host: FakeHost) => {
     host.welcomeMode = async () => "add";
     host.workspaces = async () => [{ server: "https://app.agentes.chat", signedIn: cloud, orgs: [] }];
@@ -879,7 +879,7 @@ describe("Add a workspace", () => {
     host.hideWindow = async () => {};
   };
 
-  test("not signed in to agentes.chat: signing in (the workspaces you have) is the big one, a new one the line", () => {
+  test("not signed in to squadchat: signing in (the workspaces you have) is the big one, a new one the line", () => {
     const chosen: (string | undefined)[] = [];
     return firstRun(
       "first",
@@ -894,14 +894,14 @@ describe("Add a workspace", () => {
     );
   });
 
-  test("signed in to agentes.chat here already: a new workspace is the big one", () => {
+  test("signed in to squadchat here already: a new workspace is the big one", () => {
     const chosen: (string | undefined)[] = [];
     return firstRun(
       "first",
       async ({ press, until, button }) => {
-        await until(() => button("Create a workspace on agentes.chat"));
+        await until(() => button("Create a workspace on squadchat"));
         expect(button("Create one")).toBeUndefined();
-        await press("Create a workspace on agentes.chat");
+        await press("Create a workspace on squadchat");
         expect(chosen).toEqual(["/onboarding"]);
       },
       { host: adding(true, chosen) },

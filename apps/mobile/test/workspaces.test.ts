@@ -144,7 +144,7 @@ describe("Workspaces", () => {
       ],
       failed: false,
     });
-    expect(here.host).toBe("agentes.chat");
+    expect(here.host).toBe("squadchat");
     expect(here.orgs.map((o) => [o.id, o.unread])).toEqual([
       ["a", 2],
       ["n", 3],
@@ -188,7 +188,7 @@ describe("Workspaces", () => {
     expect(offersNewWorkspaceHere(box, me())).toBe(true);
     expect(offersNewWorkspaceHere(box, me(false))).toBe(false);
     expect(offersNewWorkspaceHere(box, undefined)).toBe(false);
-    // On agentes.chat its own row makes one there.
+    // On squadchat its own row makes one there.
     expect(offersNewWorkspaceHere(cloud, me(true))).toBe(false);
     const sheet = readFileSync(join(import.meta.dir, "../src/features/me/WorkspacesPages.tsx"), "utf8");
     expect(sheet).toContain("{offersNewWorkspaceHere(server, me) ? (");

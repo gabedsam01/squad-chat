@@ -6,14 +6,14 @@ const t = ((key: string) => key) as unknown as TFunction;
 
 describe("linkPill", () => {
   test.each([
-    ["https://github.com/agentes-chat/agentes.chat/pull/148", "agentes.chat #148", "github"],
-    ["https://github.com/agentes-chat/agentes.chat/pull/148/files#diff-1", "agentes.chat #148", "github"],
-    ["https://www.github.com/agentes-chat/agentes.chat/issues/7?x=1", "agentes.chat #7", "github"],
-    ["https://github.com/agentes-chat/agentes.chat/commit/a1b2c3d4e5f60718", "agentes.chat a1b2c3d", "github"],
-    ["https://github.com/agentes-chat/agentes.chat/releases/tag/v1.2.0", "agentes.chat v1.2.0", "github"],
+    ["https://github.com/agentes-chat/squadchat/pull/148", "squadchat #148", "github"],
+    ["https://github.com/agentes-chat/squadchat/pull/148/files#diff-1", "squadchat #148", "github"],
+    ["https://www.github.com/agentes-chat/squadchat/issues/7?x=1", "squadchat #7", "github"],
+    ["https://github.com/agentes-chat/squadchat/commit/a1b2c3d4e5f60718", "squadchat a1b2c3d", "github"],
+    ["https://github.com/agentes-chat/squadchat/releases/tag/v1.2.0", "squadchat v1.2.0", "github"],
     [
-      "https://github.com/agentes-chat/agentes.chat/blob/main/apps/web/src/main.tsx#L10",
-      "agentes.chat main.tsx",
+      "https://github.com/agentes-chat/squadchat/blob/main/apps/web/src/main.tsx#L10",
+      "squadchat main.tsx",
       "github",
     ],
     ["https://github.com/agentes-chat/agentes.chat", "agentes-chat/agentes.chat", "github"],
@@ -42,7 +42,7 @@ describe("linkPill", () => {
 
   test.each([
     ["an unknown site", "https://example.com/a/b/pull/1"],
-    ["a service's page with no fixed shape", "https://github.com/agentes-chat/agentes.chat/actions/runs/1"],
+    ["a service's page with no fixed shape", "https://github.com/agentes-chat/squadchat/actions/runs/1"],
     ["github.com's own pages", "https://github.com/orgs/agentes-chat"],
     ["github.com's own pages", "https://github.com/settings/profile"],
     ["github.com itself", "https://github.com/"],
@@ -64,7 +64,7 @@ describe("linkPill", () => {
     ["the same, with backslashes", "https://docs.google.com/document/d/x\\..\\..\\..\\url?q=https://evil.example"],
     ["the same, to another repository", "https://github.com/a/b/pull/1/../../../../c/d/pull/2"],
     ["dots for a repository", "https://github.com/../.."],
-    ["a clone address", "https://github.com/agentes-chat/agentes.chat.git"],
+    ["a clone address", "https://github.com/agentes-chat/squadchat.git"],
     ["github.com's own pages", "https://github.com/search/advanced"],
     ["github.com's own pages", "https://github.com/pulls/assigned"],
     ["mail", "mailto:ana@acme.com"],
@@ -95,7 +95,7 @@ describe("linkPill", () => {
   });
 
   test("a screen reader hears the service and what the icon shows", () => {
-    const pill = linkPill("https://github.com/agentes-chat/agentes.chat/pull/148");
-    expect(pill && linkPillLabel(t, pill)).toBe("GitHub linkPills.pull agentes.chat #148");
+    const pill = linkPill("https://github.com/agentes-chat/squadchat/pull/148");
+    expect(pill && linkPillLabel(t, pill)).toBe("GitHub linkPills.pull squadchat #148");
   });
 });

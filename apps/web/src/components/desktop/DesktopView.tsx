@@ -499,7 +499,7 @@ export function DesktopView({
         : "";
   const retrying = <span>{t("desktop.state.retrying")}</span>;
   const notice = <span className="muted">{t("desktop.control.notice", g)}</span>;
-  // What programs there can see, kept to one line in the window (desktop.css). agentes.chat Cloud may screen the
+  // What programs there can see, kept to one line in the window (desktop.css). squadchat Cloud may screen the
   // session (ADR 0076): said behind an ⓘ after it.
   const controlLine = (
     <span className="dsk-words">

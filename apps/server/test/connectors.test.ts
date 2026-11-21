@@ -365,7 +365,7 @@ test("catalog on the Cloud: no API key for Intercom's servers (US and EU), whose
   expect(["intercom", "intercom-eu", "linear"].map(auth)).toEqual([["oauth"], ["oauth"], ["oauth", "api_key"]]);
 });
 
-test("one-click servers that haven't approved agentes.chat: `soon`, refused by id; by address, they say why", async () => {
+test("one-click servers that haven't approved squadchat: `soon`, refused by id; by address, they say why", async () => {
   const asked: string[] = [];
   // Asana's MCP OAuth, as it answered on 2026-10-31: its registration refuses our redirect URI.
   const http = (async (input: string | URL) => {

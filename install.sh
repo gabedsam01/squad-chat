@@ -1,15 +1,15 @@
 #!/bin/sh
-# agentes.chat installer: a self-hosted agentes.chat on this computer, in one command.
+# squadchat installer: a self-hosted squadchat on this computer, in one command.
 #
-#   curl -fsSL https://agentes.chat/install | sh
-#   curl -fsSL https://agentes.chat/install | sh -s -- --plan      prints what it would do, does nothing
+#   curl -fsSL https://squad-chat-6wd.pages.dev/install | sh
+#   curl -fsSL https://squad-chat-6wd.pages.dev/install | sh -s -- --plan      prints what it would do, does nothing
 #
 # --plan (--dry-run too) is this installer's own plan: it runs nothing, the setup included. The setup
 # writes and starts nothing until its last question is answered: for its plan, stop it at its first
 # question (Ctrl-C), then run the setup command this printed again with --dry-run (with sudo if this
 # ran itself again with sudo).
 #
-# To read it before it runs: curl -fsSLo install.sh https://agentes.chat/install, then sh install.sh.
+# To read it before it runs: curl -fsSLo install.sh https://squad-chat-6wd.pages.dev/install, then sh install.sh.
 #
 # It gets this computer ready, then hands over to the setup (@agenteschat/setup), which asks its few
 # questions, writes .env and starts everything. On Linux it makes sure of Docker and its Compose
@@ -29,7 +29,8 @@ main() {
   BUN_VERSION=1.4.4
   COMPOSE_VERSION=5.5.1
   MIN_COMPOSE=2.23.1
-  INSTALL_URL=https://agentes.chat/install
+  INSTALL_URL=https://squad-chat-6wd.pages.dev/install
+  COMPOSE_URL=$INSTALL_URL/docker-compose.yml
   GUIDE=https://agentes.chat/docs/install-on-a-server
   DOCKER_DOCS=https://docs.docker.com/engine/install/
   BREW_INSTALL=https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
@@ -50,8 +51,8 @@ main() {
       --plan | --dry-run) PLAN=1 ;;
       --yes | -y) YES=1 ;;
       --native)
-        die "This installer can't run agentes.chat without Docker yet (--native)." \
-          "On a Mac, the agentes.chat app runs it without Docker (Use your own server, then Run agentes.chat on this Mac). Or use Docker: Docker Desktop, OrbStack or Colima on a Mac. On Linux, this installer sets it up."
+        die "This installer can't run squadchat without Docker yet (--native)." \
+          "On a Mac, the squadchat app runs it without Docker (Use your own server, then Run squadchat on this Mac). Or use Docker: Docker Desktop, OrbStack or Colima on a Mac. On Linux, this installer sets it up."
         ;;
       --dir)
         [ "$n" -gt 0 ] || die "--dir needs a folder, like --dir /srv/agentes."
@@ -104,7 +105,7 @@ main() {
       BUN_SHA256=c240d7f0ccb90c263a849fcdb09b7ee62630d921348ed6aafda86b9d577bc510
       ;;
     *)
-      die "agentes.chat installs on macOS or Linux, on x64 or arm64, and this is $OS on $ARCH." \
+      die "squadchat installs on macOS or Linux, on x64 or arm64, and this is $OS on $ARCH." \
         "On Windows, run it in WSL 2. Elsewhere, the manual steps: $GUIDE"
       ;;
   esac
@@ -211,12 +212,14 @@ main() {
     t_step "The setup, in $DIR:"
     t_shell "mkdir -p $DIR"
     t_shell "cd $DIR"
+    if ! has_compose; then fetch "$COMPOSE_URL" "$DIR/docker-compose.yml" "Downloading the compose file"; fi
     t_shell "$* <$TTY"
     t_gap
     t_end "Nothing ran. For the setup's own plan, run its command above with --dry-run."
     return 0
   fi
   run mkdir -p "$DIR"
+  get_compose
   t_gap
   t_step "The setup, in $DIR:"
   t_cmd "$*"
@@ -231,12 +234,12 @@ main() {
 }
 
 usage() {
-  printf '%s\n' "agentes.chat installer: a self-hosted agentes.chat on this computer, in one command.
+  printf '%s\n' "squadchat installer: a self-hosted squadchat on this computer, in one command.
 
-Usage: curl -fsSL https://agentes.chat/install | sh -s -- [options] [setup options]
+Usage: curl -fsSL https://squad-chat-6wd.pages.dev/install | sh -s -- [options] [setup options]
        sh install.sh [options] [setup options]
 
-  --dir <folder>      Where agentes.chat lives: /opt/agentes as root, ~/agentes otherwise.
+  --dir <folder>      Where squadchat lives: /opt/agentes as root, ~/agentes otherwise.
   --yes               Start or install Docker without asking first: on Linux with Docker's own
                       script; on a Mac the Docker Desktop, OrbStack or Colima it finds, or
                       Colima with Homebrew.
@@ -283,6 +286,26 @@ fetch() {
     t_tail "$T_LOG"
     die "Couldn't download $1." "Check this computer's internet connection, then run this again."
   }
+}
+
+# The published setup downloads the original project's compose file when the directory has none, so this
+# fork's goes in first: the setup then keeps it, and the image it names is the one that runs.
+has_compose() {
+  for f in compose.yaml compose.yml docker-compose.yml docker-compose.yaml; do
+    if [ -f "$DIR/$f" ]; then return 0; fi
+  done
+  return 1
+}
+
+get_compose() {
+  if has_compose; then return 0; fi
+  fetch "$COMPOSE_URL" "$DIR/docker-compose.yml" "Downloading the compose file"
+  # A site can answer a missing file with its own page: only a compose file is kept (the setup's isComposeFile).
+  while IFS= read -r line; do
+    case $line in services:*) return 0 ;; esac
+  done <"$DIR/docker-compose.yml"
+  rm -f "$DIR/docker-compose.yml"
+  die "$COMPOSE_URL didn't send a compose file." "Run this again later, or put a docker-compose.yml in $DIR yourself."
 }
 
 verify() {
@@ -356,7 +379,7 @@ linux_docker() {
   else
     t_gap
     t_ask "Docker isn't installed. Install it now with Docker's own script (get.docker.com)?" ||
-      die "agentes.chat runs on Docker here." "Install Docker yourself ($DOCKER_DOCS) and run this again."
+      die "squadchat runs on Docker here." "Install Docker yourself ($DOCKER_DOCS) and run this again."
   fi
   fetch https://get.docker.com "$WORK/get-docker.sh" "Downloading Docker's install script"
   if [ "$PLAN" = 1 ]; then
@@ -461,8 +484,8 @@ mac_start() {
 # No Docker at all: Colima, its docker command and Compose with Homebrew (Homebrew first), then Colima started.
 mac_colima() {
   agree "This Mac has no Docker. Install Colima (Docker's engine, open source, no window) with Homebrew and start it?" \
-    "This installer runs agentes.chat on Docker, and this Mac doesn't have it." \
-    "Install Docker Desktop, OrbStack or Colima, start it, and run this again (--yes installs Colima with Homebrew). Or, with no Docker, open the agentes.chat app: Use your own server, then Run agentes.chat on this Mac."
+    "This installer runs squadchat on Docker, and this Mac doesn't have it." \
+    "Install Docker Desktop, OrbStack or Colima, start it, and run this again (--yes installs Colima with Homebrew). Or, with no Docker, open the squadchat app: Use your own server, then Run squadchat on this Mac."
   BREW=$(command -v brew 2>/dev/null) || BREW=''
   for b in /opt/homebrew/bin/brew /usr/local/bin/brew; do
     if [ -z "$BREW" ] && [ -x "$b" ]; then BREW=$b; fi
@@ -522,7 +545,7 @@ compose_plugin() {
     plugins=${DOCKER_CONFIG:-$HOME/.docker}/cli-plugins
   fi
   if [ "$PLAN" = 0 ]; then
-    if [ -n "$have" ]; then t_warn "Compose $have is older than the $MIN_COMPOSE agentes.chat needs"; fi
+    if [ -n "$have" ]; then t_warn "Compose $have is older than the $MIN_COMPOSE squadchat needs"; fi
   elif [ -n "$have" ]; then
     t_step "Compose $have is older than $MIN_COMPOSE: installing Compose $COMPOSE_VERSION (SHA-256 checked) in $plugins"
   else
@@ -577,7 +600,7 @@ as_root() {
 is_installer() {
   [ -f "$1" ] || return 1
   { IFS= read -r _ && IFS= read -r second; } <"$1" || return 1
-  [ "$second" = "# agentes.chat installer: a self-hosted agentes.chat on this computer, in one command." ]
+  [ "$second" = "# squadchat installer: a self-hosted squadchat on this computer, in one command." ]
 }
 
 get_bun() {
@@ -618,7 +641,7 @@ get_bun() {
 }
 
 # --- term.sh: packages/setup/src/term-sh.ts, kept equal by a test ---
-# The agentes.chat look for the POSIX installers, as packages/setup/src/term.ts draws it: plain where a
+# The squadchat look for the POSIX installers, as packages/setup/src/term.ts draws it: plain where a
 # terminal can't take it (no color with NO_COLOR or TERM=dumb, ASCII marks and no logo on the Linux console), and
 # no line, logo or animation when the output isn't a terminal (cloud-init, CI, the setup reading it). Only
 # function definitions, so a download cut short runs nothing.
@@ -735,12 +758,12 @@ t_end() {
 # t_intro TITLE: the logo where it fits, then ┌ and the badge, and the line from here on. A log gets the title.
 t_intro() {
   if [ "$T_FRAME" = 0 ]; then
-    printf 'agentes.chat %s\n' "$1" >&"$T_FD"
+    printf 'squadchat %s\n' "$1" >&"$T_FD"
     return 0
   fi
   if [ "$T_UNI" = 1 ] && [ "$T_COLS" -ge 64 ]; then t_logo; fi
-  t_b=agentes.chat
-  if [ "$T_DEPTH" != 0 ]; then t_b="$C_BADGE agentes.chat $C_OFF"; fi
+  t_b=squadchat
+  if [ "$T_DEPTH" != 0 ]; then t_b="$C_BADGE squadchat $C_OFF"; fi
   T_OPEN=1
   t_style
   # The title beside the badge's columns, its wrap under the line.

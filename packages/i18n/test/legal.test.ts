@@ -20,7 +20,7 @@ describe("legal pages", () => {
 });
 
 describe("the privacy policy says where Workspace Content passes through our network provider", () => {
-  // agentes.chat Cloud is behind a network provider that decrypts its traffic at the data center nearest to each device:
+  // squadchat Cloud is behind a network provider that decrypts its traffic at the data center nearest to each device:
   // the list of where Workspace Content leaves our servers ("and only in them") and the countries of §9 must say so.
   // Product decision: the legal pages name no infrastructure provider (network, hosting), in any language.
   test("en", () => {
@@ -59,7 +59,7 @@ describe("the privacy policy covers every model provider a workspace may choose,
   });
 });
 
-describe("agentes.chat Cloud's restriction lines cite the Terms this server serves", () => {
+describe("squadchat Cloud's restriction lines cite the Terms this server serves", () => {
   // The section each line rests on, by its id: when the Terms are renumbered, this fails until the lines follow.
   const RESTS_ON = {
     review: "acceptable-use",

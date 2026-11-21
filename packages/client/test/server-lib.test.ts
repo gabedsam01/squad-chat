@@ -16,7 +16,7 @@ import {
 } from "../src/lib/server";
 
 const instance = (over: Record<string, unknown> = {}) => ({
-  name: "agentes.chat",
+  name: "squadchat",
   version: "1.2.0",
   api: APP_API,
   minApi: APP_API,
@@ -89,7 +89,7 @@ describe("server addresses", () => {
 });
 
 describe("help links", () => {
-  test("a page on agentes.chat in the reader's language, with only the section after it", () => {
+  test("a page on squadchat in the reader's language, with only the section after it", () => {
     expect(helpUrl("memory", "en")).toBe("https://agentes.chat/docs/memory");
     expect(helpUrl("computers", "pt-BR", "folders")).toBe("https://agentes.chat/pt/docs/computers#folders");
     expect(helpUrl("wiki", "en-GB")).toBe("https://agentes.chat/docs/wiki");
@@ -168,7 +168,7 @@ describe("connect links", () => {
 });
 
 describe("checking a server", () => {
-  test("an agentes.chat server the app can use", () => {
+  test("an squadchat server the app can use", () => {
     expect(readInstance("https://box.tail1234.ts.net", instance())).toMatchObject({ ok: true });
   });
 

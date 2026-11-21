@@ -528,7 +528,7 @@ test("the server's own app: its owner creates it on GitHub with the manifest, th
   expect(((await (await owner(`/api/app/organizations/${orgId}/github-app`)).json()) as Info).installable).toBe(false);
 });
 
-test("the server's app is the environment's when set (409), and nobody's on agentes.chat (404)", async () => {
+test("the server's app is the environment's when set (409), and nobody's on squadchat (404)", async () => {
   t = await createTestServer({ http, env });
   const owner = browser(t);
   await signUp(owner, "owner@example.com");

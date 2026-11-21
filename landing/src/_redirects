@@ -1,0 +1,2 @@
+# O instalador: /install serve install.sh (copiado da raiz do repositório no build).
+/install /install.sh 200

@@ -1,5 +1,5 @@
 name: Feature request
-description: Something agentes.chat should do
+description: Something squadchat should do
 labels: ["enhancement"]
 body:
   - type: textarea

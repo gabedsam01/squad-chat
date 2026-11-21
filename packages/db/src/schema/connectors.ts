@@ -156,7 +156,7 @@ export const oauthStates = pgTable(
 );
 
 /**
- * OAuth clients agentes.chat registered with an MCP server's authorization
+ * OAuth clients squadchat registered with an MCP server's authorization
  * server (Dynamic Client Registration, RFC 7591), one per org and issuer.
  * A client secret, when the server issues one, is sealed like other secrets.
  */

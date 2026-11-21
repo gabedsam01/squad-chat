@@ -168,7 +168,7 @@
     "value": "switching tabs"
   },
   "tray.label": {
-    "value": "agentes.chat"
+    "value": "squadchat"
   },
   "tray.now": {
     "value": "Now"
@@ -231,13 +231,13 @@
     "value": "Resume the agents"
   },
   "tray.open": {
-    "value": "Open agentes.chat"
+    "value": "Open squadchat"
   },
   "tray.prefs": {
     "value": "Preferences…"
   },
   "tray.quit": {
-    "value": "Quit agentes.chat"
+    "value": "Quit squadchat"
   },
   "tray.pausedFor1h": {
     "value": "Paused for 1 hour"
@@ -321,7 +321,7 @@
     "value": "Install the app again"
   },
   "tray.incompatibleBody": {
-    "value": "One part of the app doesn't match the other. Download the latest version at agentes.chat."
+    "value": "One part of the app doesn't match the other. Download the latest version at squadchat."
   },
   "tray.requests": {
     "value": "Requests"
@@ -357,7 +357,7 @@
     "value": "{{agent}} wants to use the folder {{folder}}"
   },
   "tray.allowedTitle": {
-    "value": "{{name}} turned on {{tool}} from agentes.chat"
+    "value": "{{name}} turned on {{tool}} from squadchat"
   },
   "tray.allowedBody": {
     "value": "If it wasn't you, undo it here."
@@ -372,13 +372,13 @@
     "value": "Off again: {{tool}}"
   },
   "tray.quitTitle": {
-    "value": "Quit agentes.chat?"
+    "value": "Quit squadchat?"
   },
   "tray.quitBody": {
     "value": "Agents can't use this {{device}} while the app is closed. What is already running finishes and sends the result when you open it again."
   },
   "tray.quitHereBody": {
-    "value": "agentes.chat stops on this {{device}}: nobody can use it, here, on your phone or your teammates', until you open the app again."
+    "value": "squadchat stops on this {{device}}: nobody can use it, here, on your phone or your teammates', until you open the app again."
   },
   "tray.quitConfirm": {
     "value": "Quit"
@@ -390,7 +390,7 @@
     "value": "The ones you have stay here, each with its own sign-in."
   },
   "first.addCloud": {
-    "value": "Create a workspace on agentes.chat"
+    "value": "Create a workspace on squadchat"
   },
   "first.addNew": {
     "value": "Want a new workspace?"
@@ -408,7 +408,7 @@
     "value": "Recommended"
   },
   "place.cloud": {
-    "value": "In the agentes.chat cloud"
+    "value": "In the squadchat cloud"
   },
   "place.cloudText": {
     "value": "Always on. We take care of everything, you just use it."
@@ -465,7 +465,7 @@
     "value": "Instructions copied"
   },
   "install.text": {
-    "value": "To install agentes.chat on a computer that stays on (a Mac mini, an office computer or a server):\n\n1. On that computer, open the Terminal and paste this:\n{{command}}\n\n2. At the end a link shows up. Send it to me: it opens the workspace in the app."
+    "value": "To install squadchat on a computer that stays on (a Mac mini, an office computer or a server):\n\n1. On that computer, open the Terminal and paste this:\n{{command}}\n\n2. At the end a link shows up. Send it to me: it opens the workspace in the app."
   },
   "connect.title": {
     "value": "Sign in to a workspace that already exists"
@@ -495,7 +495,7 @@
     "value": "On your team's network"
   },
   "connect.foundHere": {
-    "value": "agentes.chat is running here"
+    "value": "squadchat is running here"
   },
   "connect.foundNoOwner": {
     "value": "Waiting for its owner account"
@@ -540,13 +540,13 @@
     "value": "We can't reach {{host}}, which is on your Tailscale network. Open Tailscale on this {{device}}, connect and try again."
   },
   "connect.unreachableHere": {
-    "value": "Nothing answers at {{host}} on this {{device}}. Start agentes.chat here, then try again."
+    "value": "Nothing answers at {{host}} on this {{device}}. Start squadchat here, then try again."
   },
   "connect.certificate": {
     "value": "The certificate of {{host}} isn't valid. Talk to whoever runs the server."
   },
   "connect.notAgentes": {
-    "value": "{{host}} isn't an agentes.chat server. Check the address."
+    "value": "{{host}} isn't an squadchat server. Check the address."
   },
   "connect.serverTooOld": {
     "value": "{{host}} needs an update to work with this app."
@@ -582,7 +582,7 @@
     "value": "Reach it from your phone and teammates"
   },
   "here.reachText": {
-    "value": "With Tailscale, a private network for your devices: your phone and the people you invite join it, and nobody else can reach agentes.chat."
+    "value": "With Tailscale, a private network for your devices: your phone and the people you invite join it, and nobody else can reach squadchat."
   },
   "here.reachOff": {
     "value": "Tailscale isn't connected."
@@ -606,7 +606,7 @@
     "value": "Tailscale asks for HTTPS to be turned on in your network. Turn it on in its page: the rest goes on by itself."
   },
   "here.reachStage.restarting": {
-    "value": "Restarting agentes.chat at its new address…"
+    "value": "Restarting squadchat at its new address…"
   },
   "here.reachStage.signingIn": {
     "value": "Signing in again at the new address…"
@@ -624,7 +624,7 @@
     "value": "Get Tailscale"
   },
   "here.usage": {
-    "value": "Send anonymous usage statistics to agentes.chat"
+    "value": "Send anonymous usage statistics to squadchat"
   },
   "here.usageText": {
     "value": "Counts such as people, agents, machine sizes, AI tokens used and how much data the agents' browsers send and receive. Never messages, files, names or sites."
@@ -645,7 +645,7 @@
     "value": "first time only"
   },
   "here.step.start": {
-    "value": "Turning agentes.chat on"
+    "value": "Turning squadchat on"
   },
   "here.step.account": {
     "value": "Creating your account"
@@ -669,7 +669,7 @@
     "value": "needs your attention"
   },
   "here.fail.start": {
-    "value": "agentes.chat didn't start on this {{device}}."
+    "value": "squadchat didn't start on this {{device}}."
   },
   "here.fail.database": {
     "value": "The database wasn't prepared."
@@ -693,13 +693,13 @@
     "value": "you stopped waiting for HTTPS to be turned on"
   },
   "here.reason.start": {
-    "value": "agentes.chat didn't answer again at its new address"
+    "value": "squadchat didn't answer again at its new address"
   },
   "here.reason.notConnected": {
     "value": "Tailscale isn't connected on this {{device}}"
   },
   "here.reason.back": {
-    "value": "agentes.chat didn't answer again on this {{device}} after access from your devices was turned off."
+    "value": "squadchat didn't answer again on this {{device}} after access from your devices was turned off."
   },
   "here.serveFix": {
     "value": "Install Tailscale from tailscale.com."
@@ -720,13 +720,13 @@
     "value": "Taking a little longer than expected"
   },
   "here.notifyFailed": {
-    "value": "Setting up agentes.chat on this {{device}} didn't finish"
+    "value": "Setting up squadchat on this {{device}} didn't finish"
   },
   "here.notifyFailedBody": {
-    "value": "Open agentes.chat to see what happened."
+    "value": "Open squadchat to see what happened."
   },
   "here.already": {
-    "value": "agentes.chat is already installed on this {{device}}"
+    "value": "squadchat is already installed on this {{device}}"
   },
   "here.alreadyText": {
     "value": "It runs on its own, installed from the terminal. Use it in this app."
@@ -738,13 +738,13 @@
     "value": "Use it"
   },
   "here.notRunning": {
-    "value": "agentes.chat is installed on this {{device}}, but it isn't running"
+    "value": "squadchat is installed on this {{device}}, but it isn't running"
   },
   "here.notRunningText": {
     "value": "It was installed from the terminal, in {{path}}. To start it, run this in the terminal, then try again:"
   },
   "here.running": {
-    "value": "agentes.chat already runs on this {{device}}"
+    "value": "squadchat already runs on this {{device}}"
   },
   "here.runningText": {
     "value": "This app runs it. Open it to sign in."
@@ -780,7 +780,7 @@
     "value": "Checking the server…"
   },
   "link.notALink": {
-    "value": "This link isn't from an agentes.chat server."
+    "value": "This link isn't from an squadchat server."
   },
   "link.chipTailnet": {
     "value": "Tailscale"
@@ -789,7 +789,7 @@
     "value": "This {{device}}"
   },
   "link.thisServer": {
-    "value": "agentes.chat on this {{device}}"
+    "value": "squadchat on this {{device}}"
   },
   "link.tailnetHelp": {
     "value": "It's on a Tailscale network: it only opens on devices connected to Tailscale with the same account."
@@ -798,10 +798,10 @@
     "value": "Servers"
   },
   "servers.lead": {
-    "value": "Where this app opens agentes.chat."
+    "value": "Where this app opens squadchat."
   },
   "servers.cloud": {
-    "value": "agentes.chat"
+    "value": "squadchat"
   },
   "servers.cloudSub": {
     "value": "Cloud"
@@ -885,7 +885,7 @@
     "value": "{{n}} new notifications"
   },
   "server.title": {
-    "value": "agentes.chat on this {{device}}"
+    "value": "squadchat on this {{device}}"
   },
   "server.running": {
     "value": "Running"
@@ -930,7 +930,7 @@
     "value": "Show QR code"
   },
   "server.usageRestart": {
-    "value": "Changing it restarts agentes.chat for a moment."
+    "value": "Changing it restarts squadchat for a moment."
   },
   "server.jev": {
     "value": "Jev"
@@ -966,7 +966,7 @@
     "value": "Stop running it here…"
   },
   "server.stopHereTitle": {
-    "value": "Stop agentes.chat on this {{device}}?"
+    "value": "Stop squadchat on this {{device}}?"
   },
   "server.stopHereBody": {
     "value": "It stops now and no longer starts with the app. Its data stays in {{path}}."
@@ -990,7 +990,7 @@
     "value": "Stopping cuts everyone off, the phone included."
   },
   "server.stopTitle": {
-    "value": "Stop agentes.chat on this {{device}}?"
+    "value": "Stop squadchat on this {{device}}?"
   },
   "server.stopBody": {
     "value": "The phone and the team lose access until it's back."
@@ -1002,7 +1002,7 @@
     "value": "Stopped until you start it"
   },
   "server.reachRestart": {
-    "value": "Turning it on or off restarts agentes.chat for a moment."
+    "value": "Turning it on or off restarts squadchat for a moment."
   },
   "server.reachOffTitle": {
     "value": "Turn off access from your devices?"
@@ -1032,19 +1032,19 @@
     "value": "Start it here"
   },
   "server.stoppedBanner": {
-    "value": "agentes.chat stopped on this {{device}}"
+    "value": "squadchat stopped on this {{device}}"
   },
   "server.stoppedBody": {
     "value": "Nobody can use it until it starts again."
   },
   "server.failingBanner": {
-    "value": "agentes.chat isn't starting on this {{device}}"
+    "value": "squadchat isn't starting on this {{device}}"
   },
   "server.failingBody": {
     "value": "Open the app to see what happened and try again."
   },
   "server.restartedBanner": {
-    "value": "agentes.chat restarted 3 times on this {{device}}"
+    "value": "squadchat restarted 3 times on this {{device}}"
   },
   "server.restartedBody": {
     "value": "It comes back by itself. If it keeps happening, open the app to see why."
@@ -1056,10 +1056,10 @@
     "value": "Internal server version"
   },
   "server.updatesWithApp": {
-    "value": "Updating the app updates agentes.chat on this {{device}} too."
+    "value": "Updating the app updates squadchat on this {{device}} too."
   },
   "server.updateBack": {
-    "value": "The update didn't start. agentes.chat is back on {{version}}."
+    "value": "The update didn't start. squadchat is back on {{version}}."
   },
   "server.updateBackBody": {
     "value": "The new version is tried again with the app's next update."
@@ -1113,7 +1113,7 @@
     "value": "Restore a backup?"
   },
   "server.restoreBody": {
-    "value": "agentes.chat on this {{device}} goes back to that backup: messages, files and settings. It stops for a minute. What's there now is kept in the backups folder."
+    "value": "squadchat on this {{device}} goes back to that backup: messages, files and settings. It stops for a minute. What's there now is kept in the backups folder."
   },
   "server.restoreWhich": {
     "value": "Backup to restore"
@@ -1128,7 +1128,7 @@
     "value": "Restored the backup from {{time}}"
   },
   "server.restoreFailed": {
-    "value": "That backup didn't start, so agentes.chat is back as it was. Try the other backup."
+    "value": "That backup didn't start, so squadchat is back as it was. Try the other backup."
   },
   "server.restoreUnreadable": {
     "value": "That backup can't be opened. Try the other one."
@@ -1137,7 +1137,7 @@
     "value": "Erase and start over…"
   },
   "server.eraseTitle": {
-    "value": "Erase agentes.chat on this {{device}}?"
+    "value": "Erase squadchat on this {{device}}?"
   },
   "server.eraseBody": {
     "value": "Its workspaces go for everyone who uses them, on every device. Its data moves to {{path}} and stays there. What its agents kept on this {{device}}, such as their browsers and sign-ins, is deleted. The agents' files in ~/agentes are yours and stay where they are. Then you set it up again with a new owner."
@@ -1152,7 +1152,7 @@
     "value": "Its data couldn't be moved, so nothing was erased and it stays in {{path}}. It's stopped until you start it again."
   },
   "server.eraseHeld": {
-    "value": "Another agentes.chat server is using its folder, so nothing was erased. Stop that server, then try again."
+    "value": "Another squadchat server is using its folder, so nothing was erased. Stop that server, then try again."
   },
   "server.noPassword": {
     "value": "Add a password to sign in from your phone and other computers."
@@ -1173,7 +1173,7 @@
     "value": "Signs in by itself after a restart"
   },
   "server.keepAutoLoginText": {
-    "value": "After a restart, this {{device}} waits at its sign-in screen and agentes.chat doesn't open. Turn on automatic login in Users & Groups."
+    "value": "After a restart, this {{device}} waits at its sign-in screen and squadchat doesn't open. Turn on automatic login in Users & Groups."
   },
   "server.keepAutoLoginOpen": {
     "value": "Open Users & Groups"
@@ -1191,7 +1191,7 @@
     "value": "Doesn't sleep while serving"
   },
   "server.keepAwakeText": {
-    "value": "This {{device}} stays awake while agentes.chat runs here. Start agentes.chat to keep it awake."
+    "value": "This {{device}} stays awake while squadchat runs here. Start squadchat to keep it awake."
   },
   "server.keepOn": {
     "value": "Done"
@@ -1215,7 +1215,7 @@
     "value": "Let {{org}}'s agents use this {{device}}?"
   },
   "pair.keepReady": {
-    "value": "Keep it ready: open agentes.chat at login"
+    "value": "Keep it ready: open squadchat at login"
   },
   "pair.offerOnlyIf": {
     "value": "Only if you want this {{device}} to do agents' work too. With Not now you still use {{org}} here as usual."
@@ -1287,7 +1287,7 @@
     "value": "Lets agents open your files without macOS asking for each folder."
   },
   "prepare.diskHow": {
-    "value": "In Settings, turn on agentes.chat in the list, or add it with +."
+    "value": "In Settings, turn on squadchat in the list, or add it with +."
   },
   "prepare.network": {
     "value": "Local network (phones over Wi-Fi)"
@@ -1311,10 +1311,10 @@
     "value": "Open Settings"
   },
   "prepare.reopen": {
-    "value": "When macOS asks to Quit & Reopen, choose it. agentes.chat opens again right here."
+    "value": "When macOS asks to Quit & Reopen, choose it. squadchat opens again right here."
   },
   "prepare.tookEffect": {
-    "value": "agentes.chat opened again with your changes."
+    "value": "squadchat opened again with your changes."
   },
   "prepare.skip": {
     "value": "Skip for now"
@@ -1383,16 +1383,16 @@
     "value": "Commands can reach the rest of this {{device}}, other workspaces' folders included."
   },
   "tools.commandsWarnHere": {
-    "value": "Commands run as you and can reach the rest of this {{device}}, agentes.chat's own data included."
+    "value": "Commands run as you and can reach the rest of this {{device}}, squadchat's own data included."
   },
   "tools.commandsSome": {
     "value": "On only for {{orgs}}. Turn it on for every workspace here."
   },
   "tools.commandsAbout": {
-    "value": "Tests, builds and other Terminal commands. Each one shows in Activity. Commands run as you. They can read anything you can on this {{device}}, agentes.chat's database and keys included. Turn them on only for workspaces you trust with all of it."
+    "value": "Tests, builds and other Terminal commands. Each one shows in Activity. Commands run as you. They can read anything you can on this {{device}}, squadchat's database and keys included. Turn them on only for workspaces you trust with all of it."
   },
   "tools.commandsReach": {
-    "value": "Commands run as you. They can read anything you can on this {{device}}, agentes.chat's database and keys included. Turn them on only for workspaces you trust with all of it."
+    "value": "Commands run as you. They can read anything you can on this {{device}}, squadchat's database and keys included. Turn them on only for workspaces you trust with all of it."
   },
   "tools.commandsAsk": {
     "value": "Turn on Commands for {{org}}?"
@@ -1404,10 +1404,10 @@
     "value": "Check again"
   },
   "tools.lookPath": {
-    "value": "agentes.chat looks in your login shell's PATH."
+    "value": "squadchat looks in your login shell's PATH."
   },
   "tools.lookPathWindows": {
-    "value": "agentes.chat looks in PATH."
+    "value": "squadchat looks in PATH."
   },
   "tools.stillMissing": {
     "value": "{{tool}} still isn't found. Run the command above, then check again."
@@ -1476,7 +1476,7 @@
     "value": "Open"
   },
   "notch.openApp": {
-    "value": "Open agentes.chat"
+    "value": "Open squadchat"
   },
   "notch.someAgent": {
     "value": "An agent"
@@ -1563,7 +1563,7 @@
     "value": "Agents only use this {{device}} while the app is open."
   },
   "prefs.general.launchHere": {
-    "value": "agentes.chat on this {{device}} runs only while the app is open."
+    "value": "squadchat on this {{device}} runs only while the app is open."
   },
   "prefs.general.launchWork": {
     "value": "Agents work only while the app is open."
@@ -1614,7 +1614,7 @@
     "value": "WEBKIT_DISABLE_DMABUF_RENDERER decides this now. To choose here, quit the app and open it without that variable."
   },
   "prefs.general.reopenTitle": {
-    "value": "Reopen agentes.chat?"
+    "value": "Reopen squadchat?"
   },
   "prefs.general.reopenBody": {
     "value": "Agents can't use this computer until the app opens again. What is already running finishes first."
@@ -1698,7 +1698,7 @@
     "value": "On this {{device}}"
   },
   "prefs.thisMac.placeCloud": {
-    "value": "agentes.chat Cloud"
+    "value": "squadchat Cloud"
   },
   "prefs.thisMac.more": {
     "value": "More for {{org}}"
@@ -1707,7 +1707,7 @@
     "value": "Another workspace"
   },
   "prefs.thisMac.otherWorkspaceDesc": {
-    "value": "Let a workspace on agentes.chat Cloud or on another server use this {{device}} too. Each one keeps its own sign-in."
+    "value": "Let a workspace on squadchat Cloud or on another server use this {{device}} too. Each one keeps its own sign-in."
   },
   "prefs.thisMac.addWorkspace": {
     "value": "Add a workspace…"
@@ -1944,13 +1944,13 @@
     "value": "Update by hand"
   },
   "prefs.updates.step1": {
-    "value": "Quit agentes.chat (⌘Q)."
+    "value": "Quit squadchat (⌘Q)."
   },
   "prefs.updates.step2": {
-    "value": "Delete the old agentes.chat from the Applications folder."
+    "value": "Delete the old squadchat from the Applications folder."
   },
   "prefs.updates.step3": {
-    "value": "Open the downloaded file and drag the new agentes.chat into Applications."
+    "value": "Open the downloaded file and drag the new squadchat into Applications."
   },
   "prefs.updates.installerNote": {
     "value": "Open the downloaded file: it installs the new version over the old one."
@@ -2166,7 +2166,7 @@
     "value": "Looking at this {{device}}…"
   },
   "iphone.checkingStall": {
-    "value": "This {{device}} isn't answering yet. Quit agentes.chat from its menu bar icon and open it again."
+    "value": "This {{device}} isn't answering yet. Quit squadchat from its menu bar icon and open it again."
   },
   "iphone.xcodeText": {
     "value": "Install Xcode from the App Store. This step goes on by itself when it's there."
@@ -2235,19 +2235,19 @@
     "value": "Is Tailscale connected on this {{device}}?"
   },
   "cover.starting": {
-    "value": "Starting agentes.chat on this {{device}}…"
+    "value": "Starting squadchat on this {{device}}…"
   },
   "cover.migrating": {
-    "value": "Updating agentes.chat on this {{device}}. This can take a minute."
+    "value": "Updating squadchat on this {{device}}. This can take a minute."
   },
   "cover.stopped": {
-    "value": "agentes.chat stopped on this {{device}}"
+    "value": "squadchat stopped on this {{device}}"
   },
   "cover.failing": {
-    "value": "agentes.chat isn't starting on this {{device}}"
+    "value": "squadchat isn't starting on this {{device}}"
   },
   "cover.tailnetOff": {
-    "value": "Connect Tailscale on this {{device}} to open agentes.chat."
+    "value": "Connect Tailscale on this {{device}} to open squadchat."
   },
   "cover.tailnetUp": {
     "value": "In the terminal: sudo tailscale up"
@@ -2277,7 +2277,7 @@
     "value": "Use another server"
   },
   "cover.stuck": {
-    "value": "agentes.chat didn't open. Try again, or see the page as it is."
+    "value": "squadchat didn't open. Try again, or see the page as it is."
   },
   "cover.showAnyway": {
     "value": "Show it anyway"
@@ -2286,10 +2286,10 @@
     "value": "Couldn't copy"
   },
   "cover.held": {
-    "value": "agentes.chat is stopped on this {{device}} until you start it."
+    "value": "squadchat is stopped on this {{device}} until you start it."
   },
   "cover.heldUntil": {
-    "value": "agentes.chat is stopped on this {{device}}. It comes back by itself at {{time}}."
+    "value": "squadchat is stopped on this {{device}}. It comes back by itself at {{time}}."
   },
   "cover.startNow": {
     "value": "Start now"
@@ -2304,7 +2304,7 @@
     "value": "Couldn't turn off access from your devices."
   },
   "menu.about": {
-    "value": "About agentes.chat"
+    "value": "About squadchat"
   },
   "menu.updates": {
     "value": "Check for updates…"
@@ -2319,7 +2319,7 @@
     "value": "Services"
   },
   "menu.hide": {
-    "value": "Hide agentes.chat"
+    "value": "Hide squadchat"
   },
   "menu.hideOthers": {
     "value": "Hide others"
@@ -2328,7 +2328,7 @@
     "value": "Show all"
   },
   "menu.quit": {
-    "value": "Quit agentes.chat"
+    "value": "Quit squadchat"
   },
   "menu.servers": {
     "value": "Servers"

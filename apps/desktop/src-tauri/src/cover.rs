@@ -398,11 +398,11 @@ mod tests {
     #[test]
     fn the_windows_own_details() {
         let log: String = (1..=50).map(|n| format!("{n} 0.6.0 step {n}\n")).collect();
-        let text = window_details("agentes.chat 0.6.0 · macOS 15.1", "https://chat.example.com", &log);
-        assert!(text.starts_with("agentes.chat 0.6.0 · macOS 15.1\nserver: https://chat.example.com\n"));
+        let text = window_details("squadchat 0.6.0 · macOS 15.1", "https://chat.example.com", &log);
+        assert!(text.starts_with("squadchat 0.6.0 · macOS 15.1\nserver: https://chat.example.com\n"));
         // The last 40 lines only.
         assert!(text.contains("11 0.6.0 step 11") && !text.contains("\n10 0.6.0 step 10"));
-        assert!(window_details("agentes.chat 0.6.0 · macOS 15.1", "", "").ends_with("window.log:\n\n"));
+        assert!(window_details("squadchat 0.6.0 · macOS 15.1", "", "").ends_with("window.log:\n\n"));
     }
 
     #[test]

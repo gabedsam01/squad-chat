@@ -86,7 +86,7 @@ stay exact and be written once.
    logo, or its name alone in the heading face, where the product's lockup is, set its accent's four tokens on the
    document while they show (the workspace shell does the same with the workspace's own accent; the screens in that look
    shown inside a workspace, such as a suspended one's, take no host accent, so the two never show at once), and end
-   with one quiet "Powered by agentes.chat" line linking to the product's site. The sign-in steps' line naming the
+   with one quiet "Powered by squadchat" line linking to the product's site. The sign-in steps' line naming the
    server it signs in to (on a Cloud server, the product's hosted service, with a Change that opens the product's own
    chooser) is not shown there. Before the app has asked who the host is, the server marks the page on a registered
    host (`data-host` on its `<html>`, in the one place every page from `WEB_DIR` passes), and `index.html`'s boot rules

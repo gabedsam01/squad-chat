@@ -204,7 +204,7 @@ pub fn compat_set(app: AppHandle, on: bool) -> Result<(), String> {
 }
 
 /// The line people copy (Preferences › Updates, the cover's Copy details) on every system: the app's version and
-/// the system's, and on Linux how it draws. "agentes.chat 0.8.9 · macOS 15.1".
+/// the system's, and on Linux how it draws. "squadchat 0.8.9 · macOS 15.1".
 pub fn details_line(version: &str, os: &str, system_version: Option<&str>, linux: Option<&System>) -> String {
     let name = match os {
         "macos" => "macOS",
@@ -216,7 +216,7 @@ pub fn details_line(version: &str, os: &str, system_version: Option<&str>, linux
         Some(v) if !v.is_empty() => format!("{name} {v}"),
         _ => name.to_owned(),
     };
-    let mut line = format!("agentes.chat {version} · {system}");
+    let mut line = format!("squadchat {version} · {system}");
     if let Some(linux) = linux.map(System::line).filter(|l| !l.is_empty()) {
         line.push_str(" · ");
         line.push_str(&linux);
@@ -433,10 +433,10 @@ mod tests {
         assert_eq!(blank.line(), "wayland (GNOME) · WebKitGTK 2.50.4 · CPU (chosen) · AppImage");
         assert_eq!(
             details_line("0.8.9", "linux", None, Some(&blank)),
-            "agentes.chat 0.8.9 · Linux · wayland (GNOME) · WebKitGTK 2.50.4 · CPU (chosen) · AppImage"
+            "squadchat 0.8.9 · Linux · wayland (GNOME) · WebKitGTK 2.50.4 · CPU (chosen) · AppImage"
         );
-        assert_eq!(details_line("0.8.9", "macos", Some("15.1"), None), "agentes.chat 0.8.9 · macOS 15.1");
-        assert_eq!(details_line("0.8.9", "windows", None, None), "agentes.chat 0.8.9 · Windows");
+        assert_eq!(details_line("0.8.9", "macos", Some("15.1"), None), "squadchat 0.8.9 · macOS 15.1");
+        assert_eq!(details_line("0.8.9", "windows", None, None), "squadchat 0.8.9 · Windows");
     }
 
     #[test]

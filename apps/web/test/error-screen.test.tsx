@@ -204,7 +204,7 @@ describe("the error screen (ADR 0104)", () => {
 const UNREACHABLE = "Ele pode estar reiniciando. Esta página abre sozinha assim que ele voltar.";
 
 describe("a request that got no answer, or only the proxy's", () => {
-  test("no network or only the proxy: Sem conexão com o agentes.chat and Tentar de novo, no report, no code", async () => {
+  test("no network or only the proxy: Sem conexão com o squadchat and Tentar de novo, no report, no code", async () => {
     const { sent, load } = fakeSdk();
     await startErrorReports(CONFIG, load);
     for (const error of [

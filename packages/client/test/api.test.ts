@@ -442,7 +442,7 @@ describe("HTTP client: drive, storage, issues, routines, calendar, custom MCP, i
     ]);
   });
 
-  test("the desktop app's newest build: the server's own, else agentes.chat's, asked without the cookie", async () => {
+  test("the desktop app's newest build: the server's own, else squadchat's, asked without the cookie", async () => {
     const release = {
       version: "0.6.0",
       url: "https://app.agentes.chat/api/desktop/download/0.6.0/agentes_0.6.0_x64-setup.exe",

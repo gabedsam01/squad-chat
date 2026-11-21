@@ -658,7 +658,7 @@ describe("billing hold", () => {
   });
 });
 
-describe("on agentes.chat Cloud: a restriction's kind and how to contest it, never its reason", () => {
+describe("on squadchat Cloud: a restriction's kind and how to contest it, never its reason", () => {
   afterEach(() => setRestrictionNotices("http://localhost:3000"));
 
   test("the kinds come from the stored reasons", () => {
@@ -677,7 +677,7 @@ describe("on agentes.chat Cloud: a restriction's kind and how to contest it, nev
     ]);
   });
 
-  test("only on an agentes.chat address", () => {
+  test("only on an squadchat address", () => {
     for (const url of ["https://agentes.chat", "https://app.agentes.chat"]) {
       setRestrictionNotices(url);
       expect(cloudNotice()).toEqual({ cloud: true });

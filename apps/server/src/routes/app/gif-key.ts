@@ -29,11 +29,11 @@ const ApiKey = z.object({
 /** Limits checking keys through this server, so it can't test keys in bulk. */
 const WRITES = { limit: 10, windowMs: 60_000 };
 
-const notFound = "404 for everyone but the installation's pinned owner (ADR 0073), and on agentes.chat itself.";
+const notFound = "404 for everyone but the installation's pinned owner (ADR 0073), and on squadchat itself.";
 const tooMany = { 429: errorResponse("Too many tries (`rate_limited`)") };
 
 /**
- * The installation's GIPHY key (ADR 0091, amended 2026-10-31): only its pinned owner, and never on agentes.chat's own
+ * The installation's GIPHY key (ADR 0091, amended 2026-10-31): only its pinned owner, and never on squadchat's own
  * servers, whose key is in their environment. A save or a removal turns GIFs on or off in every workspace at once
  * (`gifsAvailable`).
  */

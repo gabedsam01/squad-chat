@@ -752,10 +752,10 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release view "$TAG" > /dev/null 2>&1 ||
-            gh release create "$TAG" --verify-tag --title "agentes.chat ${TAG#v}" --generate-notes
+            gh release create "$TAG" --verify-tag --title "squadchat ${TAG#v}" --generate-notes
           gh release upload "$TAG" install.sh --clobber
 
-  # A version tag's release also carries agentes.chat without Docker (ADR 0060 §2): one package per
+  # A version tag's release also carries squadchat without Docker (ADR 0060 §2): one package per
   # computer (macOS and Linux, x64 and arm64), each with the Bun install.sh pins, and native.json, signed
   # with the desktop updater's key, which the installer checks before it downloads anything. After
   # release-install, which makes the release.

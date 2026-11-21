@@ -80,7 +80,7 @@ const FeedbackOffer = z
 /**
  * The apps' feedback form (ADR 0160): what the person wrote goes by email to whoever runs the server
  * (`FEEDBACK_EMAIL`), through the outbox, with the pictures and the video they added. Without that address it goes to
- * the agentes.chat team's inbox, pictures only (§13); with neither there is no form and no route.
+ * the squadchat team's inbox, pictures only (§13); with neither there is no form and no route.
  */
 export function feedbackRoutes(deps: AppDeps) {
   const { db, config, adapters } = deps;
@@ -183,7 +183,7 @@ export function feedbackRoutes(deps: AppDeps) {
       tags,
       summary: "Send feedback to whoever runs this server",
       description:
-        "One email to `FEEDBACK_EMAIL` (or, where it is unset, one message to the agentes.chat team's inbox: `auth-config.feedbackRelay`) with the text, the person's name and address (to answer them), the workspace's name when `orgId` is one of theirs, what they reported (`about`), what the app knew of where they were (`facts`), their files as links good for thirty days, and this server's version. 404 when the server takes no feedback (`auth-config.feedback` is false), 429 past ten an hour.",
+        "One email to `FEEDBACK_EMAIL` (or, where it is unset, one message to the squadchat team's inbox: `auth-config.feedbackRelay`) with the text, the person's name and address (to answer them), the workspace's name when `orgId` is one of theirs, what they reported (`about`), what the app knew of where they were (`facts`), their files as links good for thirty days, and this server's version. 404 when the server takes no feedback (`auth-config.feedback` is false), 429 past ten an hour.",
       security,
       request: {
         body: body(
@@ -371,7 +371,7 @@ const Inbox = z.object({
 
 /**
  * `POST /api/feedback/inbox` (ADR 0160 §13): where servers other people run send the feedback their operator gave no
- * address for. Only on agentes.chat's own servers (`isAgentesCloud`), which read feedback at `FEEDBACK_EMAIL`: no
+ * address for. Only on squadchat's own servers (`isAgentesCloud`), which read feedback at `FEEDBACK_EMAIL`: no
  * other server has the route, and it needs no setting (`FEEDBACK_INBOX=false` turns it off). No session: the sender is a server, known by nothing, so it is counted by where it comes from and in all, read
  * up to the size the global limit gives this path, mailed at once and never stored.
  */

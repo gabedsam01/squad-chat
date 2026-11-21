@@ -536,7 +536,7 @@
     "recommended": "Önerilen",
     "free": "Ücretsiz · açık kaynak",
     "cloud": {
-      "name": "agentes.chat Cloud",
+      "name": "squadchat Cloud",
       "short": "Her zaman açık, kurulacak bir şey yok.",
       "on": "Ajanların bilgisayarı her zaman açık",
       "care": "Güncellemeler ve yedekler bizden",
@@ -712,7 +712,7 @@
     "server": {
       "into": "<b>{{server}}</b> sunucusuna giriş",
       "intoHere": "Bu {{device}} üzerindeki <b>squadchat</b>'e giriş",
-      "intoCloud": "<b>agentes.chat Cloud</b> hesabına giriliyor",
+      "intoCloud": "<b>squadchat Cloud</b> hesabına giriliyor",
       "change": "Sunucuyu değiştir"
     },
     "forgotHere": {
@@ -3509,7 +3509,7 @@
       }
     },
     "billing": "Plan, çalışma alanının bilgisayarında oturum açar ve bilgisayar etkin bir squadchat planıyla gelir.",
-    "billingWeb": "Web'de, agentes.chat'te bir plan seç.",
+    "billingWeb": "Web'de, squadchat'te bir plan seç.",
     "orPayGo": "Ya da kullandıkça ödeyin",
     "pay": {
       "label": "Nasıl ödersiniz?",
@@ -16946,7 +16946,7 @@
       "rolesPersonal": "Buradaki her kişinin neler yapabileceği. Sahip her şeyi yapabilir."
     },
     "about": {
-      "basedOn": "AGENTESCHAT, LLC tarafından geliştirilen <site>agentes.chat</site> tabanlı",
+      "basedOn": "AGENTESCHAT, LLC tarafından geliştirilen <site>squadchat</site> tabanlı",
       "version": "Sürüm",
       "license": "<license>GNU Affero General Public License v3</license> kapsamında özgür yazılım, garantisi yoktur.",
       "source": "Kaynak kodu",

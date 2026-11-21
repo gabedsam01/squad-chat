@@ -322,7 +322,7 @@ WhatsApp connect through Composio's own apps, in another change.
 - Agents post where they're given the scope, as people asked; deletes, bans and invite links ask, and nothing spends
   money on Meta without a person. Vendor rules that are stricter win (X's replies, TikTok's post card).
 - The server's owner registers and pays for the apps, gets them reviewed, and keeps X's credits topped up; on the Cloud
-  that's agentes.chat. Until a review passes, a service shows "Em breve" there and the reason on a self-hosted server.
+  that's squadchat. Until a review passes, a service shows "Em breve" there and the reason on a self-hosted server.
 - X's pay-per-use terms are written for apps with a limited number of end users: a Cloud with many workspaces may be
   moved to Enterprise by X, which `CONNECTOR_X_CALLS_PER_MONTH` doesn't change. The way out then is a workspace's own X
   app, sealed per workspace as the server's GitHub App is per server, which this ADR doesn't build.

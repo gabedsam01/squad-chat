@@ -122,7 +122,7 @@ export interface AppOptions {
  * - `/api/git/*`          git proxy for agents' computers (their own credential, ADR 0024)
  * - `/api/machines/*`     connected computers' runner: device-code connection, uploads, install.sh, a connect link's info (ADR 0025, 0036)
  * - `/api/desktop/*`      public: the desktop app's latest build and its download (ADR 0036)
- * - `/api/native/*`       public: the packages that run agentes.chat without Docker, for the installer (ADR 0060)
+ * - `/api/native/*`       public: the packages that run squadchat without Docker, for the installer (ADR 0060)
  * - `/api/hooks/*`        public: a webhook routine's own address (its chosen methods, ADR 0106)
  * - `/api/waitlist`       public: join the waiting list and confirm the email (the landing page, only with LANDING_URL)
  * - `/api/partners/waitlist` public: join the partner program's waiting list (the landing page, only with LANDING_URL)
@@ -294,7 +294,7 @@ export function createApp(options: AppOptions) {
   api.doc31("/openapi.json", {
     openapi: "3.1.0",
     info: {
-      title: "agentes.chat API",
+      title: "squadchat API",
       version,
       description: "Workspace where people and AI agents work together.",
     },
@@ -302,7 +302,7 @@ export function createApp(options: AppOptions) {
   // The interactive explorer loads its bundle from a CDN; keep it off the production origin, where a
   // compromised CDN would run on the session's origin. The OpenAPI document itself stays available everywhere.
   if (options.services?.config.NODE_ENV !== "production") {
-    api.get("/reference", Scalar({ url: "/api/openapi.json", pageTitle: "agentes.chat API" }));
+    api.get("/reference", Scalar({ url: "/api/openapi.json", pageTitle: "squadchat API" }));
   }
 
   const app = new OpenAPIHono();

@@ -1190,7 +1190,7 @@ export async function judge(c: BehaviorCase, run: CaseRun, options: JudgeOptions
     {
       model: judgeModel,
       system:
-        "You grade how an AI agent behaved in a team chat (agentes.chat), where agents have tools and are expected to investigate before answering. Grade each criterion strictly against the transcript: pass only if the reply clearly meets it. When a criterion does not apply to this case (e.g. nothing needed asking), it passes. Give a one-sentence reason quoting the reply when useful.",
+        "You grade how an AI agent behaved in a team chat (squadchat), where agents have tools and are expected to investigate before answering. Grade each criterion strictly against the transcript: pass only if the reply clearly meets it. When a criterion does not apply to this case (e.g. nothing needed asking), it passes. Give a one-sentence reason quoting the reply when useful.",
       messages: [{ role: "user", content: prompt.join("\n\n") }],
       maxTokens: 1500,
       outputSchema: {

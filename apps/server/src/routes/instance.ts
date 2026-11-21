@@ -15,7 +15,7 @@ const MIN_API = 1;
 
 const InstanceResponse = z
   .object({
-    name: z.literal("agentes.chat"),
+    name: z.literal("squadchat"),
     version: z.string(),
     api: z.number().int().openapi({ description: "The app API contract this server speaks." }),
     minApi: z.number().int().openapi({ description: "The oldest app API contract it still serves." }),
@@ -33,7 +33,7 @@ const InstanceResponse = z
     }),
     cloud: z.boolean().openapi({
       description:
-        "One of agentes.chat's own servers (`PUBLIC_URL` on agentes.chat): `/terms` and `/privacy` show agentes.chat Cloud's Terms and Privacy Policy.",
+        "One of squadchat's own servers (`PUBLIC_URL` on squadchat): `/terms` and `/privacy` show squadchat Cloud's Terms and Privacy Policy.",
     }),
   })
   .openapi("Instance");
@@ -44,7 +44,7 @@ const route = createRoute({
   tags: ["System"],
   summary: "What this server is",
   description:
-    "Public, nothing secret. The phone and desktop apps check it before using a server: that it is agentes.chat, on an API they speak, and how people sign in.",
+    "Public, nothing secret. The phone and desktop apps check it before using a server: that it is squadchat, on an API they speak, and how people sign in.",
   responses: { 200: { description: "OK", content: { "application/json": { schema: InstanceResponse } } } },
 });
 
@@ -68,7 +68,7 @@ export function registerInstance(api: OpenAPIHono, deps: AppDeps, version: strin
     const open = await signupOpen(deps.db, config, users);
     return c.json(
       {
-        name: "agentes.chat" as const,
+        name: "squadchat" as const,
         version,
         api: API,
         minApi: MIN_API,

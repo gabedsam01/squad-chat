@@ -12,7 +12,7 @@
 
 ## Context
 
-People have more than one account on the same agentes.chat: a personal one and a work one on agentes.chat Cloud, say.
+People have more than one account on the same squadchat: a personal one and a work one on squadchat Cloud, say.
 A browser held one session per server, so the second account took the first one's place and coming back meant signing
 in again. The phone and the desktop apps listed workspaces across servers (ADR 0154), with one account on each.
 

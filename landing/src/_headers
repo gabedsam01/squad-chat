@@ -11,3 +11,15 @@
 
 /*.css
   Cache-Control: public, max-age=3600
+
+/install
+  Content-Type: text/x-shellscript; charset=utf-8
+  Cache-Control: no-store
+
+/install.sh
+  Content-Type: text/x-shellscript; charset=utf-8
+  Cache-Control: no-store
+
+/install/docker-compose.yml
+  Content-Type: application/yaml; charset=utf-8
+  Cache-Control: no-store

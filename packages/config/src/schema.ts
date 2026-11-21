@@ -2,7 +2,7 @@ import { z } from "zod";
 import { parseFirebaseServiceAccount, parsePemKey } from "./pem";
 
 /**
- * Every environment variable agentes.chat reads is declared here, exactly once.
+ * Every environment variable squadchat reads is declared here, exactly once.
  *
  * This list is the single source of truth for:
  * - runtime validation (see `loadConfig`)
@@ -114,9 +114,9 @@ export const envVars = {
   LANDING_URL: {
     schema: z.url().optional(),
     description:
-      "Public URL of the agentes.chat landing page (its own site), without a trailing slash. Turns on the waiting lists, the product's and the partner program's: that origin may call them (CORS on `/api/waitlist` and `/api/partners/waitlist` only), and the confirmation email links there. With the bot check on, a token its page makes on this host counts for these lists and nothing else. Unset: no waiting lists.",
+      "Public URL of the squadchat landing page (its own site), without a trailing slash. Turns on the waiting lists, the product's and the partner program's: that origin may call them (CORS on `/api/waitlist` and `/api/partners/waitlist` only), and the confirmation email links there. With the bot check on, a token its page makes on this host counts for these lists and nothing else. Unset: no waiting lists.",
     section: "Server",
-    example: "https://agentes.chat",
+    example: "https://squad-chat-6wd.pages.dev",
   },
   APP_VERSION: {
     schema: z
@@ -188,7 +188,7 @@ export const envVars = {
   DATABASE_POOL_MAX: {
     schema: z.coerce.number().int().min(1).default(20),
     description:
-      "Maximum number of open connections per agentes.chat process, shared by its HTTP requests and its jobs (`OUTBOX_MAX_IN_FLIGHT`). Keep it, times the number of processes, under the database's `max_connections`.",
+      "Maximum number of open connections per squadchat process, shared by its HTTP requests and its jobs (`OUTBOX_MAX_IN_FLIGHT`). Keep it, times the number of processes, under the database's `max_connections`.",
     section: "Database",
   },
   RUN_MIGRATIONS_ON_BOOT: {
@@ -226,20 +226,20 @@ export const envVars = {
       .regex(/^[0-9a-f]{64}$/, "must be 64 hex characters (the SHA-256 of the owner key)")
       .optional(),
     description:
-      "SHA-256 (hex) of the key the agentes.chat desktop app keeps when it runs this server on the same computer. Only that key creates the first account (the owner, with no password), and the app signs that owner in with it again whenever the session ends. Set by the desktop app.",
+      "SHA-256 (hex) of the key the squadchat desktop app keeps when it runs this server on the same computer. Only that key creates the first account (the owner, with no password), and the app signs that owner in with it again whenever the session ends. Set by the desktop app.",
     section: "Sign-in",
   },
   TERMS_URL: {
     schema: z.url().optional(),
     description:
-      "Your terms of service, linked on the sign-in and sign-up screens when `PRIVACY_URL` is set too, and where this server's /terms leads. Default on agentes.chat Cloud (https://app.agentes.chat): its /terms page.",
+      "Your terms of service, linked on the sign-in and sign-up screens when `PRIVACY_URL` is set too, and where this server's /terms leads. Default on squadchat Cloud (https://app.agentes.chat): its /terms page.",
     section: "Sign-in",
     example: "https://example.com/terms",
   },
   PRIVACY_URL: {
     schema: z.url().optional(),
     description:
-      "Your privacy policy, linked on the sign-in and sign-up screens together with `TERMS_URL`, and where this server's /privacy leads. Default on agentes.chat Cloud (https://app.agentes.chat): its /privacy page.",
+      "Your privacy policy, linked on the sign-in and sign-up screens together with `TERMS_URL`, and where this server's /privacy leads. Default on squadchat Cloud (https://app.agentes.chat): its /privacy page.",
     section: "Sign-in",
     example: "https://example.com/privacy",
   },
@@ -254,20 +254,20 @@ export const envVars = {
           .filter(Boolean),
       ),
     description:
-      "Comma-separated IPs/CIDRs of your reverse proxies (load balancer, Cloudflare…). Used to find the real client IP for every rate limit. Leave empty if agentes.chat is reached directly.",
+      "Comma-separated IPs/CIDRs of your reverse proxies (load balancer, Cloudflare…). Used to find the real client IP for every rate limit. Leave empty if squadchat is reached directly.",
     section: "Sign-in",
     example: "10.0.0.0/8,172.16.0.0/12",
   },
   TURNSTILE_SITE_KEY: {
     schema: z.string().optional(),
     description:
-      "For agentes.chat Cloud. Unset by default. Cloudflare Turnstile's site key. With `TURNSTILE_SECRET_KEY`, a bot check runs before email lookup, sign-in, sign-up, password reset, the code to ask to join and the waiting lists. The widget's hostnames in Cloudflare hold `PUBLIC_URL`'s host, and `LANDING_URL`'s when it is set. Unset: no check, and no page loads anything from Cloudflare.",
+      "For squadchat Cloud. Unset by default. Cloudflare Turnstile's site key. With `TURNSTILE_SECRET_KEY`, a bot check runs before email lookup, sign-in, sign-up, password reset, the code to ask to join and the waiting lists. The widget's hostnames in Cloudflare hold `PUBLIC_URL`'s host, and `LANDING_URL`'s when it is set. Unset: no check, and no page loads anything from Cloudflare.",
     section: "Sign-in",
   },
   TURNSTILE_SECRET_KEY: {
     schema: z.string().optional(),
     description:
-      "For agentes.chat Cloud. Unset by default. Cloudflare Turnstile's secret key, which this server uses to check each answer with Cloudflare. A token counts only for the form it was made for, on `PUBLIC_URL`'s host. One made on `LANDING_URL`'s host counts only for the waiting lists. Set both keys or neither. A secret Cloudflare refuses stops the server at boot.",
+      "For squadchat Cloud. Unset by default. Cloudflare Turnstile's secret key, which this server uses to check each answer with Cloudflare. A token counts only for the form it was made for, on `PUBLIC_URL`'s host. One made on `LANDING_URL`'s host counts only for the waiting lists. Set both keys or neither. A secret Cloudflare refuses stops the server at boot.",
     section: "Sign-in",
     secret: true,
   },
@@ -453,7 +453,7 @@ export const envVars = {
   MODEL_ENDPOINTS_PRIVATE: {
     schema: z.stringbool().optional(),
     description:
-      "Whether a workspace's own model endpoint (Settings › AI keys › Other provider) may be on this server's network or over http: an Ollama, vLLM, LM Studio or LiteLLM next to it. The same switch covers the other addresses a workspace names: custom MCP servers and their sign-in, its own bucket, server icons and the pages agents read. Unset: allowed, except on agentes.chat Cloud (https://app.agentes.chat) and with `ALLOW_SIGNUP=true`, where only public https addresses are, checked again at every connection.",
+      "Whether a workspace's own model endpoint (Settings › AI keys › Other provider) may be on this server's network or over http: an Ollama, vLLM, LM Studio or LiteLLM next to it. The same switch covers the other addresses a workspace names: custom MCP servers and their sign-in, its own bucket, server icons and the pages agents read. Unset: allowed, except on squadchat Cloud (https://app.agentes.chat) and with `ALLOW_SIGNUP=true`, where only public https addresses are, checked again at every connection.",
     section: "Agents",
   },
   SUMMARY_MODEL: {
@@ -564,7 +564,7 @@ export const envVars = {
   GIPHY_API_KEY: {
     schema: z.string().optional(),
     description:
-      "GIPHY API key (https://developers.giphy.com), optional. With it, people search and send GIFs in chat and agents may follow a light reply with one; each workspace can turn GIFs off and pick their rating in Settings › GIFs and stickers. The installation's owner can also add it there, on a server that isn't agentes.chat's own. This variable wins over that one. This server searches GIPHY and serves every GIF itself, so browsers and the phone app never talk to GIPHY and the key never leaves the server. With no key: no GIFs anywhere; the agents' own stickers still work.",
+      "GIPHY API key (https://developers.giphy.com), optional. With it, people search and send GIFs in chat and agents may follow a light reply with one; each workspace can turn GIFs off and pick their rating in Settings › GIFs and stickers. The installation's owner can also add it there, on a server that isn't squadchat's own. This variable wins over that one. This server searches GIPHY and serves every GIF itself, so browsers and the phone app never talk to GIPHY and the key never leaves the server. With no key: no GIFs anywhere; the agents' own stickers still work.",
     section: "Chat",
     secret: true,
   },
@@ -647,18 +647,18 @@ export const envVars = {
   VOICE_LIMIT_PERSON_MINUTES_PER_DAY: {
     schema: z.coerce.number().int().min(0).default(60),
     description:
-      "agentes.chat's own servers: minutes of voice messages one person may send in 24 hours (ADR 0100). 0 = no limit. Never applies on a self-hosted server.",
+      "squadchat's own servers: minutes of voice messages one person may send in 24 hours (ADR 0100). 0 = no limit. Never applies on a self-hosted server.",
     section: "Chat",
   },
   VOICE_LIMIT_ORG_MINUTES_PER_MEMBER: {
     schema: z.coerce.number().int().min(0).default(20),
     description:
-      "agentes.chat's own servers: minutes of voice messages a workspace may send in 24 hours, per member (ADR 0100). 0 = no limit for the workspace.",
+      "squadchat's own servers: minutes of voice messages a workspace may send in 24 hours, per member (ADR 0100). 0 = no limit for the workspace.",
     section: "Chat",
   },
   VOICE_LIMIT_ORG_MIN_MINUTES_PER_DAY: {
     schema: z.coerce.number().int().min(0).default(300),
-    description: "agentes.chat's own servers: the least a workspace's limit above may be, however few its members.",
+    description: "squadchat's own servers: the least a workspace's limit above may be, however few its members.",
     section: "Chat",
   },
   CONNECTOR_GITHUB_CLIENT_ID: {
@@ -676,7 +676,7 @@ export const envVars = {
   GITHUB_APP_ID: {
     schema: z.string().optional(),
     description:
-      "Id of the GitHub App agents act as on GitHub (ADR 0156). With `GITHUB_APP_PRIVATE_KEY`, every GitHub call an agent makes (tools, git pushes and fetches) goes with a short installation token for that repository where the workspace installed the app from agentes.chat, so pull requests, issues, comments and commits come from the app's bot; the workspace's own GitHub connection elsewhere. Each token asks only what its tool needs. Permissions: read and write on the repository ones agents use (SELF_HOSTING.md, GitHub as an app), metadata read; on organizations, members read and projects read and write. Without these variables, the server's owner can create the app from Settings › Connectors (GitHub's manifest flow); set here, they win.",
+      "Id of the GitHub App agents act as on GitHub (ADR 0156). With `GITHUB_APP_PRIVATE_KEY`, every GitHub call an agent makes (tools, git pushes and fetches) goes with a short installation token for that repository where the workspace installed the app from squadchat, so pull requests, issues, comments and commits come from the app's bot; the workspace's own GitHub connection elsewhere. Each token asks only what its tool needs. Permissions: read and write on the repository ones agents use (SELF_HOSTING.md, GitHub as an app), metadata read; on organizations, members read and projects read and write. Without these variables, the server's owner can create the app from Settings › Connectors (GitHub's manifest flow); set here, they win.",
     section: "Connectors",
   },
   GITHUB_APP_PRIVATE_KEY: {
@@ -748,7 +748,7 @@ export const envVars = {
   MCP_STDIO_ENABLED: {
     schema: z.stringbool().default(false),
     description:
-      "Allow workspace administrators to connect local stdio MCP programs in Settings > Connectors. Programs run as the server's OS user (inside its container in Docker), with that user's file and network access. Enable only when every workspace administrator is trusted to run programs on this server. Disabled by default; unavailable on agentes.chat Cloud or with ALLOW_SIGNUP=true. Commands, arguments and explicit environment are stored encrypted; server secrets are not inherited. A connected computer is not the execution host (ADR 0197). With MCP_STDIO_SANDBOX_URL, they run in the MCP sandbox instead.",
+      "Allow workspace administrators to connect local stdio MCP programs in Settings > Connectors. Programs run as the server's OS user (inside its container in Docker), with that user's file and network access. Enable only when every workspace administrator is trusted to run programs on this server. Disabled by default; unavailable on squadchat Cloud or with ALLOW_SIGNUP=true. Commands, arguments and explicit environment are stored encrypted; server secrets are not inherited. A connected computer is not the execution host (ADR 0197). With MCP_STDIO_SANDBOX_URL, they run in the MCP sandbox instead.",
     section: "Connectors",
   },
   MCP_STDIO_SANDBOX_URL: {
@@ -805,7 +805,7 @@ export const envVars = {
   EMAIL_FROM: {
     schema: z.string().optional(),
     description:
-      "Sender of transactional emails, e.g. `agentes.chat <ping@example.com>` (its domain must be verified with your email provider). Default: `agentes.chat <ping@HOST>`, HOST being the host of `PUBLIC_URL`. On agentes.chat Cloud (https://app.agentes.chat): `agentes.chat <ping@agentes.chat>`.",
+      "Sender of transactional emails, e.g. `squadchat <ping@example.com>` (its domain must be verified with your email provider). Default: `squadchat <ping@HOST>`, HOST being the host of `PUBLIC_URL`. On squadchat Cloud (https://app.agentes.chat): `squadchat <ping@agentes.chat>`.",
     section: "Email",
   },
   EMAIL_ART: {
@@ -957,7 +957,7 @@ export const envVars = {
   PUSH_SENDER: {
     schema: z.enum(["auto", "direct", "relay", "off"]).default("auto"),
     description:
-      "How pushes to the phone app are sent, each platform on its own. `auto` (default): Android straight to Firebase when `FIREBASE_SERVICE_ACCOUNT` is set and iPhones straight to Apple when `APNS_KEY` is, else through the push relay (the server that is the relay itself sends none for a platform without its credentials). `relay`: through the agentes.chat push relay (`PUSH_RELAY_URL`), which is what lets the app from the stores get this server's pushes; the server registers itself there on its first push, no account needed, and each push's text passes through it. `direct`: straight to Firebase with `FIREBASE_SERVICE_ACCOUNT` and to Apple with `APNS_KEY`, for an app built with your own Firebase project and Apple team. `off`: no phone pushes.",
+      "How pushes to the phone app are sent, each platform on its own. `auto` (default): Android straight to Firebase when `FIREBASE_SERVICE_ACCOUNT` is set and iPhones straight to Apple when `APNS_KEY` is, else through the push relay (the server that is the relay itself sends none for a platform without its credentials). `relay`: through the squadchat push relay (`PUSH_RELAY_URL`), which is what lets the app from the stores get this server's pushes; the server registers itself there on its first push, no account needed, and each push's text passes through it. `direct`: straight to Firebase with `FIREBASE_SERVICE_ACCOUNT` and to Apple with `APNS_KEY`, for an app built with your own Firebase project and Apple team. `off`: no phone pushes.",
     section: "Push",
   },
   PUSH_RELAY_URL: {
@@ -975,7 +975,7 @@ export const envVars = {
       .transform((on) => (on ? "on" : "off") as "on" | "off")
       .default("off"),
     description:
-      "Runs the push relay at `/api/push-relay/v1` for other installations' phone pushes, sent with this server's `FIREBASE_SERVICE_ACCOUNT` (Android) and `APNS_KEY` (iPhone): agentes.chat's own servers. `on` with neither serves nothing.",
+      "Runs the push relay at `/api/push-relay/v1` for other installations' phone pushes, sent with this server's `FIREBASE_SERVICE_ACCOUNT` (Android) and `APNS_KEY` (iPhone): squadchat's own servers. `on` with neither serves nothing.",
     section: "Push",
   },
   WEB_PUSH: {
@@ -1064,7 +1064,7 @@ export const envVars = {
   DESKTOP_RELEASES_TOKEN: {
     schema: z.string().optional(),
     description:
-      "Fine-grained GitHub token (read-only contents) for the repository that publishes the desktop app's releases and the server's. The server reads the latest `desktop-v*` release with it (`/api/desktop/latest`, `/api/desktop/download/...`), and the packages that run agentes.chat without Docker from the latest `v*` one (`/api/native/latest`, `/api/native/download/...`). Unset: those endpoints answer 404.",
+      "Fine-grained GitHub token (read-only contents) for the repository that publishes the desktop app's releases and the server's. The server reads the latest `desktop-v*` release with it (`/api/desktop/latest`, `/api/desktop/download/...`), and the packages that run squadchat without Docker from the latest `v*` one (`/api/native/latest`, `/api/native/download/...`). Unset: those endpoints answer 404.",
     section: "Sandbox",
     secret: true,
   },
@@ -1253,7 +1253,7 @@ export const envVars = {
   SESSION_SCREENING: {
     schema: z.stringbool().default(false),
     description:
-      "For agentes.chat Cloud. Unset by default. While a person is in control of an agent's screen, reads the screen's text to screen it for abuse (needs `OPERATOR_API_TOKEN`).",
+      "For squadchat Cloud. Unset by default. While a person is in control of an agent's screen, reads the screen's text to screen it for abuse (needs `OPERATOR_API_TOKEN`).",
     section: "Operator",
   },
   MACHINE_PROVISIONING: {

@@ -723,7 +723,7 @@ textarea.ac-input:not(:hover, :focus-visible) {
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
-/* Prefixed input, e.g. "agentes.chat/" + slug */
+/* Prefixed input, e.g. "squadchat/" + slug */
 .ac-input-affix {
   display: flex;
   align-items: center;

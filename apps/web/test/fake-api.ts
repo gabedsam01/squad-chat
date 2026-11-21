@@ -387,7 +387,7 @@ export interface FakeState {
   billingLinkError?: ApiError;
   /** What `account.referralsLink` throws (default: a link on refer.example.com). */
   referralsLinkError?: ApiError;
-  /** A new workspace's standing (`orgs.create`): agentes.chat Cloud starts it waiting for its first plan. */
+  /** A new workspace's standing (`orgs.create`): squadchat Cloud starts it waiting for its first plan. */
   newWorkspaceStanding?: OrgStanding;
   /** `orgs.limits` (ADR 0079); unset = no limits, the members counted from `members`. */
   limits?: WorkspaceLimits;
@@ -399,7 +399,7 @@ export interface FakeState {
   answerNowRuns?: { agentId: string; runId: string }[];
   /** `system.health`'s edition; unset = the Cloud. */
   edition?: Edition;
-  /** Overrides `system.instance` (default: agentes.chat Cloud). */
+  /** Overrides `system.instance` (default: squadchat Cloud). */
   instance?: Partial<Instance>;
   /** `agents.brainMachines`: the computers a new agent could think on ("Criar agente"); unset = none. */
   brainMachines?: BrainMachine[];
@@ -1455,7 +1455,7 @@ export function createFakeHttpApi(state: FakeState): Omit<HttpApi, FakedParts> {
     system: {
       health: async () => ({ status: "ok", version: "test", edition: state.edition ?? "cloud" }),
       instance: async () => ({
-        name: "agentes.chat",
+        name: "squadchat",
         version: "test",
         api: 1,
         minApi: 1,

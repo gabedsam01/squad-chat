@@ -10,7 +10,7 @@ import { HUMAN_PASS_PREFIX, type HumanPasses } from "./human-pass";
 export const HUMAN_CHECK_HEADER = "x-captcha-response";
 
 /**
- * agentes.chat Cloud's bot check (ADR 0075), only with both keys: without them nothing reaches Cloudflare. Tokens
+ * squadchat Cloud's bot check (ADR 0075), only with both keys: without them nothing reaches Cloudflare. Tokens
  * count when made on `PUBLIC_URL`'s host or on the request's own registered host (`humanCheckRefusal`, ADR 0194), and
  * for the waiting lists also on `LANDING_URL`'s.
  */

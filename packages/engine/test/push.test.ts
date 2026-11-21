@@ -1052,7 +1052,7 @@ describe("VAPID keys", () => {
     f = await setup();
     const pinned = await vapidKeys(f.db, [f.keyWrapper], {
       PUBLIC_URL: "http://localhost:3000",
-      EMAIL_FROM: "agentes.chat <ops@example.com>",
+      EMAIL_FROM: "squadchat <ops@example.com>",
       WEB_PUSH_VAPID_PUBLIC_KEY: "pub",
       WEB_PUSH_VAPID_PRIVATE_KEY: "priv",
     });
@@ -1071,7 +1071,7 @@ describe("VAPID keys", () => {
     for (const url of ["http://localhost:3000", "https://localhost", "https://agentes.local", "https://192.168.1.10"])
       expect(subject(url)).toBe(VAPID_FALLBACK_SUBJECT);
     expect(subject("http://chat.acme.com")).toBe(VAPID_FALLBACK_SUBJECT);
-    expect(subject("http://localhost:3000", "agentes.chat <ping@localhost>")).toBe(VAPID_FALLBACK_SUBJECT);
+    expect(subject("http://localhost:3000", "squadchat <ping@localhost>")).toBe(VAPID_FALLBACK_SUBJECT);
     expect(subject("http://localhost:3000", "Ops <ops@acme.com>")).toBe("mailto:ops@acme.com");
     expect(subject("http://localhost:3000", "not an address")).toBe(VAPID_FALLBACK_SUBJECT);
   });

@@ -92,7 +92,7 @@ else the browser's. The JSON's code says the cause, and each cause has one way o
 - not signed in (401): sign in, and the sign-in page comes back to the same link;
 - a file not found or out of reach (403, 404, 410 on a file's route): one wording for both, as the API keeps them;
   it may have been deleted or be shared only in a conversation the reader isn't in, ask whoever sent it to share it
-  from Compartilhar, and open agentes.chat; any other route: the link isn't available, ask for a new one;
+  from Compartilhar, and open squadchat; any other route: the link isn't available, ask for a new one;
 - a version or a format the file doesn't have (`artifact.version_not_found`, `artifact.format_unavailable`, read
   only after the file's check; a version that isn't a whole number is one it doesn't have): say so, and open the
   file in the app (its latest version);

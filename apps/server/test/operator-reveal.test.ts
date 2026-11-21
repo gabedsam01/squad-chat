@@ -1102,7 +1102,7 @@ test("the record first: an event with the reason, an audit entry with what was r
   expect(written).not.toContain("approval requests");
   expect(written).not.toContain(messages.dm);
 
-  // On agentes.chat's own servers the entry says so, for the apps to name who read it.
+  // On squadchat's own servers the entry says so, for the apps to name who read it.
   await forget();
   setRestrictionNotices("https://app.agentes.chat");
   try {

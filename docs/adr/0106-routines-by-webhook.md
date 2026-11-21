@@ -7,7 +7,7 @@
 
 ## Context
 
-Routines start on a schedule, on an email, or on a few events agentes.chat knows (a GitHub PR opened, a Sentry issue, a deploy, a task created), the GitHub and Sentry ones through one signed endpoint per workspace. People want any service to start an agent: a payment, a form, a CI step, their own script. Competitors give each automation an address to POST to. Whatever reaches that address comes from outside, from whoever has the address, so it must never act for anyone, and nothing in the request may run a model.
+Routines start on a schedule, on an email, or on a few events squadchat knows (a GitHub PR opened, a Sentry issue, a deploy, a task created), the GitHub and Sentry ones through one signed endpoint per workspace. People want any service to start an agent: a payment, a form, a CI step, their own script. Competitors give each automation an address to POST to. Whatever reaches that address comes from outside, from whoever has the address, so it must never act for anyone, and nothing in the request may run a model.
 
 ## Decision
 

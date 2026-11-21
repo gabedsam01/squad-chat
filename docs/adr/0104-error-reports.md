@@ -6,7 +6,7 @@
 
 ## Context
 
-An error people hit was seen in the server's log at best. A web page that broke showed the router's own "Something went wrong!" screen with the raw error, and nothing reached whoever runs the server. A run that kept failing gave up on its last attempt without throwing, and a sign-up hook that failed only wrote a line. agentes.chat Cloud wants each of these seen at once, and a self-hoster may want the same with a server of their own. The server is AGPL with no contributor license agreement, so Cloud-only behavior is public code switched on by env vars (ADR 0002).
+An error people hit was seen in the server's log at best. A web page that broke showed the router's own "Something went wrong!" screen with the raw error, and nothing reached whoever runs the server. A run that kept failing gave up on its last attempt without throwing, and a sign-up hook that failed only wrote a line. squadchat Cloud wants each of these seen at once, and a self-hoster may want the same with a server of their own. The server is AGPL with no contributor license agreement, so Cloud-only behavior is public code switched on by env vars (ADR 0002).
 
 ## Decision
 

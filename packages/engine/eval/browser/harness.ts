@@ -25,7 +25,7 @@ const OUT = path.join(import.meta.dir, "..", "out");
 export function agentBrowserBin(): string {
   const candidates = [
     process.env.AGENT_BROWSER_BIN,
-    "/Applications/agentes.chat.app/Contents/MacOS/agent-browser",
+    "/Applications/squadchat.app/Contents/MacOS/agent-browser",
     path.join(os.homedir(), ".agentes-runner", "bin", "agent-browser"),
   ].filter((p): p is string => Boolean(p));
   const found = candidates.find((p) => existsSync(p));
@@ -279,7 +279,7 @@ export function decisionJudge(log: JudgeLog): Judge {
         (url: string | URL | Request, init?: RequestInit) =>
           fetch(String(url).replace(/\/v1\/systemone$/, "/decisions"), {
             ...init,
-            headers: { ...(init?.headers as Record<string, string>), "X-OpenRouter-Title": "agentes.chat eval" },
+            headers: { ...(init?.headers as Record<string, string>), "X-OpenRouter-Title": "squadchat eval" },
             body: openRouterBody(String(init?.body ?? "{}")),
           }),
         { preconnect: fetch.preconnect },

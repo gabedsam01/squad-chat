@@ -22,7 +22,7 @@ const TOKEN = "Qm9vdHN0cmFwLXRva2VuLTEyMzQ1Njc4OTBhYmNkZWY";
 const CLAIM = "b3duZXItY2xhaW0tYWJjZGVmZ2hpamtsbW5vcHFyc3R1";
 
 const instance = (url: string, over: Record<string, unknown> = {}) => ({
-  name: "agentes.chat",
+  name: "squadchat",
   version: "1.4.0",
   api: 1,
   minApi: 1,
@@ -43,10 +43,10 @@ describe("which screen", () => {
   });
 
   test("the setup's command", () => {
-    expect(INSTALL_COMMAND).toBe("curl -fsSL https://agentes.chat/install | sh");
+    expect(INSTALL_COMMAND).toBe("curl -fsSL https://squad-chat-6wd.pages.dev/install | sh");
   });
 
-  test("Esc: back a screen, or the window closes; never while agentes.chat is being set up here", () => {
+  test("Esc: back a screen, or the window closes; never while squadchat is being set up here", () => {
     expect(escapeAction(2, false)).toBe("back");
     expect(escapeAction(0, false)).toBe("close");
     expect(escapeAction(2, true)).toBe("stay");
@@ -68,7 +68,7 @@ describe("discovery", () => {
     expect(foundServers(candidates, [])).toEqual([]);
   });
 
-  test("one that answered with a problem is listed with it, never hidden; one that isn't agentes.chat isn't", () => {
+  test("one that answered with a problem is listed with it, never hidden; one that isn't squadchat isn't", () => {
     const mini = "https://agentes-mini.tail1234.ts.net";
     const candidates = [
       { server: "http://127.0.0.1:4310", where: "here" as const },
@@ -110,7 +110,7 @@ describe("a typed address", () => {
     });
   });
 
-  test("this computer's own agentes.chat opens at once at the address people use, never a sheet about another host", () => {
+  test("this computer's own squadchat opens at once at the address people use, never a sheet about another host", () => {
     const own = ownAddresses({ url: "http://127.0.0.1:4310", publicUrl: BOX });
     expect(own).toEqual(["http://127.0.0.1:4310", BOX]);
     expect(connectOutcome("http://127.0.0.1:4310", ok(BOX), own)).toEqual({ kind: "use", server: BOX });
@@ -174,7 +174,7 @@ describe("a link to a server", () => {
       button: "connect",
       leave: null,
     });
-    expect(linkView(link(), ok(BOX), "https://app.agentes.chat")).toMatchObject({ kind: "ask", leave: "agentes.chat" });
+    expect(linkView(link(), ok(BOX), "https://app.agentes.chat")).toMatchObject({ kind: "ask", leave: "squadchat" });
     expect(linkView(link(), ok(BOX), BOX)).toEqual({ kind: "front", server: BOX });
   });
 
@@ -196,7 +196,7 @@ describe("a link to a server", () => {
       question: "questionClaim",
       button: "continue",
       page: `/owner#claim=${CLAIM}`,
-      leave: "agentes.chat",
+      leave: "squadchat",
     });
     expect(linkView(link({ claim: CLAIM }), ok(BOX), null)).toMatchObject({ kind: "ask", question: "question" });
     // A server waiting for its owner, without the claim: the installer's link is needed.
@@ -239,7 +239,7 @@ describe("the menu bar and the labels Rust shows", () => {
         // Another server's new notifications (ADR 0154): Rust fills the count in.
         expect(labels.workspaceNewsMany).toContain("{count}");
         expect(labels.workspaceNewsOne).not.toContain("{count}");
-        expect(labels.serversCloud).toBe("agentes.chat");
+        expect(labels.serversCloud).toBe("squadchat");
       }
     }
   });

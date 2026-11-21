@@ -58,7 +58,7 @@ export function ownerSignIn(deps: OwnerSignInDeps) {
   /** Writes the owner, with a password hash or none; throws `OwnerExists` when an account is there. */
   async function createOwner(input: { id: string; name: string; email: string; passwordHash: string | null }) {
     await db.transaction(async (tx) => {
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('agentes.chat:first-account'))`);
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext('squadchat:first-account'))`);
       const [row] = await tx.select({ n: sql<number>`count(*)::int` }).from(schema.users);
       if ((row?.n ?? 0) > 0) throw new OwnerExists();
       await tx.insert(schema.users).values({ id: input.id, name: input.name, email: input.email.toLowerCase() });

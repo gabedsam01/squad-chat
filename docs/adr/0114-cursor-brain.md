@@ -76,7 +76,7 @@ Nothing installs Claude Code or Codex in the core: whoever runs a computer insta
 ## Consequences
 
 - Runner protocol 36; the server never sends `kind: "cursor"` (turns or accounts) to an older runner.
-- A computer whose runner is older shows Cursor as "Update the agentes.chat program".
+- A computer whose runner is older shows Cursor as "Update the squadchat program".
 - Tests: a fake Cursor CLI (`apps/server/test/runner/fake-cursor.mjs`) for the runner's turns, sign-ins and keys; the engine's brain, availability and options against a fake link.
 
 ## Alternatives considered

@@ -233,7 +233,7 @@ describe("Entrar (e-mail primeiro)", () => {
     const fetchSpy = spyOn(globalThis, "fetch").mockImplementation((async (url: string) => {
       asked.push(String(url));
       if (String(url).startsWith("https://agentes.example.com/"))
-        return new Response(JSON.stringify({ name: "agentes.chat", api: 1, minApi: 1 }), { status: 200 });
+        return new Response(JSON.stringify({ name: "squadchat", api: 1, minApi: 1 }), { status: 200 });
       throw new TypeError("Failed to fetch");
     }) as unknown as typeof fetch);
     const went: string[] = [];
@@ -244,7 +244,7 @@ describe("Entrar (e-mail primeiro)", () => {
       await renderApp("/login", { api: authApi(ACCOUNT).api, auth: createFakeAuth().auth });
       await settle(4);
       const line = document.querySelector(".auth__place") as HTMLElement;
-      expect(line.textContent).toContain("Entrando no agentes.chat Cloud");
+      expect(line.textContent).toContain("Entrando no squadchat Cloud");
       await act(async () => fireEvent.click(within(line).getByRole("button", { name: "Trocar de servidor" })));
       await settle(2);
       const sheet = screen().getByRole("dialog", { name: "Onde fica o seu workspace?" });
@@ -358,7 +358,7 @@ describe("Entrar (e-mail primeiro)", () => {
     }
   });
 
-  test("on agentes.chat Cloud a blocked account reads why by the block's kind, and how to contest it", async () => {
+  test("on squadchat Cloud a blocked account reads why by the block's kind, and how to contest it", async () => {
     const contest = "Para contestar, escreva para legal@agentes.chat.";
     for (const [block, says] of [
       [
@@ -1155,7 +1155,7 @@ describe("Aceitar convite", () => {
   });
 });
 
-describe("A verificação contra robôs (agentes.chat Cloud)", () => {
+describe("A verificação contra robôs (squadchat Cloud)", () => {
   const SITE_KEY = "1x00000000000000000000BB";
   afterEach(removeTurnstile);
 
@@ -1493,7 +1493,7 @@ describe("Onboarding: the workspace's name", () => {
     expect(button("Continuar").hasAttribute("disabled")).toBe(true);
   });
 
-  test("a workspace refused: why, with how to contest it on agentes.chat Cloud; elsewhere the plain line", async () => {
+  test("a workspace refused: why, with how to contest it on squadchat Cloud; elsewhere the plain line", async () => {
     for (const [cloud, says] of [
       [
         true,

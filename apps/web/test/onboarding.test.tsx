@@ -502,7 +502,7 @@ describe("the steps", () => {
   });
 });
 
-describe("the plan step (agentes.chat Cloud)", () => {
+describe("the plan step (squadchat Cloud)", () => {
   test("the team asleep, the plan with its price from the billing service, the link to that plan's Checkout", async () => {
     const state = newcomer(true);
     const asked = plans(PLANS);

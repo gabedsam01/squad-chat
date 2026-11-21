@@ -47,7 +47,7 @@ The same card, drawn by one shared component (`SetupCardView` on the web and the
 
 1. **What the workspace does**: a dialog with the business types and one sentence, saved as the workspace's context (what the person typed to it first comes filled in). Saving opens row 2 once, with that business's template picked.
 2. **The team**: the templates' dialog, whose "Criar o time" makes the team at once (`useTeamTemplate` posts its card and `createTeam` makes it, no model call, no question after). An import and one agent from scratch are links under the list. While a team card the right hand proposed waits in the chat, the row says to continue there.
-3. **An AI**: Connect AI for the whole team. On a hold it reads "Abre com o plano do agentes.chat." with the plans' button.
+3. **An AI**: Connect AI for the whole team. On a hold it reads "Abre com o plano do squadchat." with the plans' button.
 4. **Apps**: the plug-and-play apps the new team's roles suggest, each opening the same connect flow as Settings (a new connection reaches every agent by default).
 5. **People**: the invite dialog.
 

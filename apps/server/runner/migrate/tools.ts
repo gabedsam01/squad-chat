@@ -70,7 +70,7 @@ export function collectOpenMausBot(): Collected {
     if (r.missing) {
       throw new MigrateError(
         "tool_missing",
-        "OpenMausBot's command isn't installed. Run `npm install -g openmausbot`, then this again. Or in the app: right-click the team › Share team… › Save file, and drop that file on agentes.chat.",
+        "OpenMausBot's command isn't installed. Run `npm install -g openmausbot`, then this again. Or in the app: right-click the team › Share team… › Save file, and drop that file on squadchat.",
       );
     }
     if (r.status === 5) {
@@ -98,7 +98,7 @@ export function collectPaperclip(options: { company?: string }): Collected {
   if (listed.missing) {
     throw new MigrateError(
       "tool_missing",
-      "Paperclip's command isn't installed. Run `npm install -g paperclipai`, then this again. Or drop the company's folder (the one with COMPANY.md) on agentes.chat.",
+      "Paperclip's command isn't installed. Run `npm install -g paperclipai`, then this again. Or drop the company's folder (the one with COMPANY.md) on squadchat.",
     );
   }
   if (listed.status !== 0) {

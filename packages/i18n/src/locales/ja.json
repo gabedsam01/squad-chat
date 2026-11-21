@@ -523,7 +523,7 @@
     "recommended": "おすすめ",
     "free": "無料 · オープンソース",
     "cloud": {
-      "name": "agentes.chat Cloud",
+      "name": "squadchat Cloud",
       "short": "常に稼働、インストール不要。",
       "on": "エージェントのコンピューターは常に稼働",
       "care": "アップデートとバックアップはこちらで対応",
@@ -698,7 +698,7 @@
     "server": {
       "into": "<b>{{server}}</b> にサインイン",
       "intoHere": "この{{device}}の<b>squadchat</b>にサインイン",
-      "intoCloud": "<b>agentes.chat Cloud</b> にログイン中",
+      "intoCloud": "<b>squadchat Cloud</b> にログイン中",
       "change": "サーバーを変更"
     },
     "forgotHere": {
@@ -3371,7 +3371,7 @@
       }
     },
     "billing": "プランはワークスペースのコンピューターにサインインします。そのコンピューターには有効なsquadchatプランが必要です。",
-    "billingWeb": "Webのagentes.chatで選んでください。",
+    "billingWeb": "Webのsquadchatで選んでください。",
     "orPayGo": "または従量課金で",
     "pay": {
       "label": "支払い方法は？",
@@ -16428,7 +16428,7 @@
       "rolesPersonal": "ここで各メンバーができること。オーナーはすべてできます。"
     },
     "about": {
-      "basedOn": "AGENTESCHAT, LLC の <site>agentes.chat</site> をもとにしています",
+      "basedOn": "AGENTESCHAT, LLC の <site>squadchat</site> をもとにしています",
       "version": "バージョン",
       "license": "<license>GNU Affero General Public License v3</license> のもとで提供される自由ソフトウェアです。保証はありません。",
       "source": "ソースコード",

@@ -10,7 +10,7 @@ ADR 0024 lets the git proxy and `open_pull_request` use a GitHub App installatio
 
 ## Decision
 
-**An installation counts only for the organization that installed it from agentes.chat.**
+**An installation counts only for the organization that installed it from squadchat.**
 
 1. `github_app_installations` (`org_id`, unique `installation_id`, account, repository selection, `suspended_at`). One installation belongs to one organization.
 2. **Install flow.** An admin starts it in Settings → Conectores (`POST /api/app/organizations/{orgId}/github-app/install`): a random, single-use, 10-minute `state` bound to the person and org (stored hashed in `oauth_states`, `connector = 'github_app'`), sent to `github.com/apps/{slug}/installations/new?state=…`. The app has "Request user authorization (OAuth) during installation" on, so GitHub returns to `/api/app/github-app/callback` with `code`, `installation_id` and `state`. The callback checks the state (same person, still an admin), exchanges the code for the person's user token and requires `installation_id` to be in `GET /user/installations`: an installation id alone, which anyone can guess or see, is not enough. Then it binds the installation; one already bound to another organization is refused.

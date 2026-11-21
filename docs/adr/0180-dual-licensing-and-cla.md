@@ -13,7 +13,7 @@ contributor license agreement. Codari Global, LLC therefore holds them only unde
 on any other terms, and any private code in the server process would form one program with them and have to be
 published too.
 
-Some people can't or won't take the AGPL: a company that changes agentes.chat and doesn't want to publish its
+Some people can't or won't take the AGPL: a company that changes squadchat and doesn't want to publish its
 changes, a reseller that wants its own brand without the attribution `NOTICE` asks for (section 7(b)), or a legal
 department that allows no AGPL software. Codari wants to offer them the same code under a commercial license. It
 can only license what it owns or holds broad enough rights to: the team's code is Codari's by contract, but every

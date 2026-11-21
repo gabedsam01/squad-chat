@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadConfig } from "@agenteschat/config";
@@ -104,8 +104,9 @@ async function plan(machine: Machine, args: string[] = [], o: RunOptions = {}) {
   }
   if (machine.musl) stub("ldd", `echo "musl libc (x86_64)" >&2; exit 1`);
   for (const name of machine.has ?? []) stub(name);
+  // As a download: what it saves is a compose file, unless the test says the site answers with a page.
+  stub("curl", `while [ $# -gt 0 ]; do if [ "$1" = -o ]; then echo "\${CURL_BODY:-services:}" > "$2"; fi; shift; done`);
   for (const name of [
-    "curl",
     "unzip",
     "python3",
     "mkdir",
@@ -342,7 +343,7 @@ describe("install.sh", () => {
     const screen = plain(root.out);
     expect(screen).toContain("▀");
     expect(screen).toContain(
-      "┌   agentes.chat  install plan (--plan: nothing runs)\n│\n◇  Linux on x64, as root\n◇  A terminal: the setup asks its questions there\n",
+      "┌   squadchat  install plan (--plan: nothing runs)\n│\n◇  Linux on x64, as root\n◇  A terminal: the setup asks its questions there\n",
     );
     expect(screen).toContain("│\n└  Nothing ran. For the setup's own plan, run its command above with --dry-run.\n");
 
@@ -358,7 +359,7 @@ describe("install.sh", () => {
     // Its plan draws the logo and the frame, then stops where the root run would start.
     const planned = plain((await plan(user, ["--yes"], { tty: true })).out);
     expect(planned).toContain("▀");
-    expect(planned).toContain("┌   agentes.chat  install plan (--plan: nothing runs)\n│\n◇  Linux on x64\n");
+    expect(planned).toContain("┌   squadchat  install plan (--plan: nothing runs)\n│\n◇  Linux on x64\n");
     expect(planned).toEndWith(
       `●  Docker needs root here: running this installer again as root\n│  $ sudo sh ${SCRIPT} --yes\n│\n└  With --plan it stops here. As root, --plan shows the rest.\n`,
     );
@@ -377,6 +378,30 @@ describe("install.sh", () => {
     // The setup draws in the installer's frame: no logo or badge of its own.
     expect(run.calls).toContain("bun x --bun @agenteschat/setup@0.1.1 --network local");
     expect(run.calls).toContain("frame 1 stdin none");
+  });
+
+  test("puts this fork's compose file in the directory first, keeps one already there, refuses a web page", async () => {
+    const machine = { ...linuxRoot, docker: "26.1.5", compose: "2.26.1", bun: "1.4.4" };
+    const fresh = tempDir("dir");
+    const run = await plan(machine, ["--dir", fresh], { real: true });
+    expect(run.code).toBe(0);
+    expect(run.calls).toContain(
+      `curl -fsSL --proto =https --retry 3 -o ${fresh}/docker-compose.yml https://squad-chat-6wd.pages.dev/install/docker-compose.yml`,
+    );
+    expect(readFileSync(join(fresh, "docker-compose.yml"), "utf8")).toBe("services:\n");
+
+    const kept = tempDir("dir");
+    writeFileSync(join(kept, "compose.yaml"), "services: {}\n");
+    const again = await plan(machine, ["--dir", kept], { real: true });
+    expect(again.code).toBe(0);
+    expect(again.calls.some((call) => call.includes("docker-compose.yml"))).toBe(false);
+
+    const page = tempDir("dir");
+    const html = await plan(machine, ["--dir", page], { real: true, env: { CURL_BODY: "<!doctype html>" } });
+    expect(html.code).toBe(1);
+    expect(html.err + html.out).toContain("didn't send a compose file");
+    expect(existsSync(join(page, "docker-compose.yml"))).toBe(false);
+    expect(html.calls.some((call) => call.startsWith("frame "))).toBe(false);
   });
 
   test("on a terminal, the setup reads it by its own name: Bun on macOS can't wait for keys on /dev/tty", async () => {
@@ -453,7 +478,7 @@ describe("install.sh", () => {
 
     const fine = await plan({ ...linuxRoot, docker: "26.1.5", compose: "2.26.1", bun: "1.3.1" });
     expect(fine.out).toContain("◇  Compose 2.26.1");
-    expect(fine.out).not.toContain("docker-compose");
+    expect(fine.out).not.toContain("<tmp>/docker-compose");
     // A bun older than the pinned one isn't used.
     expect(fine.out).toContain(bunZip("linux-x64-baseline"));
   });
@@ -465,7 +490,7 @@ describe("install.sh", () => {
     // --plan runs nothing again, so it starts as any plan does, then says where it stops.
     expect(file.out).toBe(
       [
-        "agentes.chat install plan (--plan: nothing runs)",
+        "squadchat install plan (--plan: nothing runs)",
         "◇  Linux on x64",
         "◇  No terminal: the setup takes its defaults and the options given",
         "●  Docker needs root here: running this installer again as root",
@@ -481,7 +506,7 @@ describe("install.sh", () => {
     const piped = await plan({ ...user, docker: "down" }, [], { piped: text });
     expect(piped.out).toContain("●  Docker needs root here: downloading this installer to run it again as root");
     expect(piped.out).toContain(
-      "$ curl -fsSL --proto =https --retry 3 -o <tmp>/install.sh https://agentes.chat/install",
+      "$ curl -fsSL --proto =https --retry 3 -o <tmp>/install.sh https://squad-chat-6wd.pages.dev/install",
     );
     expect(piped.out).toContain("$ sudo sh <tmp>/install.sh");
     expect(piped.changes).toEqual([]);
@@ -497,7 +522,7 @@ describe("install.sh", () => {
     const why = "Making this machine your agents' computer (--computer yes) needs root";
     expect((await plan(user, ["--computer", "yes", "--network", "local"])).out).toBe(
       [
-        "agentes.chat install plan (--plan: nothing runs)",
+        "squadchat install plan (--plan: nothing runs)",
         "◇  Linux on x64",
         "◇  No terminal: the setup takes its defaults and the options given",
         `●  ${why}: running this installer again as root`,
@@ -560,9 +585,9 @@ describe("install.sh", () => {
   test("a Mac without Docker, or with it stopped, is told what to install or start; --native isn't there yet", async () => {
     const none = await plan(mac);
     expect(none.code).toBe(1);
-    expect(none.err).toContain("This installer runs agentes.chat on Docker, and this Mac doesn't have it.");
+    expect(none.err).toContain("This installer runs squadchat on Docker, and this Mac doesn't have it.");
     expect(none.err).toContain("Docker Desktop, OrbStack or Colima");
-    expect(none.err).toContain("Run agentes.chat on this Mac");
+    expect(none.err).toContain("Run squadchat on this Mac");
     expect(none.out).not.toContain("Bun");
     expect(none.changes).toEqual([]);
 
@@ -579,7 +604,7 @@ describe("install.sh", () => {
     for (const machine of [mac, linuxRoot]) {
       const native = await plan(machine, ["--native"]);
       expect(native.code).toBe(1);
-      expect(native.err).toContain("can't run agentes.chat without Docker yet (--native)");
+      expect(native.err).toContain("can't run squadchat without Docker yet (--native)");
       expect(native.calls).toEqual([]);
     }
   });

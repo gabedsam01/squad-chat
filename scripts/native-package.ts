@@ -1,5 +1,5 @@
 /**
- * Builds agentes.chat to run without Docker (native mode, ADR 0060 §2):
+ * Builds squadchat to run without Docker (native mode, ADR 0060 §2):
  *
  *   bun scripts/native-package.ts folders [--out <dir>]
  *       <out>/agentes/<version>/: server/ (the bundled server, PGlite and the other packages with
@@ -68,7 +68,7 @@ export const packageName = (version: string, target: Target) => `agentes-native-
 
 /** The launcher people and services run: the package's own Bun on its server. */
 export const LAUNCHER = `#!/bin/sh
-# agentes.chat without Docker: this package's Bun runs its server.
+# squadchat without Docker: this package's Bun runs its server.
 here=$(cd "$(dirname "$0")" && pwd -P)
 exec "$here/../runtime/bun" "$here/../server/native.js" "$@"
 `;

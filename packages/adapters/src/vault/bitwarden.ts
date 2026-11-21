@@ -75,7 +75,7 @@ const DEVICE_TYPE = "21";
  * client version rather than inventing one from our own package's.
  */
 const CLIENT_VERSION = "2026.1.0";
-const DEVICE_NAME = "agentes.chat";
+const DEVICE_NAME = "squadchat";
 const DEFAULT_FOLDER = "Agents";
 const CIPHER_TYPE_LOGIN = 1;
 

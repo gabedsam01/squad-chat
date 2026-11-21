@@ -21,7 +21,7 @@ the phone that sees each push's text and token, needs the Firebase key uploaded 
 self-hosted install depends on. On Android nothing about it is needed: the app already shows notifications with
 expo-notifications, which runs its own Firebase messaging service on the phone.
 
-The Android app in the stores is built with agentes.chat's Firebase project, and only a service account of that
+The Android app in the stores is built with squadchat's Firebase project, and only a service account of that
 project can push to it. A self-hosted server doesn't have one, and must not need one for people to get its pushes.
 
 ## Decision
@@ -38,7 +38,7 @@ project can push to it. A self-hosted server doesn't have one, and must not need
    a day's TTL.
 3. **A push relay for everyone else.** `PUSH_SENDER` picks the way: `auto` (default) sends straight to Firebase when
    the server has `FIREBASE_SERVICE_ACCOUNT` and through the relay otherwise; `direct` and `relay` force one; `off`
-   sends no Android push. agentes.chat's servers run the relay (`PUSH_RELAY_SERVE=on`, at `/api/push-relay/v1`) with
+   sends no Android push. squadchat's servers run the relay (`PUSH_RELAY_SERVE=on`, at `/api/push-relay/v1`) with
    their own service account; a self-hosted server sends there (`PUSH_RELAY_URL`) with nothing to set up:
    - It registers itself on its first push (`POST /instances`, no account): the relay answers an id and a secret,
      keeps only the secret's SHA-256 (`push_relay_instances`), and the server keeps both sealed with its own key
@@ -67,7 +67,7 @@ project can push to it. A self-hosted server doesn't have one, and must not need
 ## Consequences
 
 - No Expo service between a server and an Android phone. Straight to Firebase, only Google sees the push; through the
-  relay, agentes.chat's server sees each push's token, title, text and deep link ids on the way, as SELF_HOSTING.md
+  relay, squadchat's server sees each push's token, title, text and deep link ids on the way, as SELF_HOSTING.md
   lists. `PUSH_SENDER=off` keeps them home (no Android pushes), and a server with its own app build and Firebase
   project sends directly.
 - The relay is public code switched on by an env var (ADR 0002), so anyone can run one for their own build.

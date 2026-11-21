@@ -15,7 +15,7 @@ import { renderApp, screen, settle } from "./render";
 afterEach(() => cleanup());
 
 /*
- * The four people a plan's screens answer: a workspace with its agentes.chat plan, one without it for whoever pays and
+ * The four people a plan's screens answer: a workspace with its squadchat plan, one without it for whoever pays and
  * for a member, and a self-hosted server, which has no such plan.
  */
 type Who = "paid" | "owner" | "member" | "selfhost";
@@ -131,7 +131,7 @@ async function planPanel(dialog: HTMLElement, choice: PlanChoice) {
 const disabledButtons = (box: HTMLElement) => Array.from(box.querySelectorAll("button:disabled"));
 const buttonNamed = (box: HTMLElement, name: string) => within(box).queryByRole("button", { name });
 
-describe("a plan with no agentes.chat plan in force", () => {
+describe("a plan with no squadchat plan in force", () => {
   test("whoever pays: Connect says why with the plans page, and no plan, key or sign-in to pick", async () => {
     const { dialog } = await connect("owner");
     expect(shownText(dialog)).toContain(WHY);

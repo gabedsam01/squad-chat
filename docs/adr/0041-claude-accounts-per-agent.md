@@ -42,7 +42,7 @@ What the CLIs do (checked 2026-10-20, Claude Code 2.1.304, Codex 0.163.0):
    - Codex: `{ loginId, url, userCode }`.
 3. The web shows it:
    - Claude Code: **"Entrar com Claude"** (opens the URL), then "Cole o código que o Claude mostrou". The browser encrypts the code with the computer's key (ADR 0027 crypto, AAD `loginId | orgId | account`); the server relays the ciphertext in memory and stores nothing; the runner decrypts it and writes it to the waiting CLI. If the person is at the computer and signs in through the browser the CLI opened there, it finishes without a code.
-   - Codex: the link and the code to type there, with a line saying the person started this sign-in from agentes.chat (Codex warns against codes "a website gave you").
+   - Codex: the link and the code to type there, with a line saying the person started this sign-in from squadchat (Codex warns against codes "a website gave you").
 4. The runner watches the CLI. When it exits signed in, it runs the status command in that folder and answers with metadata only: email and plan. The server stores the account and tells the page (realtime), which picks it.
 5. A sign-in expires in 15 minutes; the process is killed and the folder removed.
 6. **Entrar de novo** on a signed-out account signs in again to that same account (`begin` with `again`): same id and folder, the agents keep it, and a failed retry leaves the folder as it was.

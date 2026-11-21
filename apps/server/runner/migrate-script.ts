@@ -21,7 +21,7 @@ export function migrateScript(publicUrl: string): string {
     .map(([target, sha]) => `      ${target}) BUN_SHA256=${shQuote(sha)} ;;`)
     .join("\n");
   return `#!/bin/sh
-# agentes.chat: reads the agents another app keeps on this computer and writes one .zip for the import screen.
+# squadchat: reads the agents another app keeps on this computer and writes one .zip for the import screen.
 # It only reads, and it sends nothing. Nothing is installed: what it downloads is removed when it ends.
 # Usage: curl -fsSL ${server}/migrate.sh | sh -s -- [--from openbot|openmausbot|hermes|openclaw|paperclip] [--out FOLDER] [--json] [--no-files]
 set -eu
@@ -122,7 +122,7 @@ main "$@"
 export function migrateScriptPowerShell(publicUrl: string): string {
   const server = serverOf(publicUrl);
   const sha = RUNNER_BUN_WINDOWS_SHA256;
-  return `# agentes.chat: reads the agents another app keeps on this computer and writes one .zip for the import screen.
+  return `# squadchat: reads the agents another app keeps on this computer and writes one .zip for the import screen.
 # It only reads, and it sends nothing. Nothing is installed: what it downloads is removed when it ends.
 # Usage: & ([scriptblock]::Create((irm ${server}/migrate.ps1))) -From openbot -Out "$HOME\\Downloads"
 param(

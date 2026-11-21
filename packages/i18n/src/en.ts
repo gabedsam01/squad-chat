@@ -564,7 +564,7 @@ export const en = {
     recommended: "Recommended",
     free: "Free · open source",
     cloud: {
-      name: "agentes.chat Cloud",
+      name: "squadchat Cloud",
       short: "Always on, nothing to install.",
       on: "The agents' computer always on",
       care: "Updates and backups are on us",
@@ -647,7 +647,7 @@ export const en = {
     termsMiddle: " and the ",
     privacy: "Privacy policy",
     termsAfter: ".",
-    // Under the sign-in on a registered host (ADR 0194): "agentes.chat" is the product's name, never translated.
+    // Under the sign-in on a registered host (ADR 0194): "squadchat" is the product's name, never translated.
     poweredBy: "Powered by squadchat",
     signOut: "Sign out",
     earlyAccess: {
@@ -748,7 +748,7 @@ export const en = {
     server: {
       into: "Signing in to <b>{{server}}</b>",
       intoHere: "Signing in to the squadchat <b>on this {{device}}</b>",
-      intoCloud: "Signing in to <b>agentes.chat Cloud</b>",
+      intoCloud: "Signing in to <b>squadchat Cloud</b>",
       /** Change's name for screen readers: the email's Change sits on the same screen. */
       change: "Change server",
     },
@@ -2377,13 +2377,13 @@ export const en = {
     /** Beside a workspace's name, only when another of the person's has the same name. */
     createdOn: "Created on {{date}}",
     newWorkspace: "New workspace",
-    /** The desktop app's window to add one (ADR 0154): in place of New workspace on agentes.chat, after it elsewhere. */
+    /** The desktop app's window to add one (ADR 0154): in place of New workspace on squadchat, after it elsewhere. */
     addWorkspace: "Add workspace",
     addWorkspaceHint: "Join one you already have, create one, or use your team's server",
     /** Another account on this server, signed in beside the one open (ADR 0183). */
     addAccount: "Add account",
     addAccountHint: "Sign in to another account without leaving this one",
-    /** Beside a server's name above its workspaces, when it isn't agentes.chat. */
+    /** Beside a server's name above its workspaces, when it isn't squadchat. */
     yourServer: "Your server",
     /** A server's line in "Your workspaces" in the desktop app: the one on this computer, and its state (ADR 0158). */
     serverHere: "The squadchat on this {{device}}",
@@ -2535,7 +2535,7 @@ export const en = {
       people: "You already pinned 5 people. Unpin one to pin this one.",
     },
   },
-  /** Settings › agentes.chat apps (`AppsDownload.tsx`): the desktop app for this computer and the phone apps. */
+  /** Settings › squadchat apps (`AppsDownload.tsx`): the desktop app for this computer and the phone apps. */
   appsDownload: {
     computer: "Computer",
     computerText: "Your workspace in a window of its own, with the system's notifications.",
@@ -3836,7 +3836,7 @@ export const en = {
     /** The Cloud's workspace on a billing hold, where a plan would sign in. */
     billing: "A plan signs in on the workspace's computer, and the computer comes with an active squadchat plan.",
     /** After `billing`, on the phone, where paying isn't offered. */
-    billingWeb: "Choose one on the web, at agentes.chat.",
+    billingWeb: "Choose one on the web, at squadchat.",
     orPayGo: "Or pay as you go",
     /** The two ways to pay, on a control the width of a phone: keep them short. */
     pay: {
@@ -13254,13 +13254,13 @@ export const en = {
     /** That toast's button, short enough to leave its words room beside it on a phone. */
     openPage: "Open",
     installed: "squadchat app installed.",
-    /** An installation approved on GitHub never links here: the account's owner installs it from agentes.chat. */
+    /** An installation approved on GitHub never links here: the account's owner installs it from squadchat. */
     requested:
       "Only the GitHub account's owner can install the app. Ask them to install it from Connectors › GitHub in this workspace.",
     notVisible: "Your GitHub account can't see that installation. Install it with an account that has access to it.",
     otherWorkspace:
       "That GitHub account is already linked to another workspace. Remove the app there before installing it here.",
-    /** The app was installed on GitHub itself, not from agentes.chat (`github_app_error=installed_outside`). */
+    /** The app was installed on GitHub itself, not from squadchat (`github_app_error=installed_outside`). */
     installedOutside:
       "The app was installed on that GitHub account outside squadchat. Remove it on GitHub and install it again from Connectors › GitHub.",
     /**
@@ -13278,7 +13278,7 @@ export const en = {
       "The GitHub app has the wrong secret key on the server, so the install can't finish. Whoever runs the server needs to replace the key in the app's settings.",
     /** GitHub is the app alone: an account too (agents use it where the app isn't installed, and for a person's own GitHub Projects). */
     connectAccount: "Connect a GitHub account",
-    /** For admins who aren't the server's owner, on a server without the app (never on agentes.chat). */
+    /** For admins who aren't the server's owner, on a server without the app (never on squadchat). */
     ownerHint: "This server's owner can create its GitHub app here in Connectors.",
     /** A connected row of GitHub through the app alone: the accounts it is installed on. */
     viaApp: "Through the squadchat app on {{accounts}}",
@@ -13295,7 +13295,7 @@ export const en = {
       title: "Creating the GitHub app",
       continue: "Continue on GitHub",
     },
-    /** Settings › Connectors for the server's owner (never on agentes.chat): the app every workspace here installs. */
+    /** Settings › Connectors for the server's owner (never on squadchat): the app every workspace here installs. */
     server: {
       title: "This server's GitHub app",
       lead: "With it, agents show up on GitHub as the app, not as someone's account.",
@@ -14581,7 +14581,7 @@ export const en = {
       left_click: "Click",
       mouse_move: "Move the mouse",
       screenshot: "Take a screenshot",
-      // agentes.chat's own tools
+      // squadchat's own tools
       send_dm: "Send direct message",
       read_conversation: "Read conversation",
       add_agent_to_channel: "Add agent to a channel",
@@ -14790,7 +14790,7 @@ export const en = {
     continueIn: "Continue on {{name}}",
     continueInComposio: "Continue on Composio",
     /** On Reconnect GitHub: its sign-in asks about organizations only the first time. */
-    /** Connecting GitHub where the server has the agentes.chat app: the app first, an account second. */
+    /** Connecting GitHub where the server has the squadchat app: the app first, an account second. */
     github: {
       how: "How agents reach GitHub",
       app: "The squadchat app",
@@ -15994,7 +15994,7 @@ export const en = {
       noReport: "This {{device}} hasn't reported what it allows yet. Update the app.",
       update: "Update the app",
     },
-    // The server's own computer (`HOST_COMPUTER_TOKEN`): the machine agentes.chat is installed on.
+    // The server's own computer (`HOST_COMPUTER_TOKEN`): the machine squadchat is installed on.
     host: {
       label: "This server's computer",
       desc: "Where squadchat is installed.",
@@ -17469,7 +17469,7 @@ export const en = {
     },
     /**
      * The license's required attribution (AGPL-3.0 section 7(b), see NOTICE): translate it, but keep
-     * "agentes.chat" and "AGENTESCHAT, LLC" and its meaning.
+     * "squadchat" and "AGENTESCHAT, LLC" and its meaning.
      */
     about: {
       basedOn: "Based on <site>agentes.chat</site> by AGENTESCHAT, LLC",
@@ -19648,7 +19648,7 @@ export const en = {
       /** In place of the invite form. */
       invites: "Invitations open with the squadchat plan.",
     },
-    /** agentes.chat Cloud only: what the restriction is, the Terms section and how to contest it (`restrictionLine`). */
+    /** squadchat Cloud only: what the restriction is, the Terms section and how to contest it (`restrictionLine`). */
     cloud: {
       review:
         "Paused for a safety review, until our team looks at it. Our automated checks flagged activity that may break our Terms (section 5). To contest it, write to {{email}}.",
@@ -20053,7 +20053,7 @@ export const en = {
     control: {
       notice: "Programs on {{name}}'s computer can see the screen and what you type or paste.",
     },
-    /** The ⓘ beside the control line, on agentes.chat Cloud only (ADR 0076). */
+    /** The ⓘ beside the control line, on squadchat Cloud only (ADR 0076). */
     session: {
       check: "Safety checks",
       screening:

@@ -36,7 +36,7 @@ function setup(answer: Answer, script?: () => Response | Promise<Response>) {
   const check = createTurnstileCheck({
     siteKey: SITE_KEY,
     secretKey: SECRET,
-    hostnames: ["agentes.chat"],
+    hostnames: ["squadchat"],
     fetch: cf.fetch,
     now: () => at,
     log: { error: (message, data) => logs.push({ message, data }) },
@@ -62,10 +62,10 @@ test("Cloudflare's test keys pass on any host; a real answer passes only for its
   await check.verify(TOKEN, "sign-in", "unknown");
   expect(cf.verifies()[1]?.body).not.toHaveProperty("remoteip");
 
-  answer = { success: true, hostname: "agentes.chat", action: "sign-up" };
+  answer = { success: true, hostname: "squadchat", action: "sign-up" };
   expect(await check.verify(TOKEN, "sign-up", "203.0.113.7")).toBeNull();
   expect(await check.verify(TOKEN, "sign-in", "203.0.113.7")).toBe("human_check");
-  answer = { success: true, hostname: "agentes.chat.evil.example", action: "sign-up" };
+  answer = { success: true, hostname: "squadchat.evil.example", action: "sign-up" };
   expect(await check.verify(TOKEN, "sign-up", "203.0.113.7")).toBe("human_check");
   // Three tokens passed. The last answers carry no test secret's mark, so `testing` is off.
   expect(check.status()).toMatchObject({ state: "ok", passed: 3, testing: false });
@@ -79,7 +79,7 @@ test("a token made on the request's own registered host counts there, never for 
   expect(await check.verify(TOKEN, "sign-in", "203.0.113.7", "app.contoso.example")).toBe("human_check");
   expect(await check.verify(TOKEN, "sign-in", "203.0.113.7", host)).toBeNull();
   // Our own host still counts on a request for a registered one.
-  answer = { success: true, hostname: "agentes.chat", action: "sign-in" };
+  answer = { success: true, hostname: "squadchat", action: "sign-in" };
   expect(await check.verify(TOKEN, "sign-in", "203.0.113.7", host)).toBeNull();
   answer = { success: true, hostname: host, action: "waitlist" };
   expect(await check.verify(TOKEN, "waitlist", "203.0.113.7", host)).toBe("human_check");

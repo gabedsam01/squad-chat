@@ -7,7 +7,7 @@
 
 ## Context
 
-agentes.chat is built for teams: channels, people, roles, approvals, audit, a sidebar and a settings page sized for a
+squadchat is built for teams: channels, people, roles, approvals, audit, a sidebar and a settings page sized for a
 company. People who want agents for themselves (their calendar, bills, training, studies) meet all of that on the first
 screen, and most of it means nothing to them. The features are still useful to them, so nothing should go away; what
 they see first, and the words, should fit one person.

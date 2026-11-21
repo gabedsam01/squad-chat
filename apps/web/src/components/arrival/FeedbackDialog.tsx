@@ -110,7 +110,7 @@ export function FeedbackDialog({ reported, onClose }: { reported: Reported | nul
   const status = useAiStatus(org.id);
   const connection = useConnectionStatus();
   const config = useAuthConfig().data;
-  // Read by the agentes.chat team: on its own servers, and from one whose operator gave no address (pictures only).
+  // Read by the squadchat team: on its own servers, and from one whose operator gave no address (pictures only).
   const relay = config?.feedbackRelay === true;
   const team = config?.cloud === true || relay;
   const where = useRouterState({ select: (s) => s.location.pathname });

@@ -41,7 +41,7 @@ test("the start page is one self-contained file: no network, no other file, the 
   expect(html).not.toMatch(/<a\b|<button\b/);
   // The desktop's band right below the window shows the squadchat logo: the page carries no second one, and
   // fades into that band's tone (desktop-look.ts's backdrop, 1.00 0.90 0.80).
-  expect(html).not.toContain("agentes.chat");
+  expect(html).not.toContain("squadchat");
   expect(html).not.toContain("wallpaper.png");
   expect(html).toContain("linear-gradient(transparent,#ffe6cc)");
   // The same details: the file isn't written again. New ones: it is.

@@ -1,10 +1,10 @@
-# Self-hosting agentes.chat
+# Self-hosting squadchat
 
-Self-hosting is free and always will be: AGPL-3.0, no license key. agentes.chat Cloud is the paid,
+Self-hosting is free and always will be: AGPL-3.0, no license key. squadchat Cloud is the paid,
 hosted option. Changing it without publishing your changes, or reselling it under your own brand,
 takes a [commercial license](COMMERCIAL.md).
 
-agentes.chat runs as two containers: Postgres 18 with the pgvector extension, and the app, one Bun
+squadchat runs as two containers: Postgres 18 with the pgvector extension, and the app, one Bun
 process that serves the web app, the API and the WebSockets and runs the background workers. A
 third, Tailscale, puts it on your private network with HTTPS. Migrations run when the app starts.
 Everything it keeps is in Postgres, except uploaded files, which the compose file stores in a volume.
@@ -42,7 +42,7 @@ never sent to browsers.
 <details open>
 <summary><b>Quick start (about 10 minutes)</b></summary>
 
-You end up with agentes.chat on your Tailscale network (your tailnet), at
+You end up with squadchat on your Tailscale network (your tailnet), at
 `https://agentes.<your-tailnet>.ts.net` with a real certificate. Only devices signed in to your
 tailnet can open it: no domain, no open port, nothing on the public internet.
 
@@ -59,7 +59,7 @@ tailnet can open it: no domain, no open port, nothing on the public internet.
 4. **Install.** On the server:
 
    ```sh
-   curl -fsSL https://agentes.chat/install | sh
+   curl -fsSL https://squad-chat-6wd.pages.dev/install | sh
    ```
 
    It installs what's missing, then runs the setup in `/opt/agentes` (`~/agentes` for a user who
@@ -77,10 +77,10 @@ tailnet can open it: no domain, no open port, nothing on the public internet.
    ◇  On your tailnet as agentes.tail1234.ts.net
    ◇  .env: PUBLIC_URL=https://agentes.tail1234.ts.net
    ◇  HTTPS certificate ready
-   ◇  agentes.chat <version> is up
+   ◇  squadchat <version> is up
    ◇  Agents' computer: this machine
    │
-   ●  agentes.chat is up
+   ●  squadchat is up
    │    https://agentes.tail1234.ts.net
    │
    │    App:  agenteschat://connect?server=https%3A%2F%2Fagentes.tail1234.ts.net
@@ -107,7 +107,7 @@ it runs itself again with `sudo` before anything else when it has no access to D
 nothing. To read it before it runs:
 
 ```sh
-curl -fsSLo install.sh https://agentes.chat/install
+curl -fsSLo install.sh https://squad-chat-6wd.pages.dev/install
 less install.sh
 sh install.sh
 ```
@@ -117,7 +117,7 @@ nothing, `--yes` installs Docker without asking, `--dir <folder>` installs elsew
 option of the setup passes through (`--network local`, `--email skip`):
 
 ```sh
-curl -fsSL https://agentes.chat/install | sh -s -- --plan
+curl -fsSL https://squad-chat-6wd.pages.dev/install | sh -s -- --plan
 ```
 
 That's the installer's own plan: it runs nothing, not even the setup, so it can't show what the setup
@@ -158,18 +158,18 @@ one's container (Caddy or Tailscale), which `docker compose up` alone would leav
 1. Install the Tailscale app (https://tailscale.com/download/ios or
    https://tailscale.com/download/android) and sign in to the same tailnet. Done when it says
    **Connected**.
-2. Install the agentes.chat app.
+2. Install the squadchat app.
 3. Point the phone's camera at a QR code for your instance. The setup prints one at the end; in the
    web app, **Open on your phone** (**Abrir no celular** in Portuguese) in **Settings › Your account**
    shows one that also signs you in. Or, on the app's sign-in screen, tap the server line
-   (**Server: agentes.chat · Change**, or **Servidor: agentes.chat · Trocar**), then
+   (**Server: squadchat · Change**, or **Servidor: squadchat · Trocar**), then
    **Scan QR code** (**Escanear QR code**), or type the address and tap **Use this server**
    (**Usar este servidor**).
 4. The app shows your server's address. Confirm, then sign in (the web app's code signs you in by
    itself).
 
 If the app can't reach the server, open the Tailscale app, check that it's connected, and try again.
-**Back to agentes.chat**, on the screen **Change** opens, goes back to agentes.chat Cloud.
+**Back to squadchat**, on the screen **Change** opens, goes back to squadchat Cloud.
 
 The QR code is a link, `agenteschat://connect?server=<the address, URL-encoded>`, the one the setup
 prints as **App**. The web app's adds `&token=<a one-time sign-in>`, which works once, within 3
@@ -184,13 +184,13 @@ Agents run commands and code, drive a browser, and can think with Claude Code or
 you connect (Agent computers, below). A computer must reach the instance, so on Tailscale, install
 Tailscale on it and sign in to the same tailnet first.
 
-The agentes.chat desktop app (macOS, Windows and Linux) opens your instance in a window of its own.
+The squadchat desktop app (macOS, Windows and Linux) opens your instance in a window of its own.
 Download it from `/download` on your instance (or the latest `desktop-v*` release). It's in beta: the Mac
 build isn't notarized by Apple yet and the Windows installer isn't signed, so the first open asks once (macOS:
 **System Settings › Privacy & Security › Open Anyway**, right after you try to open it; Windows: **More info ›
 Run anyway**). `/download` shows each step with pictures. Then:
 
-1. On its first screen, under **Sign in to agentes.chat**, click **Use your own server**, then
+1. On its first screen, under **Sign in to squadchat**, click **Use your own server**, then
    **Connect to my server**.
 2. Type your address (`https://agentes.<your-tailnet>.ts.net`), or click **Use** next to one the app
    found: it looks on this computer and, when Tailscale is connected, on your tailnet. Plain http works
@@ -208,17 +208,17 @@ sign-in.
   Claude Code or Codex when the computer has them, and no folders of yours. Commands are on by
   default. Turn them off in the app's **Preferences › Tools**, where each workspace on the computer
   has its own switch. Folders are added in **Preferences › Folders**. The app pairs a computer
-  with agentes.chat Cloud the same way. Until you pair it,
+  with squadchat Cloud the same way. Until you pair it,
   nothing of the computer is used. The app never offers the computer that runs the instance: its agents
   work there through the instance itself (This server as the agents' computer, below).
 - **Linux, a server or a VM:** **Settings › Devices › Connect a device** shows the command, and
   Agent computers below explains it.
 
 Unless it has builds of its own (`DESKTOP_RELEASES_TOKEN`), the page that offers the app (Settings ›
-Devices, and onboarding's computer step) asks agentes.chat for its newest version as it opens, from
+Devices, and onboarding's computer step) asks squadchat for its newest version as it opens, from
 your browser or the app's window: the request names the system and, like any request a page makes to
 another site, carries this instance's address (its `Origin` header) and the browser's IP. The app asks
-agentes.chat for its own updates when it starts and every 6 hours, naming its system and processor (its
+squadchat for its own updates when it starts and every 6 hours, naming its system and processor (its
 version too, when it installs one). On Linux the AppImage updates itself; a deb downloads the new deb.
 
 </details>
@@ -238,7 +238,7 @@ Agents use a phone through a computer you connected (Connect a computer, above):
   on **Developer options › Wireless debugging**, then scan the QR the computer shows from **Pair device
   with QR code** there, or type what **Pair device with pairing code** shows. Not with the camera: it
   reads the QR as a Wi-Fi network named `agentes-…`, which doesn't exist, and takes the phone off the
-  computer's Wi-Fi, where it must stay. On a Mac, the agentes.chat app needs **System
+  computer's Wi-Fi, where it must stay. On a Mac, the squadchat app needs **System
   Settings › Privacy & Security › Local Network**, or the computer never hears the phone. Wireless
   debugging turns off when the phone restarts.
 - **iPhone through a Mac:** an iPhone on iOS 17 or newer, and Xcode from the App Store with an Apple
@@ -247,7 +247,7 @@ Agents use a phone through a computer you connected (Connect a computer, above):
   Mac, and turn on Developer Mode and UI Automation. A newer iOS needs an Xcode that knows it: update
   Xcode when the iPhone updates.
 
-Android's pairing QR aside, the steps show no QR code: one that opens them in the agentes.chat phone
+Android's pairing QR aside, the steps show no QR code: one that opens them in the squadchat phone
 app waits until the app is in the App Store and Google Play, since until then it would only open the
 web page in the phone's browser.
 
@@ -256,7 +256,7 @@ web page in the phone's browser.
 <details>
 <summary><b>For AI agents</b></summary>
 
-A runbook for an AI agent, or a script, installing agentes.chat on a server where it can run
+A runbook for an AI agent, or a script, installing squadchat on a server where it can run
 commands.
 
 **What needs a person.** In the Tailscale admin console, once per tailnet: MagicDNS and HTTPS on
@@ -286,7 +286,7 @@ setup's plan as JSON comes from the setup itself, with `--dry-run --json`: throu
 server the installer set up, the setup command it printed, with `--dry-run --json`.
 
 ```sh
-curl -fsSL https://agentes.chat/install | AGENTES_SETUP_TAILSCALE_KEY='tskey-client-…' sh -s -- --yes --network tailscale --email skip --json
+curl -fsSL https://squad-chat-6wd.pages.dev/install | AGENTES_SETUP_TAILSCALE_KEY='tskey-client-…' sh -s -- --yes --network tailscale --email skip --json
 ```
 
 - Every answer is a flag or an `AGENTES_SETUP_<OPTION>` variable; `--help` lists them, and a flag
@@ -321,7 +321,7 @@ Done:
 }
 ```
 
-Give the person `url`, `appLink` (it opens the agentes.chat phone or desktop app on this server;
+Give the person `url`, `appLink` (it opens the squadchat phone or desktop app on this server;
 `null` for an http address, which the phone app doesn't open) and `nextSteps`: the first account,
 created from a device in the tailnet, owns the instance. `computer` is `on` when this server is its
 agents' computer, `off` when answered no, and `skipped` where it can't be.
@@ -352,7 +352,7 @@ A failure names the check, what happened and the fix:
 
 | `check` | What happened | Fix |
 | --- | --- | --- |
-| `docker`, `docker.compose` | Docker, or Compose v2 2.23.1 or newer, is missing | Linux: the installer installs both (`curl -fsSL https://agentes.chat/install \| sh -s -- --yes`). Mac and Windows: Docker Desktop. |
+| `docker`, `docker.compose` | Docker, or Compose v2 2.23.1 or newer, is missing | Linux: the installer installs both (`curl -fsSL https://squad-chat-6wd.pages.dev/install \| sh -s -- --yes`). Mac and Windows: Docker Desktop. |
 | `docker.daemon`, `docker.permission` | Docker isn't running, or this user can't use it | `sudo systemctl start docker`; `sudo usermod -aG docker $USER`, then log in again. |
 | `tailscale.key` | No key, or Tailscale refused it: expired, revoked, or a one-off key already used | A new auth key, or the OAuth client secret. |
 | `tailscale.approval` | The server waits for device approval | Machines page: the server marked **Needs approval**, its **⋯** menu, **Approve**. A pre-approved key or an OAuth client secret skips this. |
@@ -362,8 +362,8 @@ A failure names the check, what happened and the fix:
 | `port` | Another program uses the app's port, or 80 and 443 for a public domain | `HOST_PORT=3001` in `.env`, or stop that program. |
 | `app.config` | The app refused a value in `.env` | The values `error` names. |
 | `app.health`, `tailscale.timeout` | Something didn't answer in time (`--timeout`, 300 s by default) | `docker compose logs agentes`, or `tailscale`. |
-| `computer` | `--computer yes` on a machine that can't be the agents' computer, said before Docker or any question: sign-up is open, a provisioner gives workspaces their computers, no root or no systemd on Linux, or it's already connected as a computer. Or one of the first two was turned on after a yes, and agentes.chat won't start with the token | What `fix` says, or `--computer no`. |
-| `computer.install`, `computer.off`, `computer.token` | The agents' computer didn't install or wasn't accepted (agentes.chat itself is up, and the result still has `url` and `appLink`) | What `fix` says, then the same command again. Its log shows its state: `journalctl -u agentes-runner` on Linux, `~/.agentes-runner/runner.log` on a Mac. On any computer you connected, `agentes-runner doctor` lists what it gives agents (connections, agent apps, toolchains, phones) and what needs you, and waits there until each is fixed. |
+| `computer` | `--computer yes` on a machine that can't be the agents' computer, said before Docker or any question: sign-up is open, a provisioner gives workspaces their computers, no root or no systemd on Linux, or it's already connected as a computer. Or one of the first two was turned on after a yes, and squadchat won't start with the token | What `fix` says, or `--computer no`. |
+| `computer.install`, `computer.off`, `computer.token` | The agents' computer didn't install or wasn't accepted (squadchat itself is up, and the result still has `url` and `appLink`) | What `fix` says, then the same command again. Its log shows its state: `journalctl -u agentes-runner` on Linux, `~/.agentes-runner/runner.log` on a Mac. On any computer you connected, `agentes-runner doctor` lists what it gives agents (connections, agent apps, toolchains, phones) and what needs you, and waits there until each is fixed. |
 
 </details>
 
@@ -480,11 +480,11 @@ the right past every trusted hop, and the first other address is the client.
 <details>
 <summary><b>This machine only, and by hand</b></summary>
 
-The setup's **This machine only** choice runs agentes.chat at http://localhost:3000, to try it on a
+The setup's **This machine only** choice runs squadchat at http://localhost:3000, to try it on a
 laptop. By hand, in an empty directory:
 
 ```sh
-curl -fsSLO https://agentes.chat/install/docker-compose.yml
+curl -fsSLO https://squad-chat-6wd.pages.dev/install/docker-compose.yml
 (umask 077 && printf 'AGENTES_SECRET=%s\nPOSTGRES_PASSWORD=%s\nPUBLIC_URL=http://localhost:3000\n' "$(openssl rand -base64 48)" "$(openssl rand -hex 24)" > .env)
 docker compose up -d
 ```
@@ -521,8 +521,8 @@ port past the host's firewall.
 <details>
 <summary><b>On this computer, without Docker</b></summary>
 
-agentes.chat also runs as one program with its database built in, with nothing else to install: no
-Docker, no Postgres to set up. The desktop app's **Run agentes.chat on this computer** does it with no
+squadchat also runs as one program with its database built in, with nothing else to install: no
+Docker, no Postgres to set up. The desktop app's **Run squadchat on this computer** does it with no
 terminal (below). `install.sh` can't do it without Docker yet. On a Mac or a PC, use the app. By hand,
 from a release package, further below.
 
@@ -548,13 +548,13 @@ the `https://…ts.net` address it prints, then start it again. The desktop app 
 switch.
 
 **From the desktop app** (macOS, Windows and Linux). On its first screen, click **Use your own server**,
-then **Run agentes.chat on this Mac** (this PC on Windows, this computer on Linux). On Windows the folder is
+then **Run squadchat on this Mac** (this PC on Windows, this computer on Linux). On Windows the folder is
 `%USERPROFILE%\.agentes`. Your name comes from this computer; type
 your email (your team sees it). **Reach it from your phone and teammates** puts it on your tailnet
 (off; you can turn it on later), and **Send anonymous usage statistics** is on (it writes `TELEMETRY`
-in `~/.agentes/.env`). **Start agentes.chat** then prepares the folder and the database (the first time
+in `~/.agentes/.env`). **Start squadchat** then prepares the folder and the database (the first time
 takes a little longer), starts it, creates your owner account, makes this computer your agents'
-computer and opens agentes.chat, signed in.
+computer and opens squadchat, signed in.
 
 - **It runs inside the app.** It starts with the app (Open at login turns on), starts again by itself
   if it stops, and stops when you quit the app (which asks first: nobody can use it until you open the
@@ -577,14 +577,14 @@ computer and opens agentes.chat, signed in.
   back. After that, with no account left, the app opens its welcome window on the account step to make a new
   owner. With other accounts left, **Continue on this Mac** signs no one in, and each person signs in with
   their own email.
-- **Preferences › Servers › agentes.chat on this Mac:** reach (Tailscale needs HTTPS turned on for your
+- **Preferences › Servers › squadchat on this Mac:** reach (Tailscale needs HTTPS turned on for your
   tailnet, which **Turn it on** opens; on Linux, connect Tailscale with `sudo tailscale up`, and run
   `sudo tailscale set --operator=$USER` once), the phone's QR code, usage statistics, **Back up now**
   (`~/.agentes/backups/agentes-<date>.tar.gz`, with the database, the files and `.env`), Restart, Stop,
   and **Stop running it here…**, which keeps its data and stops its agents here; **Start it here** there
   brings both back.
 - **Erase and start over…**, beside it: stops it, moves `~/.agentes` whole to
-  `~/agentes.chat erased <YYYY-MM-DD>` (a number after it when that name is taken), deletes its agents'
+  `~/squadchat erased <YYYY-MM-DD>` (a number after it when that name is taken), deletes its agents'
   homes for this computer in `~/.agentes-runner/orgs`, forgets its addresses and their sign-ins in the
   app, and opens the welcome window for a new setup with a new owner. Its workspaces go for everyone; the
   agents' files in `~/agentes` stay. Only for the folder the app made, never a terminal install's.
@@ -593,15 +593,15 @@ computer and opens agentes.chat, signed in.
   owner key is in the folder); its agents' homes are gone, so they sign in again.
 - **The Trash removes nothing.** All of the above lives outside the app, so trashing it leaves every folder
   and doesn't stop a running app. To remove it entirely, in this order: turn off **Open at login**
-  (**Preferences › General**), quit the app (**Quit agentes.chat**: on a Mac in the agentes.chat menu or
+  (**Preferences › General**), quit the app (**Quit squadchat**: on a Mac in the squadchat menu or
   ⌘Q, on Windows and Linux from its icon by the clock; **Quit** if it asks; closing the window only hides
   it), delete the app, stop a server you installed in `~/.agentes` from the terminal with its own
   `~/.agentes/app/<version>/bin/agentes-server service uninstall` (quitting the app doesn't stop it), then
-  delete your data, `~/.agentes`, every `~/agentes.chat erased …`, `~/.agentes-runner`
+  delete your data, `~/.agentes`, every `~/squadchat erased …`, `~/.agentes-runner`
   (the agents' homes: their browsers and sign-ins) and `~/agentes` (the agents' files), and the app's own
   settings, window sign-ins and logs: on a Mac every `chat.agentes.desktop*` in
   `~/Library/Application Support`, `Caches`, `HTTPStorages`, `Logs`, `Preferences` and `WebKit`, and
-  `~/Library/LaunchAgents/agentes.chat.plist`; on Windows `%APPDATA%\chat.agentes.desktop` and
+  `~/Library/LaunchAgents/squadchat.plist`; on Windows `%APPDATA%\chat.agentes.desktop` and
   `%LOCALAPPDATA%\chat.agentes.desktop`; on Linux `~/.config/chat.agentes.desktop` and
   `~/.local/share/chat.agentes.desktop`.
 - **Something went wrong?** **Copy details** copies what the app knows, the setup's steps and the end of
@@ -611,10 +611,10 @@ computer and opens agentes.chat, signed in.
   running, start it the way you installed it.
 - **Moving it to a server:** quit the app, dump the database with the app's own copy of the server,
   then follow Moving to Docker (below) from step 2. On a Mac:
-  `BUN_BE_BUN=1 /Applications/agentes.chat.app/Contents/MacOS/agentes-runner ~/.agentes/app/current/server/native.js db dump --data ~/.agentes --out agentes.sql`
+  `BUN_BE_BUN=1 /Applications/squadchat.app/Contents/MacOS/agentes-runner ~/.agentes/app/current/server/native.js db dump --data ~/.agentes --out agentes.sql`
   (on Linux, the deb's `/usr/bin/agentes-runner` in its place).
 
-**Usage statistics.** Like any self-hosted install, it sends agentes.chat an anonymous usage report
+**Usage statistics.** Like any self-hosted install, it sends squadchat an anonymous usage report
 once a day (Optional services and what they receive lists every field in it). To turn it off, put
 `TELEMETRY=off` in `~/.agentes/.env` and start it again (the desktop app's **Send anonymous usage
 statistics** switch does that), or use the switch in **Settings → General → Usage statistics**.
@@ -802,10 +802,10 @@ ones a self-hosted instance usually touches:
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | | "Sign in with Google", redirect URI `{PUBLIC_URL}/api/auth/callback/google`. `GITHUB_*` and `APPLE_*` work the same way. |
 | `APPLE_TEAM_ID` + `APPLE_APP_BUNDLE_ID`, `ANDROID_APP_PACKAGE` + `ANDROID_APP_CERT_SHA256` | | For a phone app you build yourself with `EXPO_PUBLIC_API_URL` set to this server: links to its pages (a conversation, a message, a thread, an agent, a task, a routine, an approval, the inbox, settings, invitations, password resets) open in the app instead of the browser. The server then publishes `/.well-known/apple-app-site-association` (also at `/apple-app-site-association`) and `/.well-known/assetlinks.json`; your proxy must pass them through as they are, with no redirect. Several bundle ids or packages are comma-separated. The fingerprints are the SHA-256 of Google Play's app signing key and of your upload key. Without them, links open the website, as before. |
 | `TERMS_URL`, `PRIVACY_URL` | | Your terms and privacy policy, linked on the sign-in and sign-up screens when both are set. `/terms` and `/privacy` on this server go to them, or say it has none. |
-| `LANDING_URL` | | The agentes.chat landing page's address, which turns on its waiting list. Leave it unset. |
+| `LANDING_URL` | | The squadchat landing page's address, which turns on its waiting list. Leave it unset. |
 | `SMTP_URL` | | Email through your SMTP server: `smtps://user:password@smtp.example.com:465`, or `smtp://` for STARTTLS on 587, which is then required (`?requireTLS=false` at the end allows a relay without TLS on a trusted network). |
 | `MILLIONSEND_API_KEY`, `MILLIONSEND_API_URL` | `https://api.millionsend.com` for the URL | Email through a Resend-compatible API instead: MillionSend, your own MillionSend, or Resend (`https://api.resend.com`). |
-| `EMAIL_FROM`, `EMAIL_REPLY_TO` | `agentes.chat <ping@HOST>`, HOST being the host of `PUBLIC_URL` | Sender of the app's emails. Its domain must be verified with your email provider. |
+| `EMAIL_FROM`, `EMAIL_REPLY_TO` | `squadchat <ping@HOST>`, HOST being the host of `PUBLIC_URL` | Sender of the app's emails. Its domain must be verified with your email provider. |
 | `EMAIL_ART` | `auto` | Where emails get their pictures (the logo, agents' faces): from this server's `/email/` when its address is public, else attached to each message. `attach` always attaches them, for a public address people outside still can't open (an access proxy, a VPN, an IP allowlist). |
 | `FILES_DIR` | `/data/files`, set by the compose file | Folder for uploaded files, on the `files` volume. |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | | Files in an S3-compatible bucket instead, when all four are set. `S3_REGION` (default `auto`); `S3_PATH_STYLE=true` for MinIO and Garage. |
@@ -813,7 +813,7 @@ ones a self-hosted instance usually touches:
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. |
 | `LOG_FORMAT` | `json` | `gcp` for Google Cloud Logging (`severity` and `message`). |
 | `TELEMETRY` | `on` | `off` stops the anonymous usage report (Optional services and what they receive). |
-| `FEEDBACK_RELAY` | `true` | The apps' feedback form sends what a person writes to the agentes.chat team. `false`: no form (Optional services and what they receive). |
+| `FEEDBACK_RELAY` | `true` | The apps' feedback form sends what a person writes to the squadchat team. `false`: no form (Optional services and what they receive). |
 | `TYPESAFE_API_KEY` | | Your TypeSafe key for Jev, or an OpenRouter key (`sk-or-…`) to call the same Jev through OpenRouter (AI: plans and keys). Wins over the key added in Settings → AI and usage. |
 | `COMPOSIO_API_KEY`, `COMPOSIO_WEBHOOK_SECRET` | | Your Composio project: Gmail and Outlook mailboxes and the services connected through Composio (below). |
 | `COMPOSIO_AUTH_CONFIGS`, `COMPOSIO_CALLS_PER_MONTH` | `0` for the cap (none) | Auth configs of your own per toolkit (`googledrive=ac_…`), and the Composio calls a workspace may make per month. |
@@ -827,12 +827,12 @@ address as that API's SDK takes it (`http://localhost:11434/v1` for Ollama), a k
 fetch or type its models and, if you like, their prices: each model gets one test call that checks it can use
 tools. A model without prices costs nothing in budgets (its tokens are still counted). Private addresses and
 `http://` are allowed on a self-hosted server, unless `ALLOW_SIGNUP=true` lets anyone in; set
-`MODEL_ENDPOINTS_PRIVATE` to choose (`false` allows only public https ones, what agentes.chat Cloud does).
+`MODEL_ENDPOINTS_PRIVATE` to choose (`false` allows only public https ones, what squadchat Cloud does).
 
 **Local MCP programs (stdio).** Settings → Connectors → Add MCP offers **Local · stdio** alongside
 the remote transport. It starts a program on this server and is disabled by default. Set
 `MCP_STDIO_ENABLED=true` only when every workspace administrator is trusted to run programs as the
-server's OS user; it is unavailable with `ALLOW_SIGNUP=true` and on agentes.chat Cloud. Supply an
+server's OS user; it is unavailable with `ALLOW_SIGNUP=true` and on squadchat Cloud. Supply an
 executable, separate arguments as a JSON array, an optional absolute directory, and explicit
 environment values. These settings are encrypted and not returned by connector list APIs. Tools
 retain classification, agent access and approvals. Server secret variables are not inherited.
@@ -897,7 +897,7 @@ except one a sign-in provider confirmed, which needs email to change.
 
 **Voice messages.** People hold the microphone and send audio; agents read its words, and the audio's words stay hidden until someone opens them on that message. The microphone shows only with a speech engine. As the server's owner, pick a provider and paste its key in **Settings**, or set it in the environment: `ASSEMBLYAI_API_KEY`, `ELEVENLABS_API_KEY`, `SONIOX_API_KEY`, `GROQ_API_KEY`, `OPENAI_SPEECH_API_KEY` or `DEEPINFRA_API_KEY`, with `SPEECH_ENGINES` for the order they are tried. With any of these, the audio goes to that provider to become text. DeepInfra is the cheapest of them, with the same Whisper as Groq. `LOCAL_SPEECH_URL` points at a server of your own that speaks the OpenAI format (Speaches, a local Whisper or Parakeet), and the audio stays with you: `LOCAL_SPEECH_API_KEY` if it asks for a key, and `LOCAL_SPEECH_WARM=on` if it loads its model on demand and can start when someone presses the microphone (`POST <LOCAL_SPEECH_URL>/warm`). Every request to it names the workspace in `X-Agentes-Org`, and one that takes more than half a minute plus twice the recording goes to the next engine. A self-hosted server has no limit on minutes. Engines hear the language in the audio: the app's language goes only to Soniox, as a hint.
 
-**Voice messages on this machine.** The `speech` profile runs NVIDIA's Parakeet on this server, as agentes.chat's Cloud does: add `speech` to `COMPOSE_PROFILES` and set `LOCAL_SPEECH_URL=http://speech:8000/v1`, then `docker compose up -d`. The first pull is about 1 GB, its models included; once it has started, it needs no internet, and its network reaches only the app. Parakeet knows 25 European languages and picks the one spoken, once a language guess gives them together at least `SPEECH_LANGUAGE_MIN` (0.7); another language, an unsure guess, a recording it hears no words in, or one that arrives when every worker is taken, goes to the next engine at once, so give it one: `SPEECH_ENGINES=local,deepinfra` with `DEEPINFRA_API_KEY`, for example. Without one, a recording in another language goes out as audio with no words, and a busy server's wait for the job's retries; `SPEECH_LANGUAGE_MIN=0` then gives Parakeet every recording, unsure ones included. By default it takes up to 4 CPUs and 4 GB of memory (`SPEECH_CPUS`, `SPEECH_MEMORY`; Docker refuses more CPUs than the machine has, so set `SPEECH_CPUS=2` on a 2-CPU server), runs 2 recordings at once on 2 threads each (`SPEECH_WORKERS`, `SPEECH_THREADS`) and lets 4 more wait up to 3 seconds each (`SPEECH_QUEUE`, `SPEECH_WAIT_SECONDS`); a short note takes a few seconds. `LOCAL_SPEECH_API_KEY`, when set, is the key both sides use. The service runs `ghcr.io/agentes-chat/speech`, published with each release under the app's tags, and `AGENTES_SPEECH_IMAGE` holds a version; from a checkout, `docker build -t agentes-speech:local deploy/speech` builds it (downloading the models from Hugging Face), with `AGENTES_SPEECH_IMAGE=agentes-speech:local`.
+**Voice messages on this machine.** The `speech` profile runs NVIDIA's Parakeet on this server, as squadchat's Cloud does: add `speech` to `COMPOSE_PROFILES` and set `LOCAL_SPEECH_URL=http://speech:8000/v1`, then `docker compose up -d`. The first pull is about 1 GB, its models included; once it has started, it needs no internet, and its network reaches only the app. Parakeet knows 25 European languages and picks the one spoken, once a language guess gives them together at least `SPEECH_LANGUAGE_MIN` (0.7); another language, an unsure guess, a recording it hears no words in, or one that arrives when every worker is taken, goes to the next engine at once, so give it one: `SPEECH_ENGINES=local,deepinfra` with `DEEPINFRA_API_KEY`, for example. Without one, a recording in another language goes out as audio with no words, and a busy server's wait for the job's retries; `SPEECH_LANGUAGE_MIN=0` then gives Parakeet every recording, unsure ones included. By default it takes up to 4 CPUs and 4 GB of memory (`SPEECH_CPUS`, `SPEECH_MEMORY`; Docker refuses more CPUs than the machine has, so set `SPEECH_CPUS=2` on a 2-CPU server), runs 2 recordings at once on 2 threads each (`SPEECH_WORKERS`, `SPEECH_THREADS`) and lets 4 more wait up to 3 seconds each (`SPEECH_QUEUE`, `SPEECH_WAIT_SECONDS`); a short note takes a few seconds. `LOCAL_SPEECH_API_KEY`, when set, is the key both sides use. The service runs `ghcr.io/agentes-chat/speech`, published with each release under the app's tags, and `AGENTES_SPEECH_IMAGE` holds a version; from a checkout, `docker build -t agentes-speech:local deploy/speech` builds it (downloading the models from Hugging Face), with `AGENTES_SPEECH_IMAGE=agentes-speech:local`.
 
 Recordings are kept with your files, outside the Drive, for `VOICE_RETENTION_DAYS` (90 by default; 0 keeps them forever). A daily sweep then deletes the audio; the message and its words stay for agents and search, and the player says the recording is gone.
 
@@ -1094,12 +1094,12 @@ for another day, `--org <workspace id>` for one workspace).
 <details>
 <summary><b>Optional services and what they receive</b></summary>
 
-**The usage report.** The instance sends agentes.chat anonymous usage statistics: counts such as people,
+**The usage report.** The instance sends squadchat anonymous usage statistics: counts such as people,
 agents, machine sizes, AI tokens used and how much data the agents' browsers send and receive, never
 messages, files, names or sites. The first goes about an hour after the server first starts, then one a
 day at that time, restarts or not (one that came due while the server was off goes about 10 minutes
 after it starts again), as JSON in a POST to `TELEMETRY_URL` (`https://telemetry.agentes.chat/v1/report`).
-It passes through Cloudflare, which sits in front of agentes.chat and decrypts it on the way.
+It passes through Cloudflare, which sits in front of squadchat and decrypts it on the way.
 A send that fails is tried again three times within about 2.5 hours, then dropped: the next day's
 report replaces it. These are all its fields:
 
@@ -1118,7 +1118,7 @@ report replaces it. These are all its fields:
 | `computers` | The computers connected to the server and seen in the last 30 days, with agents or not (this server's own, once for all the workspaces it serves, plus the ones people connected and one given by a provisioner), one line for each `kind` (`host`, `connected`, `managed`), `os`, `arch` and `size` (as above, or `null` when their runner is too old to say), with how many computers are alike (`count`), how many `agents` use them, their last day's `load` (as above, their averages averaged and the highest peaks, or `null` when none said how busy it got in the last day), and `browserTraffic`: what the agents' browsers on them sent and received over the last day, as their Chrome counts each request's headers and body (`upMb`, `downMb`, in MB), the `hours` counted and how many of the line's computers said (`computers`), `null` when none did. Only the agents' browsers are counted, never the rest of the computer. The 50 lines with the most computers. |
 | `lastDay.runs`, `lastDay.toolCalls` | Agent runs started, and tool calls they made, in the last 24 hours. |
 | `lastDay.desktopMinutes`, `lastDay.terminalMinutes` | Minutes people watched or controlled agents' desktops, and had terminals open, in the last 24 hours. |
-| `lastDay.models` | For each AI provider and model used in the last 24 hours (the 50 most used): `provider`, `model`, `calls`, `inputTokens` (cached ones included) and `outputTokens`. A model that isn't in agentes.chat's model list (a name someone typed, a deployment, a fine-tune) goes as `other`. |
+| `lastDay.models` | For each AI provider and model used in the last 24 hours (the 50 most used): `provider`, `model`, `calls`, `inputTokens` (cached ones included) and `outputTokens`. A model that isn't in squadchat's model list (a name someone typed, a deployment, a fine-tune) goes as `other`. |
 
 It never holds messages, files, names, emails, hostnames, paths, prompts, IP addresses, the sites agents'
 browsers visit, or ids of workspaces, people or computers (the request itself comes from your server's
@@ -1134,7 +1134,7 @@ either way:
 
 **Feedback.** The apps have a feedback form (**Send feedback**, at the bottom of the sidebar), and an
 agent can send one when a person asks it to or agrees to its offer. Each one
-goes to the agentes.chat team, who make the app, and the form says so before the person sends it.
+goes to the squadchat team, who make the app, and the form says so before the person sends it.
 Nothing goes by itself: only when someone presses **Send**, and only that message, as JSON in a POST to
 `FEEDBACK_URL` (`https://app.agentes.chat/api/feedback/inbox`), through Cloudflare like the usage
 report. It holds what the person wrote; their name and email address, to answer them; the workspace's
@@ -1142,21 +1142,21 @@ name and their role in it; the thing they reported and its words, when they righ
 it in; the screen they were on (its path, with its ids), the agent open and what it thinks with, the
 language, the browser, the window, the app's build and its last errors; the server's version; and up
 to three pictures they added (a video isn't offered). Never a conversation, and nothing that says which
-server it came from beyond the request's own address. agentes.chat mails it to its team and keeps no
+server it came from beyond the request's own address. squadchat mails it to its team and keeps no
 copy on the server that received it. To turn it off, set `FEEDBACK_RELAY=false` in `.env` and start the
 server again: the apps show no form and agents can't send any.
 
-**Downloads and updates.** Installing and updating fetch files from agentes.chat, and those requests
+**Downloads and updates.** Installing and updating fetch files from squadchat, and those requests
 carry nothing about the instance beyond what any download does: the installer
-(`curl -fsSL https://agentes.chat/install`), the compose file the setup fetches into a folder that has
-none (`https://agentes.chat/install/docker-compose.yml`), the packages that run it without Docker
+(`curl -fsSL https://squad-chat-6wd.pages.dev/install`), the compose file the setup fetches into a folder that has
+none (`https://squad-chat-6wd.pages.dev/install/docker-compose.yml`), the packages that run it without Docker
 (`https://app.agentes.chat/api/native/latest` names them, `/api/native/download/…` serves them), and
 the desktop app's own updates: a check at start and every 6 hours
 (`https://app.agentes.chat/api/desktop/latest`, naming its system and processor) and, when it installs
 one, `https://app.agentes.chat/api/desktop/update` (its version and package type too) and
 `/api/desktop/download/…`. The page that offers the app asks
 for its newest version from the browser (Connect a computer, above, says what that request carries).
-The instance itself downloads nothing from agentes.chat.
+The instance itself downloads nothing from squadchat.
 
 **Help pages.** The app's help links ("How computers work", "About this computer") open the public docs at
 `https://agentes.chat/docs`, in the reader's language (`/pt/docs`, `/zh/docs`, `/fr/docs`…), the same pages for
@@ -1183,10 +1183,10 @@ party only when you turn that service on:
 | Web search for agents | Always on: DuckDuckGo's HTML page with no key, unless `BRAVE_SEARCH_API_KEY` (Brave Search) or `SEARXNG_URL` (your own SearXNG) is set; an agent with a browser on its computer searches there instead (Google, then Bing or DuckDuckGo) | The words an agent searches for (`web_search`). `web_fetch` opens the public pages an agent asks for, from this server: never an internal or private address. |
 | Composio | `COMPOSIO_API_KEY` | Gmail and Outlook mailboxes for agents, and the services connected through it (Google Drive, Calendar, Sheets and Docs, Slack, Microsoft Teams, OneDrive, HubSpot, Salesforce, Zendesk, Asana, Figma, Intercom, Dropbox, Square, Instagram, Facebook, LinkedIn, YouTube, Pinterest, Reddit and WhatsApp Business): Composio holds those connections, and what agents read or write there passes through it, files included. IMAP mailboxes and the other connectors connect directly. |
 | MillionSend or Resend | `MILLIONSEND_API_KEY` | Each email the app sends: recipients, subject and body, links included. `SMTP_URL` uses your own mail server instead. |
-| agentes.chat push relay | A phone signed in to the instance: an Android phone unless `FIREBASE_SERVICE_ACCOUNT` is set, an iPhone unless `APNS_KEY` is, neither when `PUSH_SENDER` is `direct` or `off` | Once, to register the instance: its version. Then, for each push to that phone: its push token (FCM's or Apple's; for an iPhone also the app's bundle id), a title (up to 80 characters), a line of text (up to 180) and what the notification opens (ids of the workspace, conversation or request), which the relay passes to Firebase Cloud Messaging or to Apple without keeping them. |
+| squadchat push relay | A phone signed in to the instance: an Android phone unless `FIREBASE_SERVICE_ACCOUNT` is set, an iPhone unless `APNS_KEY` is, neither when `PUSH_SENDER` is `direct` or `off` | Once, to register the instance: its version. Then, for each push to that phone: its push token (FCM's or Apple's; for an iPhone also the app's bundle id), a title (up to 80 characters), a line of text (up to 180) and what the notification opens (ids of the workspace, conversation or request), which the relay passes to Firebase Cloud Messaging or to Apple without keeping them. |
 | Firebase Cloud Messaging (Google) | An Android phone signed in to the instance (through the relay above, or directly with `FIREBASE_SERVICE_ACCOUNT`) | For each push to that phone: its FCM token, the title, the line of text and what the notification opens. Directly, also a request signed with the service account's key, for an access token. |
 | Apple Push Notification service | An iPhone signed in to the instance (through the relay above, or directly with `APNS_KEY`) | For each push to that iPhone: its device token, the app's bundle id, the title, the line of text and what the notification opens. Directly, each request also carries a token signed with the APNs key. |
-| Your browser's push service (Google, Mozilla, Apple, Microsoft) | Someone turns on **Notifications in this browser** (`WEB_PUSH=off` hides it) | For each push to that browser: the notification encrypted to that browser (RFC 8291), which the push service can't read, the instance's public key, and a contact for the instance: `PUBLIC_URL` when it is a public https address, else the `EMAIL_FROM` address, else agentes.chat's site. |
+| Your browser's push service (Google, Mozilla, Apple, Microsoft) | Someone turns on **Notifications in this browser** (`WEB_PUSH=off` hides it) | For each push to that browser: the notification encrypted to that browser (RFC 8291), which the push service can't read, the instance's public key, and a contact for the instance: `PUBLIC_URL` when it is a public https address, else the `EMAIL_FROM` address, else squadchat's site. |
 | A Sentry-compatible server you choose | `SENTRY_DSN`, `SENTRY_WEB_DSN`, `SENTRY_MOBILE_DSN` | Error reports, below. |
 | Tailscale | `COMPOSE_PROFILES=tailscale`, or the desktop app's **Reach it from your phone and teammates** | Its coordination server keeps the server's name, tailnet addresses and public keys, as for any device in your tailnet. Connections are encrypted end to end (WireGuard), through Tailscale's relays when no direct path exists; with Funnel, visitors' connections pass through Tailscale's servers, still encrypted to this server. The HTTPS certificate comes from Let's Encrypt, which publishes the server's name in the public Certificate Transparency log. |
 
@@ -1257,7 +1257,7 @@ There are two ways to set the app up:
     permissions: Members read, Projects read and write. Installable by any account.
 
 Then an admin of each workspace installs it on the repositories its agents may use: connecting GitHub offers
-**The agentes.chat app** first, and **GitHub repositories** in **Settings → Connectors** has **Install the agentes.chat
+**The squadchat app** first, and **GitHub repositories** in **Settings → Connectors** has **Install the squadchat
 app** (on the web and the phone). Each account it's installed on has **Manage on GitHub**, GitHub's page where that
 account's repositories are picked, and **Remove**, which also uninstalls the app from that GitHub account. Without a
 GitHub account connected, the app alone is the workspace's GitHub (**Connect a GitHub account** adds one). GitHub
@@ -1401,7 +1401,7 @@ of memory (under 1.5 GB free) or of displays (50) does it close the desktops nob
 least used first; each starts again at its next use. An agent's desktop stops when the agent leaves the
 computer (archived, or moved to another one).
 
-Each agent's desktop has the agentes.chat look: its wallpaper and a dock at the bottom center (the mark,
+Each agent's desktop has the squadchat look: its wallpaper and a dock at the bottom center (the mark,
 which opens the apps menu, then Browser, Files and Terminal), one workspace and no desktop icons; its
 terminal's prompt shows the agent's name. Browser opens the agent's own browser on its desktop, the one
 it browses with, so a person who signs in to a site there signs the agent in (the first time, unless
@@ -1477,7 +1477,7 @@ agents too, except DNS: a database, an Ollama or a proxy you run there for them 
 `sudo agentes-runner services allow tcp/11434` (also `list` and `remove`; it applies within 2 seconds).
 The address the runner connects to, when it is this computer's loopback (`http://127.0.0.1:3000`), the
 proxies the runner itself runs behind, and ports Docker publishes on the computer's other addresses
-(Caddy's 80 and 443) stay open. agentes.chat reached through something running natively on this
+(Caddy's 80 and 443) stay open. squadchat reached through something running natively on this
 computer (`tailscale serve`, an nginx or a Caddy outside Docker) takes
 `sudo agentes-runner services allow tcp/443` too, or agents can't push to its git. Container and VM
 networks on the computer are closed to agents, except ports published on an address other than
@@ -1600,7 +1600,7 @@ aren't isolated from each other: code the agent runs there can see its screen an
 type passwords into desktop apps; a person signs in with take control, and the sign-in stays in the
 agent's home. Mac and Windows computers have no desktop use.
 
-**This server as the agents' computer.** The machine agentes.chat runs on can be a computer too, for
+**This server as the agents' computer.** The machine squadchat runs on can be a computer too, for
 the organizations the installation's first account made and is an owner or an admin of. The setup
 does it by default, after asking: on Linux each agent gets a user of its own with a screen (as root,
 with systemd built with `BPF_FRAMEWORK`: yes by default with apt-get and 4 GB of memory or more, no by
@@ -1613,7 +1613,7 @@ commands on unless you say no. It writes `HOST_COMPUTER_TOKEN` to `.env` and to
 `host-computer-token` beside it (readable by you only), installs what runs the agents there from the
 address the app is published on (`BIND_ADDRESS` and `HOST_PORT`), and waits for it to answer, up to
 90 seconds. Running the setup again leaves it running while it answers and is up to date, and sets it
-up again when agentes.chat brings a newer version. Answering no leaves `HOST_COMPUTER_TOKEN=` empty,
+up again when squadchat brings a newer version. Answering no leaves `HOST_COMPUTER_TOKEN=` empty,
 so the setup doesn't ask again; `--computer yes` on a later run turns it on, and `--computer no`
 after a yes empties the token, removes `host-computer-token` and prints the command that removes the
 service. It's skipped, saying why and what to do instead, while sign-up is open (`ALLOW_SIGNUP=true`) or a provisioner gives
@@ -1653,7 +1653,7 @@ be set with `ALLOW_SIGNUP=true`, and a new token retires the old one's connectio
 restarts. Its agents reach the app at the address the runner connects to and the ports Docker publishes
 on public addresses (Caddy's 80 and 443), never Postgres or the containers' network; a service you run
 natively on this machine for them takes `sudo agentes-runner services allow tcp/<port>` (`tcp/443` for
-agentes.chat behind a `tailscale serve`, an nginx or a Caddy outside Docker). The Kotlin compile daemon
+squadchat behind a `tailscale serve`, an nginx or a Caddy outside Docker). The Kotlin compile daemon
 doesn't run there: the computer keeps the default uid range, and Kotlin compiles inside Gradle.
 
 The agent browser opens an offline new tab in its responsible person's language, with no outside request.
@@ -1670,7 +1670,7 @@ A computer on your server never measures or reports its public address: only a w
 stored encrypted with a key derived from `AGENTES_SECRET`, never sent back to a browser, and every
 model call goes through the server, which records its usage and cost per agent.
 
-**Jev (optional).** Jev is a fast model by TypeSafe that agentes.chat asks small questions: who should
+**Jev (optional).** Jev is a fast model by TypeSafe that squadchat asks small questions: who should
 answer a message nobody @mentioned, how a new memory relates to the old ones, where a button is on an
 agent's screen. With it, unmentioned messages are routed even when agents think only with plans,
 memory spots repeats said in other words, and agents find buttons from a description and on
@@ -1742,8 +1742,8 @@ docker compose pull
 docker compose up -d
 ```
 
-`https://agentes.chat/install/docker-compose.yml`, the one the setup downloads, is the file of the
-build agentes.chat runs, which follows `main` and can be ahead of the latest release.
+`https://squad-chat-6wd.pages.dev/install/docker-compose.yml`, the one the setup downloads, is the file of the
+build squadchat runs, which follows `main` and can be ahead of the latest release.
 
 Keep your settings in `.env` and never edit `docker-compose.yml`, so replacing it loses nothing.
 Anything a variable can't set goes in a `docker-compose.override.yml` beside it, which Compose merges

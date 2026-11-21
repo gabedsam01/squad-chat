@@ -43,7 +43,7 @@ const OCTO = installation("octo-labs", {
   repositorySelection: "selected",
   manageUrl: "https://github.com/settings/installations/109",
 });
-/** GitHub through the agentes.chat app alone: the connection the server makes with the first installation. */
+/** GitHub through the squadchat app alone: the connection the server makes with the first installation. */
 const appOnly = (accounts: string): Connection => ({
   id: "conn-gh",
   connector: "github",
@@ -57,7 +57,7 @@ const appOnly = (accounts: string): Connection => ({
 });
 const NO_APP: GitHubAppSetup = { source: null, slug: null, htmlUrl: null, state: "off", canCreate: true };
 
-describe("Conectores › GitHub with the agentes.chat app", () => {
+describe("Conectores › GitHub with the squadchat app", () => {
   test("each account: what it reaches, Gerenciar no GitHub on its page there, and Remover uninstalls it after asking", async () => {
     const { state } = await go(seedState({ githubApp: { installable: true, installations: [ACME, OCTO] } }));
     const section = panel();
@@ -185,7 +185,7 @@ describe("Conectores › GitHub with the agentes.chat app", () => {
   });
 });
 
-describe("Conectar GitHub: the agentes.chat app first", () => {
+describe("Conectar GitHub: the squadchat app first", () => {
   const connect = async (state: FakeState) => {
     const r = await go(state);
     await click(screen().getAllByRole("button", { name: "Adicionar conector" })[0] as HTMLElement);
@@ -237,7 +237,7 @@ describe("Conectar GitHub: the agentes.chat app first", () => {
   });
 });
 
-describe("Conectores › App do GitHub deste servidor (its owner, off agentes.chat)", () => {
+describe("Conectores › App do GitHub deste servidor (its owner, off squadchat)", () => {
   const card = () => screen().getByRole("region", { name: "App do GitHub deste servidor" });
 
   test("none yet: Criar o app no GitHub opens this server's page that sends GitHub the manifest", async () => {

@@ -9,7 +9,7 @@
 
 Who may sign up was decided by `ALLOW_SIGNUP`, an environment variable, so opening or closing sign-up meant a restart. After the first account, everyone else needed a workspace invitation, which puts a person in someone else's workspace and never gives a newcomer one of their own. The waiting list, whose addresses are also contacts at the email provider, had an `invited_at` column that nothing set.
 
-On agentes.chat Cloud every workspace gets a computer someone pays for (ADR 0056 §10), and nothing bills yet. Letting a person in costs money, so it has to be deliberate, in batches the people who run the Cloud choose, and visible as it happens.
+On squadchat Cloud every workspace gets a computer someone pays for (ADR 0056 §10), and nothing bills yet. Letting a person in costs money, so it has to be deliberate, in batches the people who run the Cloud choose, and visible as it happens.
 
 ## Decision
 
@@ -41,9 +41,9 @@ The refusals: a link for another address is 403 `EARLY_ACCESS_OTHER_EMAIL` (nami
 
 After the account is committed, a sign-up that carried the token uses the invitation while its link hasn't expired: `used_at`, `user_id`, and the token is cleared, for the invited address only, and never for a provider's unverified address. Using it also marks the account's address confirmed (`email_verified`): the token reached that mailbox, as the confirmation link would. An account let in another way (open mode, a workspace invitation) with an expired link takes nothing from it. A failure is logged and never fails the sign-up. An account made without the token (open mode, a workspace invitation) never uses one, until its address is allowed (§2). Deleting the account keeps `used_at` and nulls `user_id`, so neither the link nor the allowance comes back.
 
-### 4. Who makes workspaces on agentes.chat Cloud
+### 4. Who makes workspaces on squadchat Cloud
 
-On agentes.chat Cloud, where every workspace gets a paid computer (`MACHINE_PROVISIONING=external` at an agentes.chat `PUBLIC_URL`), while sign-up is by invitation (no `ALLOW_SIGNUP`, the mode `invite`), only an allowed account makes workspaces: one an early-access invitation is bound to (used, not revoked) whose address is confirmed, or the installation's pinned owner (ADR 0073). The address must be confirmed because anyone can sign up with an address that isn't theirs (a pending workspace invitation or open mode lets it in unconfirmed), and allowing an address binds whichever account holds it. The link confirms it as it is used (§3). An account allowed later confirms it with the confirmation link, which the onboarding offers while it waits. There is no count: an allowed account makes as many as it likes. An account that isn't allowed, such as someone who joined a teammate's workspace through a workspace invitation, makes none until its address is allowed (§2) or sign-up opens; `createOrganization` refuses it with 403 `org.create_invite_only` before anything is made. `/api/app/me` says `user.canCreateWorkspace` by the same rule; the web hides New workspace and the onboarding says why when it is false. Revoking the invitation stops further workspaces and leaves the ones made.
+On squadchat Cloud, where every workspace gets a paid computer (`MACHINE_PROVISIONING=external` at an squadchat `PUBLIC_URL`), while sign-up is by invitation (no `ALLOW_SIGNUP`, the mode `invite`), only an allowed account makes workspaces: one an early-access invitation is bound to (used, not revoked) whose address is confirmed, or the installation's pinned owner (ADR 0073). The address must be confirmed because anyone can sign up with an address that isn't theirs (a pending workspace invitation or open mode lets it in unconfirmed), and allowing an address binds whichever account holds it. The link confirms it as it is used (§3). An account allowed later confirms it with the confirmation link, which the onboarding offers while it waits. There is no count: an allowed account makes as many as it likes. An account that isn't allowed, such as someone who joined a teammate's workspace through a workspace invitation, makes none until its address is allowed (§2) or sign-up opens; `createOrganization` refuses it with 403 `org.create_invite_only` before anything is made. `/api/app/me` says `user.canCreateWorkspace` by the same rule; the web hides New workspace and the onboarding says why when it is false. Revoking the invitation stops further workspaces and leaves the ones made.
 
 An allowed account's first workspace is recorded on its invitation (`workspace_created_at`, `workspace_id`) in the workspace's own transaction, set only while still empty, so two creations at once both go ahead and the first recorded stays. Everywhere else the record still runs, so the console sees which workspace an invitation led to. Open mode, `ALLOW_SIGNUP` and a self-hosted server, with a provisioner of its own or none, aren't held to the rule.
 
@@ -57,14 +57,14 @@ Under `/api/operator/v1`, behind `OPERATOR_API_TOKEN` like the rest (ADR 0056): 
 
 ## Consequences
 
-- Opening sign-up on agentes.chat Cloud is a switch in the console. Invitation-only bounds who makes workspaces, not how many: the provisioner's pool, not the invitation, bounds new computers, and a workspace waits (`capacity`) once the pool is full (ADR 0056 §10).
+- Opening sign-up on squadchat Cloud is a switch in the console. Invitation-only bounds who makes workspaces, not how many: the provisioner's pool, not the invitation, bounds new computers, and a workspace waits (`capacity`) once the pool is full (ADR 0056 §10).
 - The waiting list moves to production as a CSV, without touching its contacts.
 - On a new database whoever signs up first is the installation's owner, exempt from §4: set `OWNER_CLAIM_SHA256`, or sign up before the address is public.
 - A member who needs their own workspace before sign-up opens gets it by allowing their address from the console (`allowed`), once the address is confirmed. Treating plus or dot variants as one person is left out until it is needed.
 
 ## Addendum (2026-11-06): accounts are contacts too
 
-On agentes.chat Cloud (`isAgentesCloud(PUBLIC_URL)`) with a provider that keeps contacts, every account is a contact at the email provider as well, so marketing segments keep themselves up to date. A self-hosted server never syncs its accounts and queues no job; there is no switch.
+On squadchat Cloud (`isAgentesCloud(PUBLIC_URL)`) with a provider that keeps contacts, every account is a contact at the email provider as well, so marketing segments keep themselves up to date. A self-hosted server never syncs its accounts and queues no job; there is no switch.
 
 - Job `account.contact` (`account-contacts.ts`, `orgId: null`) saves `account_created_at` and, when set, `locale`; a null `users.locale` leaves the contact's own (the waiting list's) alone. The handler reads the account when it runs, not when it was queued.
 - It is queued after sign-up commits, on a language change, when an operator blocks or lets an account back, when a deletion is requested or undone, and before an account's row is deleted (the job carries the address). These have no dedupe key: each change syncs once more. At boot every account is queued with a key of what its contact holds (`on:<locale>` or `off`), so a restart with nothing changed is a no-op.

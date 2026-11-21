@@ -148,5 +148,5 @@ export async function surfaceRefusal(
     .from(schema.users)
     .where(eq(schema.users.id, turn.userId));
   const who = person?.name ?? "the person";
-  return `This can't be done from ${surface.name}: tell ${who} in one line to do it in the agentes.chat app. Don't try another way.`;
+  return `This can't be done from ${surface.name}: tell ${who} in one line to do it in the squadchat app. Don't try another way.`;
 }

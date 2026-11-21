@@ -65,7 +65,7 @@ export const desktopEn = {
         tabs: "switching tabs",
       },
     },
-    label: "agentes.chat",
+    label: "squadchat",
     now: "Now",
     seeAll: "See all",
     background: "In the background",
@@ -85,12 +85,12 @@ export const desktopEn = {
     /** The pause menu with several workspaces: every one of them, then each on its own. */
     pauseAll: "All workspaces",
     pauseHint: "What is already running finishes normally.",
-    /** With the agentes.chat this computer runs: pausing the agents leaves it up (ADR 0158). */
+    /** With the squadchat this computer runs: pausing the agents leaves it up (ADR 0158). */
     pauseHintServer: "What is already running finishes normally. The server stays up.",
     resume: "Resume the agents",
-    open: "Open agentes.chat",
+    open: "Open squadchat",
     prefs: "Preferences…",
-    quit: "Quit agentes.chat",
+    quit: "Quit squadchat",
     pausedFor1h: "Paused for 1 hour",
     pausedTomorrow: "Paused until tomorrow at 9 AM",
     pausedManual: "Paused until you resume",
@@ -120,7 +120,7 @@ export const desktopEn = {
     refusedBody: "Reconnect to come back with the same agents and permissions.",
     reconnectMac: "Reconnect this {{device}}",
     incompatibleTitle: "Install the app again",
-    incompatibleBody: "One part of the app doesn't match the other. Download the latest version at agentes.chat.",
+    incompatibleBody: "One part of the app doesn't match the other. Download the latest version at squadchat.",
     requests: "Requests",
     wantsFolder: "{{agent}} wants to use a folder",
     allowFor: "Allow for",
@@ -132,24 +132,24 @@ export const desktopEn = {
     allowedAll: "{{folder}} allowed for all agents",
     denied: "Declined. {{agent}} lets them know in the chat.",
     notifTitle: "{{agent}} wants to use the folder {{folder}}",
-    allowedTitle: "{{name}} turned on {{tool}} from agentes.chat",
+    allowedTitle: "{{name}} turned on {{tool}} from squadchat",
     allowedBody: "If it wasn't you, undo it here.",
     allowedUndo: "Undo",
     allowedOk: "OK",
     allowedUndone: "Off again: {{tool}}",
-    quitTitle: "Quit agentes.chat?",
+    quitTitle: "Quit squadchat?",
     quitBody:
       "Agents can't use this {{device}} while the app is closed. What is already running finishes and sends the result when you open it again.",
     quitHereBody:
-      "agentes.chat stops on this {{device}}: nobody can use it, here, on your phone or your teammates', until you open the app again.",
+      "squadchat stops on this {{device}}: nobody can use it, here, on your phone or your teammates', until you open the app again.",
     quitConfirm: "Quit",
   },
   first: {
     /** The welcome window opened by the site's "Add workspace" (ADR 0154). */
     addTitle: "Add a workspace",
     addLead: "The ones you have stay here, each with its own sign-in.",
-    addCloud: "Create a workspace on agentes.chat",
-    /** Adding a workspace, under "Sign in to agentes.chat": a new one instead. */
+    addCloud: "Create a workspace on squadchat",
+    /** Adding a workspace, under "Sign in to squadchat": a new one instead. */
     addNew: "Want a new workspace?",
     addNewLink: "Create one",
   },
@@ -158,7 +158,7 @@ export const desktopEn = {
     title: "Where will your workspace live?",
     lead: "Your agents work wherever it is. You can change it later.",
     recommended: "Recommended",
-    cloud: "In the agentes.chat cloud",
+    cloud: "In the squadchat cloud",
     cloudText: "Always on. We take care of everything, you just use it.",
     here: "On this {{device}}",
     hereText: "Your agents work while the app is open.",
@@ -181,7 +181,7 @@ export const desktopEn = {
     copy: "Copy the instructions",
     copied: "Instructions copied",
     /** What "Copy the instructions" puts on the clipboard, to send to whoever installs it. */
-    text: "To install agentes.chat on a computer that stays on (a Mac mini, an office computer or a server):\n\n1. On that computer, open the Terminal and paste this:\n{{command}}\n\n2. At the end a link shows up. Send it to me: it opens the workspace in the app.",
+    text: "To install squadchat on a computer that stays on (a Mac mini, an office computer or a server):\n\n1. On that computer, open the Terminal and paste this:\n{{command}}\n\n2. At the end a link shows up. Send it to me: it opens the workspace in the app.",
   },
   connect: {
     title: "Sign in to a workspace that already exists",
@@ -193,7 +193,7 @@ export const desktopEn = {
     found: "Found",
     looking: "Looking for your server…",
     foundTailnet: "On your team's network",
-    foundHere: "agentes.chat is running here",
+    foundHere: "squadchat is running here",
     /** A server found on this computer that still waits for its owner account (the app opens its owner page). */
     foundNoOwner: "Waiting for its owner account",
     use: "Use",
@@ -215,9 +215,9 @@ export const desktopEn = {
     /** The same, for a server on a Tailscale network (its address ends in .ts.net). */
     unreachableTailnet:
       "We can't reach {{host}}, which is on your Tailscale network. Open Tailscale on this {{device}}, connect and try again.",
-    unreachableHere: "Nothing answers at {{host}} on this {{device}}. Start agentes.chat here, then try again.",
+    unreachableHere: "Nothing answers at {{host}} on this {{device}}. Start squadchat here, then try again.",
     certificate: "The certificate of {{host}} isn't valid. Talk to whoever runs the server.",
-    notAgentes: "{{host}} isn't an agentes.chat server. Check the address.",
+    notAgentes: "{{host}} isn't an squadchat server. Check the address.",
     serverTooOld: "{{host}} needs an update to work with this app.",
     appTooOld: "Update the app to use {{host}}.",
   },
@@ -232,7 +232,7 @@ export const desktopEn = {
     emailNeeded: "Write your email, like ana@example.com.",
     reach: "Reach it from your phone and teammates",
     reachText:
-      "With Tailscale, a private network for your devices: your phone and the people you invite join it, and nobody else can reach agentes.chat.",
+      "With Tailscale, a private network for your devices: your phone and the people you invite join it, and nobody else can reach squadchat.",
     reachOff: "Tailscale isn't connected.",
     reachOffTerminal: "Tailscale isn't connected. Connect it in the terminal:",
     reachTray: "Tailscale isn't connected. Connect it from its icon by the clock.",
@@ -243,14 +243,14 @@ export const desktopEn = {
       sharing: "Asking Tailscale to share it…",
       approve:
         "Tailscale asks for HTTPS to be turned on in your network. Turn it on in its page: the rest goes on by itself.",
-      restarting: "Restarting agentes.chat at its new address…",
+      restarting: "Restarting squadchat at its new address…",
       signingIn: "Signing in again at the new address…",
     },
     approveOpen: "Open Tailscale's page",
     approveStop: "Stop waiting",
     openTailscale: "Open Tailscale",
     getTailscale: "Get Tailscale",
-    usage: "Send anonymous usage statistics to agentes.chat",
+    usage: "Send anonymous usage statistics to squadchat",
     usageText:
       "Counts such as people, agents, machine sizes, AI tokens used and how much data the agents' browsers send and receive. Never messages, files, names or sites.",
     start: "Start",
@@ -260,7 +260,7 @@ export const desktopEn = {
     step: {
       database: "Making room for your data",
       databaseNote: "first time only",
-      start: "Turning agentes.chat on",
+      start: "Turning squadchat on",
       account: "Creating your account",
       computer: "Calling your agents",
       reach: "Turning on access from your phone",
@@ -273,7 +273,7 @@ export const desktopEn = {
       warn: "needs your attention",
     },
     fail: {
-      start: "agentes.chat didn't start on this {{device}}.",
+      start: "squadchat didn't start on this {{device}}.",
       database: "The database wasn't prepared.",
       account: "Your account wasn't created.",
       retry: "Try again in Preferences",
@@ -283,10 +283,10 @@ export const desktopEn = {
       serve: "Tailscale on this {{device}} can't share it",
       operator: "Tailscale needs your permission first",
       stopped: "you stopped waiting for HTTPS to be turned on",
-      start: "agentes.chat didn't answer again at its new address",
+      start: "squadchat didn't answer again at its new address",
       notConnected: "Tailscale isn't connected on this {{device}}",
       /** Turning access off failed: a whole sentence (never after "didn't turn on"). */
-      back: "agentes.chat didn't answer again on this {{device}} after access from your devices was turned off.",
+      back: "squadchat didn't answer again on this {{device}} after access from your devices was turned off.",
     },
     serveFix: "Install Tailscale from tailscale.com.",
     connectTray: "Connect it from its icon by the clock.",
@@ -294,18 +294,18 @@ export const desktopEn = {
     turnOn: "Turn it on",
     copyDetails: "Copy details",
     slow: "Taking a little longer than expected",
-    notifyFailed: "Setting up agentes.chat on this {{device}} didn't finish",
-    notifyFailedBody: "Open agentes.chat to see what happened.",
-    already: "agentes.chat is already installed on this {{device}}",
+    notifyFailed: "Setting up squadchat on this {{device}} didn't finish",
+    notifyFailedBody: "Open squadchat to see what happened.",
+    already: "squadchat is already installed on this {{device}}",
     alreadyText: "It runs on its own, installed from the terminal. Use it in this app.",
     /** The same, for the Docker install answering on this computer. */
     alreadyDocker: "It runs on its own, installed with Docker. Use it in this app.",
     useIt: "Use it",
-    notRunning: "agentes.chat is installed on this {{device}}, but it isn't running",
+    notRunning: "squadchat is installed on this {{device}}, but it isn't running",
     /** The command to copy follows. */
     notRunningText:
       "It was installed from the terminal, in {{path}}. To start it, run this in the terminal, then try again:",
-    running: "agentes.chat already runs on this {{device}}",
+    running: "squadchat already runs on this {{device}}",
     runningText: "This app runs it. Open it to sign in.",
     openIt: "Open it",
   },
@@ -320,18 +320,18 @@ export const desktopEn = {
     open: "Open",
     continue: "Continue",
     checking: "Checking the server…",
-    notALink: "This link isn't from an agentes.chat server.",
+    notALink: "This link isn't from an squadchat server.",
     chipTailnet: "Tailscale",
     chipHere: "This {{device}}",
-    /** The agentes.chat this computer runs, named in large type instead of its address. */
-    thisServer: "agentes.chat on this {{device}}",
+    /** The squadchat this computer runs, named in large type instead of its address. */
+    thisServer: "squadchat on this {{device}}",
     /** Under a server on a Tailscale network. */
     tailnetHelp: "It's on a Tailscale network: it only opens on devices connected to Tailscale with the same account.",
   },
   servers: {
     title: "Servers",
-    lead: "Where this app opens agentes.chat.",
-    cloud: "agentes.chat",
+    lead: "Where this app opens squadchat.",
+    cloud: "squadchat",
     cloudSub: "Cloud",
     ownSub: "Your server",
     ownTailnet: "Your server · on your Tailscale network",
@@ -365,7 +365,7 @@ export const desktopEn = {
     newsMany: "{{n}} new notifications",
   },
   server: {
-    title: "agentes.chat on this {{device}}",
+    title: "squadchat on this {{device}}",
     running: "Running",
     starting: "Starting",
     stopped: "Stopped",
@@ -380,7 +380,7 @@ export const desktopEn = {
     phone: "On your phone",
     phoneOff: "Turn on reach first.",
     showQr: "Show QR code",
-    usageRestart: "Changing it restarts agentes.chat for a moment.",
+    usageRestart: "Changing it restarts squadchat for a moment.",
     jev: "Jev",
     jevText:
       "A fast model by TypeSafe that picks who answers, keeps memory tidy and lets agents see the screen. Optional, with your own key.",
@@ -393,7 +393,7 @@ export const desktopEn = {
     stop: "Stop",
     restart: "Restart",
     stopHere: "Stop running it here…",
-    stopHereTitle: "Stop agentes.chat on this {{device}}?",
+    stopHereTitle: "Stop squadchat on this {{device}}?",
     stopHereBody: "It stops now and no longer starts with the app. Its data stays in {{path}}.",
     stopHereConfirm: "Stop it",
     /** Stop, with how long (ADR 0158): it no longer starts with the app until Start, or for an hour. */
@@ -402,11 +402,11 @@ export const desktopEn = {
     stopUntilStart: "Stop until I start it",
     stopForget: "Don't start it with the app…",
     stopNote: "Stopping cuts everyone off, the phone included.",
-    stopTitle: "Stop agentes.chat on this {{device}}?",
+    stopTitle: "Stop squadchat on this {{device}}?",
     stopBody: "The phone and the team lose access until it's back.",
     stoppedUntil: "Stopped · back at {{time}}",
     stoppedHeld: "Stopped until you start it",
-    reachRestart: "Turning it on or off restarts agentes.chat for a moment.",
+    reachRestart: "Turning it on or off restarts squadchat for a moment.",
     reachOffTitle: "Turn off access from your devices?",
     reachOffBody: "The phone and the team lose access. Only this {{device}} keeps using it.",
     reachOffConfirm: "Turn off",
@@ -416,18 +416,18 @@ export const desktopEn = {
     gotIt: "Got it",
     notHere: "Not running here. Its data is still in {{path}}.",
     startHere: "Start it here",
-    stoppedBanner: "agentes.chat stopped on this {{device}}",
+    stoppedBanner: "squadchat stopped on this {{device}}",
     stoppedBody: "Nobody can use it until it starts again.",
-    failingBanner: "agentes.chat isn't starting on this {{device}}",
+    failingBanner: "squadchat isn't starting on this {{device}}",
     /** The notification's body under "isn't starting"; clicking it opens the popover. */
     failingBody: "Open the app to see what happened and try again.",
     /** It restarted by itself 3 times in a few minutes (a notification). */
-    restartedBanner: "agentes.chat restarted 3 times on this {{device}}",
+    restartedBanner: "squadchat restarted 3 times on this {{device}}",
     restartedBody: "It comes back by itself. If it keeps happening, open the app to see why.",
     installedVersion: "Installed package version",
     internalVersion: "Internal server version",
-    updatesWithApp: "Updating the app updates agentes.chat on this {{device}} too.",
-    updateBack: "The update didn't start. agentes.chat is back on {{version}}.",
+    updatesWithApp: "Updating the app updates squadchat on this {{device}} too.",
+    updateBack: "The update didn't start. squadchat is back on {{version}}.",
     updateBackBody: "The new version is tried again with the app's next update.",
     backups: "Backups",
     nightly: "Back up every night",
@@ -447,16 +447,16 @@ export const desktopEn = {
     restore: "Restore…",
     restoreTitle: "Restore a backup?",
     restoreBody:
-      "agentes.chat on this {{device}} goes back to that backup: messages, files and settings. It stops for a minute. What's there now is kept in the backups folder.",
+      "squadchat on this {{device}} goes back to that backup: messages, files and settings. It stops for a minute. What's there now is kept in the backups folder.",
     restoreWhich: "Backup to restore",
     backupOf: "Backup from {{time}}",
     restoreConfirm: "Restore",
     restored: "Restored the backup from {{time}}",
-    restoreFailed: "That backup didn't start, so agentes.chat is back as it was. Try the other backup.",
+    restoreFailed: "That backup didn't start, so squadchat is back as it was. Try the other backup.",
     restoreUnreadable: "That backup can't be opened. Try the other one.",
     /** Preferences › Servers: it stops, its folder moves whole to a dated folder in the home folder, its agents' homes here (browser profiles, sign-ins, machine tokens) are deleted, and a new setup starts. */
     erase: "Erase and start over…",
-    eraseTitle: "Erase agentes.chat on this {{device}}?",
+    eraseTitle: "Erase squadchat on this {{device}}?",
     eraseBody:
       "Its workspaces go for everyone who uses them, on every device. Its data moves to {{path}} and stays there. What its agents kept on this {{device}}, such as their browsers and sign-ins, is deleted. The agents' files in ~/agentes are yours and stay where they are. Then you set it up again with a new owner.",
     eraseConfirm: "Erase it",
@@ -465,7 +465,7 @@ export const desktopEn = {
       "Its data couldn't be moved, so nothing was erased and it stays in {{path}}. It's stopped until you start it again.",
     /** Another agentes-server, started outside the app, holds the folder's lock, so the folder can't move. */
     eraseHeld:
-      "Another agentes.chat server is using its folder, so nothing was erased. Stop that server, then try again.",
+      "Another squadchat server is using its folder, so nothing was erased. Stop that server, then try again.",
     noPassword: "Add a password to sign in from your phone and other computers.",
     addPassword: "Add a password",
     keep: "Keep it running",
@@ -473,14 +473,14 @@ export const desktopEn = {
     keepLoginOn: "Turn on",
     keepAutoLogin: "Signs in by itself after a restart",
     keepAutoLoginText:
-      "After a restart, this {{device}} waits at its sign-in screen and agentes.chat doesn't open. Turn on automatic login in Users & Groups.",
+      "After a restart, this {{device}} waits at its sign-in screen and squadchat doesn't open. Turn on automatic login in Users & Groups.",
     keepAutoLoginOpen: "Open Users & Groups",
     keepPower: "Starts after a power failure",
     keepPowerText:
       "After a power cut, this {{device}} stays off until someone presses its button. Energy settings can start it by itself.",
     keepPowerOpen: "Open Energy settings",
     keepAwake: "Doesn't sleep while serving",
-    keepAwakeText: "This {{device}} stays awake while agentes.chat runs here. Start agentes.chat to keep it awake.",
+    keepAwakeText: "This {{device}} stays awake while squadchat runs here. Start squadchat to keep it awake.",
     keepOn: "Done",
     keepOff: "Not yet",
   },
@@ -495,7 +495,7 @@ export const desktopEn = {
     notNow: "Not now",
     /** Shown once after sign-in, for a workspace this computer doesn't work for yet. */
     offerTitle: "Let {{org}}'s agents use this {{device}}?",
-    keepReady: "Keep it ready: open agentes.chat at login",
+    keepReady: "Keep it ready: open squadchat at login",
     /** The offer for a server elsewhere that this computer only opens: pairing lends it, it isn't needed to get in. */
     offerOnlyIf:
       "Only if you want this {{device}} to do agents' work too. With Not now you still use {{org}} here as usual.",
@@ -530,7 +530,7 @@ export const desktopEn = {
     disk: "Full Disk Access",
     diskDesc: "Lets agents open your files without macOS asking for each folder.",
     /** No prompt can ask for Full Disk Access: the person turns the app on in its list, or adds it with the + button. */
-    diskHow: "In Settings, turn on agentes.chat in the list, or add it with +.",
+    diskHow: "In Settings, turn on squadchat in the list, or add it with +.",
     /** macOS's Local Network permission, which Android phones paired over Wi-Fi need. */
     network: "Local network (phones over Wi-Fi)",
     networkDesc: "Lets agents find and use Android phones on your Wi-Fi.",
@@ -543,8 +543,8 @@ export const desktopEn = {
     /** System Settings › Privacy & Security, where a refused permission is turned on. */
     openSettings: "Open Settings",
     /** Once Screen Recording or Full Disk Access was asked: macOS applies it only after the app opens again. */
-    reopen: "When macOS asks to Quit & Reopen, choose it. agentes.chat opens again right here.",
-    tookEffect: "agentes.chat opened again with your changes.",
+    reopen: "When macOS asks to Quit & Reopen, choose it. squadchat opens again right here.",
+    tookEffect: "squadchat opened again with your changes.",
     skip: "Skip for now",
     prefsTitle: "Permissions",
     prefsHint: "macOS may turn these off when the app updates. Turn them on again here.",
@@ -572,17 +572,17 @@ export const desktopEn = {
     commandsWarn: "Commands can reach the rest of this {{device}}, not only the allowed folders.",
     commandsWarnOrgs: "Commands can reach the rest of this {{device}}, other workspaces' folders included.",
     commandsWarnHere:
-      "Commands run as you and can reach the rest of this {{device}}, agentes.chat's own data included.",
+      "Commands run as you and can reach the rest of this {{device}}, squadchat's own data included.",
     commandsSome: "On only for {{orgs}}. Turn it on for every workspace here.",
     commandsAbout:
-      "Tests, builds and other Terminal commands. Each one shows in Activity. Commands run as you. They can read anything you can on this {{device}}, agentes.chat's database and keys included. Turn them on only for workspaces you trust with all of it.",
+      "Tests, builds and other Terminal commands. Each one shows in Activity. Commands run as you. They can read anything you can on this {{device}}, squadchat's database and keys included. Turn them on only for workspaces you trust with all of it.",
     commandsReach:
-      "Commands run as you. They can read anything you can on this {{device}}, agentes.chat's database and keys included. Turn them on only for workspaces you trust with all of it.",
+      "Commands run as you. They can read anything you can on this {{device}}, squadchat's database and keys included. Turn them on only for workspaces you trust with all of it.",
     commandsAsk: "Turn on Commands for {{org}}?",
     commandsTurnOn: "Turn on",
     checkAgain: "Check again",
-    lookPath: "agentes.chat looks in your login shell's PATH.",
-    lookPathWindows: "agentes.chat looks in PATH.",
+    lookPath: "squadchat looks in your login shell's PATH.",
+    lookPathWindows: "squadchat looks in PATH.",
     stillMissing: "{{tool}} still isn't found. Run the command above, then check again.",
     install: "Install for me",
     installing: "Installing {{tool}}. It takes about a minute.",
@@ -608,7 +608,7 @@ export const desktopEn = {
     pausedBody: "Nothing new starts here until you resume.",
     resume: "Resume",
     open: "Open",
-    openApp: "Open agentes.chat",
+    openApp: "Open squadchat",
     someAgent: "An agent",
   },
   prefs: {
@@ -642,7 +642,7 @@ export const desktopEn = {
       behavior: "Behavior",
       launchTitle: "Open at login",
       launchDesc: "Agents only use this {{device}} while the app is open.",
-      launchHere: "agentes.chat on this {{device}} runs only while the app is open.",
+      launchHere: "squadchat on this {{device}} runs only while the app is open.",
       launchWork: "Agents work only while the app is open.",
       notifySiteTitle: "Let me know about messages and requests",
       notifySiteDesc: "Mentions, direct messages and what waits for you, while the app is in the background.",
@@ -665,8 +665,8 @@ export const desktopEn = {
       /** Behind the ⓘ while WEBKIT_DISABLE_DMABUF_RENDERER was set when the app started: the switch can't change it. */
       compatOwn:
         "WEBKIT_DISABLE_DMABUF_RENDERER decides this now. To choose here, quit the app and open it without that variable.",
-      /** Asked before Reopen now while agents work on this computer or agentes.chat runs here. */
-      reopenTitle: "Reopen agentes.chat?",
+      /** Asked before Reopen now while agents work on this computer or squadchat runs here. */
+      reopenTitle: "Reopen squadchat?",
       reopenBody: "Agents can't use this computer until the app opens again. What is already running finishes first.",
     },
     thisMac: {
@@ -697,11 +697,11 @@ export const desktopEn = {
       signedOut: "Sign in to {{server}} in the app to see who can use this {{device}}.",
       unreachable: "Couldn't reach {{server}}. Check the connection and try again.",
       placeHere: "On this {{device}}",
-      placeCloud: "agentes.chat Cloud",
+      placeCloud: "squadchat Cloud",
       more: "More for {{org}}",
       otherWorkspace: "Another workspace",
       otherWorkspaceDesc:
-        "Let a workspace on agentes.chat Cloud or on another server use this {{device}} too. Each one keeps its own sign-in.",
+        "Let a workspace on squadchat Cloud or on another server use this {{device}} too. Each one keeps its own sign-in.",
       addWorkspace: "Add a workspace…",
     },
     folders: {
@@ -791,9 +791,9 @@ export const desktopEn = {
         "The server and agents restart for a minute. If the new version doesn't start, it goes back by itself.",
       download: "Download version {{version}}",
       howTitle: "Update by hand",
-      step1: "Quit agentes.chat (⌘Q).",
-      step2: "Delete the old agentes.chat from the Applications folder.",
-      step3: "Open the downloaded file and drag the new agentes.chat into Applications.",
+      step1: "Quit squadchat (⌘Q).",
+      step2: "Delete the old squadchat from the Applications folder.",
+      step3: "Open the downloaded file and drag the new squadchat into Applications.",
       installerNote: "Open the downloaded file: it installs the new version over the old one.",
       keepNote: "Your servers and settings stay.",
       whatsNew: "What's new in {{version}}",
@@ -878,7 +878,7 @@ export const desktopEn = {
     account: "Apple Account in Xcode",
     checking: "Looking at this {{device}}…",
     /** The app's own helper on this computer didn't answer for a while. */
-    checkingStall: "This {{device}} isn't answering yet. Quit agentes.chat from its menu bar icon and open it again.",
+    checkingStall: "This {{device}} isn't answering yet. Quit squadchat from its menu bar icon and open it again.",
     xcodeText: "Install Xcode from the App Store. This step goes on by itself when it's there.",
     updateXcode: "Update Xcode",
     toolsStarting: "Starting the download…",
@@ -906,11 +906,11 @@ export const desktopEn = {
     offline: "No internet connection · trying again…",
     unreachable: "Can't reach {{host}} · trying again…",
     tailnet: "Is Tailscale connected on this {{device}}?",
-    starting: "Starting agentes.chat on this {{device}}…",
-    migrating: "Updating agentes.chat on this {{device}}. This can take a minute.",
-    stopped: "agentes.chat stopped on this {{device}}",
-    failing: "agentes.chat isn't starting on this {{device}}",
-    tailnetOff: "Connect Tailscale on this {{device}} to open agentes.chat.",
+    starting: "Starting squadchat on this {{device}}…",
+    migrating: "Updating squadchat on this {{device}}. This can take a minute.",
+    stopped: "squadchat stopped on this {{device}}",
+    failing: "squadchat isn't starting on this {{device}}",
+    tailnetOff: "Connect Tailscale on this {{device}} to open squadchat.",
     tailnetUp: "In the terminal: sudo tailscale up",
     tailnetTray: "Open it from its icon by the clock.",
     onlyHere: "Use only on this {{device}}",
@@ -920,12 +920,12 @@ export const desktopEn = {
     retry: "Try again",
     openTailscale: "Open Tailscale",
     otherServer: "Use another server",
-    stuck: "agentes.chat didn't open. Try again, or see the page as it is.",
+    stuck: "squadchat didn't open. Try again, or see the page as it is.",
     showAnyway: "Show it anyway",
     copyFailed: "Couldn't copy",
     /** Stopped by the person to stay stopped (until Start, or until a time). */
-    held: "agentes.chat is stopped on this {{device}} until you start it.",
-    heldUntil: "agentes.chat is stopped on this {{device}}. It comes back by itself at {{time}}.",
+    held: "squadchat is stopped on this {{device}} until you start it.",
+    heldUntil: "squadchat is stopped on this {{device}}. It comes back by itself at {{time}}.",
     startNow: "Start now",
     /** Another server of the app's list, by its name. */
     openOther: "Open {{server}}",
@@ -933,15 +933,15 @@ export const desktopEn = {
     onlyHereFailed: "Couldn't turn off access from your devices.",
   },
   menu: {
-    about: "About agentes.chat",
+    about: "About squadchat",
     updates: "Check for updates…",
     prefs: "App preferences…",
     orgSettings: "Workspace settings",
     services: "Services",
-    hide: "Hide agentes.chat",
+    hide: "Hide squadchat",
     hideOthers: "Hide others",
     showAll: "Show all",
-    quit: "Quit agentes.chat",
+    quit: "Quit squadchat",
     servers: "Servers",
     file: "File",
     newChannel: "New channel",

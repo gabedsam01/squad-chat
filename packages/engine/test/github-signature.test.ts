@@ -22,10 +22,10 @@ const API = "https://api.github.test";
 
 describe("the line and the credit (ADR 0156)", () => {
   test("a body gets the line once, its names inert; a commit message gets the trailer in its trailer block", () => {
-    const line = "Dev, agent for @everyone <b>x</b> on agentes.chat";
+    const line = "Dev, agent for @everyone <b>x</b> on squadchat";
     const signed = signedBody("Fixes #1", line);
     expect(signed).toBe(
-      `Fixes #1\n\n${SIGNATURE_MARK}\n<sub>Dev, agent for &#64;everyone &#60;b&#62;x&#60;/b&#62; on agentes.chat</sub>`,
+      `Fixes #1\n\n${SIGNATURE_MARK}\n<sub>Dev, agent for &#64;everyone &#60;b&#62;x&#60;/b&#62; on squadchat</sub>`,
     );
     expect(signedBody(signed, "Dev")).toBe(`Fixes #1\n\n${SIGNATURE_MARK}\n<sub>Dev</sub>`);
     // An edit that wrote on after the old line keeps all it wrote; the old line goes.
@@ -49,7 +49,7 @@ describe("the line and the credit (ADR 0156)", () => {
     expect(creditedMessage(`Fix\n\n${nick.toUpperCase()}`, nick)).toBe(`Fix\n\n${nick.toUpperCase()}`);
   });
 
-  test("the agent's own line: its name on one line at agentes.chat's address, its handle when nothing is left", () => {
+  test("the agent's own line: its name on one line at squadchat's address, its handle when nothing is left", () => {
     expect(AGENT_CO_AUTHOR_EMAIL).toBe("noreply@agentes.chat");
     expect(agentCoAuthor({ name: "Nick", handle: "nick" })).toBe("Co-authored-by: Nick <noreply@agentes.chat>");
     expect(agentCoAuthor({ name: "Li\na <x>\u0085\u2028", handle: "lia" })).toBe(

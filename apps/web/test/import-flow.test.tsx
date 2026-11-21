@@ -523,7 +523,7 @@ describe("Configurações → Importar e exportar", () => {
     }
   });
 
-  test("agentes.chat: where its file is, and with one other workspace on this server, a link to it", async () => {
+  test("squadchat: where its file is, and with one other workspace on this server, a link to it", async () => {
     const state = seedState();
     state.me?.organizations.push({ id: "org-north", name: "Estúdio Norte", role: "owner", showActivity: true });
     await go(state);

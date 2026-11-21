@@ -16,7 +16,7 @@ import { Text } from "@/ui/Text";
 import { useToast } from "@/ui/Toast";
 
 /**
- * "Onde fica o seu agentes.chat?": the team's own server (self-hosted, usually on Tailscale), by address (the URL
+ * "Onde fica o seu squadchat?": the team's own server (self-hosted, usually on Tailscale), by address (the URL
  * keyboard once the field is tapped, never on its own as the screen opens, its return key as the action), or by the
  * QR code the web app shows. The server is checked before anything changes. `onDone` leaves it once the server changed
  * (back to the sign-in under it, or closing the window it was opened in). Pushed, the system's back leaves it; opened

@@ -150,7 +150,7 @@ const READ_KINDS = [
   "support_request",
 ] as const;
 
-/** Who the operator is to the workspace's people: on agentes.chat's own servers, its support. */
+/** Who the operator is to the workspace's people: on squadchat's own servers, its support. */
 const operatorWho = (t: TFunction, row: AuditRow) =>
   t(row.details.cloud === true ? "audit.operatorRead.who.cloud" : "audit.operatorRead.who.server");
 

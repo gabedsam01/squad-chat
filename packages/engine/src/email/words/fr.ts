@@ -7,32 +7,32 @@ import type { EmailWords } from "./index";
  * forms with `plural("fr", n, { one, few, many, other })` from `@agenteschat/i18n/format`.
  */
 export const words: EmailWords = {
-  sentBy: (host) => (host ? atHost("Envoyé par le serveur agentes.chat", "sur", host) : "Envoyé par agentes.chat."),
+  sentBy: (host) => (host ? atHost("Envoyé par le serveur squadchat", "sur", host) : "Envoyé par squadchat."),
   fallback: "Le bouton ne fonctionne pas ? Copiez cette adresse dans votre navigateur :",
   role: { owner: "propriétaire", member: "membre" },
   anAgent: "Un agent",
   someone: "Quelqu’un",
   verify: {
-    subject: "Confirmez votre e-mail pour agentes.chat",
+    subject: "Confirmez votre e-mail pour squadchat",
     preheader: "Un clic pour confirmer cette adresse. Le lien est valable une heure.",
     headline: "Confirmez votre e-mail",
     body: "Plus qu’une étape : confirmer que cette adresse est bien la vôtre.",
     button: "Confirmer l’e-mail",
     small: "Le lien est valable une heure. Si vous ne vous êtes pas inscrit, vous pouvez ignorer cet e-mail.",
-    why: "Vous recevez cet e-mail car cette adresse a servi à créer un compte sur agentes.chat.",
+    why: "Vous recevez cet e-mail car cette adresse a servi à créer un compte sur squadchat.",
   },
   reset: {
-    subject: "Réinitialisez votre mot de passe agentes.chat",
+    subject: "Réinitialisez votre mot de passe squadchat",
     preheader: "Choisissez un nouveau mot de passe. Le lien est valable une heure.",
     headline: "Choisissez un nouveau mot de passe",
     body: "Nous avons reçu une demande de réinitialisation du mot de passe pour cette adresse.",
     button: "Choisir un nouveau mot de passe",
     note: "Vous n’avez rien demandé ? Ignorez cet e-mail. Votre mot de passe reste le même.",
     small: "Le lien est valable une heure.",
-    why: "Vous recevez cet e-mail car quelqu’un a demandé à réinitialiser le mot de passe de cette adresse sur agentes.chat.",
+    why: "Vous recevez cet e-mail car quelqu’un a demandé à réinitialiser le mot de passe de cette adresse sur squadchat.",
   },
   invitation: {
-    subject: "Vous êtes invité dans un espace de travail sur agentes.chat",
+    subject: "Vous êtes invité dans un espace de travail sur squadchat",
     preheader: "Acceptez sous 7 jours, avec cette adresse e-mail.",
     headline: "Vous êtes invité dans un espace de travail",
     body: (inviter, email, org, role) =>
@@ -50,7 +50,7 @@ export const words: EmailWords = {
         agents && ["Vous travaillerez avec ", ...agents, "."],
       ),
     more: (n) => `${n} autres`,
-    what: "agentes.chat, c’est l’endroit où les personnes et les agents IA travaillent ensemble.",
+    what: "squadchat, c’est l’endroit où les personnes et les agents IA travaillent ensemble.",
     noteFrom: (inviter, note) => [{ b: inviter ? `${inviter} : ` : "Son message : " }, `« ${note} »`],
     button: "Accepter l’invitation",
     small: "L’invitation est valable 7 jours. Acceptez-la avec cette adresse e-mail.",
@@ -61,9 +61,9 @@ export const words: EmailWords = {
         inviter
           ? [
               { b: inviter },
-              `${email ? ` (${email})` : ""} vous invite dans son espace de travail personnel sur agentes.chat.`,
+              `${email ? ` (${email})` : ""} vous invite dans son espace de travail personnel sur squadchat.`,
             ]
-          : "Vous êtes invité dans un espace de travail personnel sur agentes.chat.",
+          : "Vous êtes invité dans un espace de travail personnel sur squadchat.",
       why: () =>
         "Vous recevez cet e-mail car quelqu’un a invité cette adresse dans son espace de travail personnel. Si vous ne connaissez pas cette personne, ignorez-le. Rien ne se passe tant que vous n’acceptez pas.",
     },
@@ -101,41 +101,41 @@ export const words: EmailWords = {
     },
   },
   waitlist: {
-    subject: "Confirmez votre place sur la liste d’attente d’agentes.chat",
+    subject: "Confirmez votre place sur la liste d’attente d’squadchat",
     preheader: "Un clic et votre place est réservée.",
     headline: "Confirmez votre place sur la liste",
     body: (email) =>
       email
-        ? ["Nous avons reçu une demande pour inscrire ", { b: email }, " sur la liste d’attente d’agentes.chat."]
-        : "Nous avons reçu une demande pour inscrire cette adresse sur la liste d’attente d’agentes.chat.",
+        ? ["Nous avons reçu une demande pour inscrire ", { b: email }, " sur la liste d’attente d’squadchat."]
+        : "Nous avons reçu une demande pour inscrire cette adresse sur la liste d’attente d’squadchat.",
     approve: "Ici, rien d’important ne se fait sans l’approbation d’une personne. Cette demande non plus.",
     button: "Confirmer mon e-mail",
     small:
       "Le lien est valable 48 heures. Ce n’était pas vous ? Ignorez cet e-mail. Sans ce clic, l’adresse n’est jamais ajoutée à la liste.",
-    why: "Vous recevez cet e-mail car cette adresse a été inscrite sur la liste d’attente d’agentes.chat.",
+    why: "Vous recevez cet e-mail car cette adresse a été inscrite sur la liste d’attente d’squadchat.",
   },
   earlyAccess: {
-    subject: "Votre invitation à agentes.chat est arrivée",
+    subject: "Votre invitation à squadchat est arrivée",
     preheader: (days) => `Créez votre compte sous ${days} jours, avec cette adresse e-mail.`,
     headline: "Votre accès est prêt",
-    body: (email) => [{ b: email }, " peut maintenant créer un compte et un espace de travail sur agentes.chat."],
-    what: "agentes.chat, c’est l’endroit où les personnes et les agents IA travaillent ensemble.",
+    body: (email) => [{ b: email }, " peut maintenant créer un compte et un espace de travail sur squadchat."],
+    what: "squadchat, c’est l’endroit où les personnes et les agents IA travaillent ensemble.",
     button: "Créer mon compte",
     small: (days) =>
       `Le lien est valable ${days} jours, pour cette adresse uniquement. Inscrivez-vous avec un mot de passe, ou avec Google, GitHub ou Apple sur cette même adresse.`,
-    why: "Vous recevez cet e-mail car cette adresse est sur la liste d’attente d’agentes.chat, ou a été invitée sur agentes.chat. Rien ne se passe tant que vous ne vous inscrivez pas.",
+    why: "Vous recevez cet e-mail car cette adresse est sur la liste d’attente d’squadchat, ou a été invitée sur squadchat. Rien ne se passe tant que vous ne vous inscrivez pas.",
   },
   earlyAccessAllowed: {
     subject: "Vous pouvez maintenant créer votre propre espace de travail",
     preheader: "Connectez-vous avec le compte que vous avez déjà et configurez-le.",
     headline: "Créez votre propre espace de travail",
     body: (email) => [
-      "Vous pouvez maintenant créer votre propre espace de travail sur agentes.chat avec ",
+      "Vous pouvez maintenant créer votre propre espace de travail sur squadchat avec ",
       { b: email },
       ", le compte que vous avez déjà.",
     ],
     button: "Créer mon espace de travail",
-    why: "Vous recevez cet e-mail car ce compte a obtenu un accès anticipé à agentes.chat.",
+    why: "Vous recevez cet e-mail car ce compte a obtenu un accès anticipé à squadchat.",
   },
   budget: {
     subject: {
@@ -226,7 +226,7 @@ export const words: EmailWords = {
     },
     button: { ai: "Connecter votre IA", task: "Confier une première tâche", create: "Créer un agent" },
     why: (org) =>
-      `Vous recevez cet e-mail car vous êtes propriétaire de ${org} sur agentes.chat. C’est le seul e-mail au sujet de cet ordinateur.`,
+      `Vous recevez cet e-mail car vous êtes propriétaire de ${org} sur squadchat. C’est le seul e-mail au sujet de cet ordinateur.`,
     personal: {
       body: () =>
         "Merci d’avoir patienté. L’ordinateur de vos agents est allumé et configuré, avec un utilisateur dédié pour chaque agent. Il reste allumé jour et nuit, pour que vos agents puissent travailler à toute heure.",
@@ -237,7 +237,7 @@ export const words: EmailWords = {
         ],
       },
       why: () =>
-        "Vous recevez cet e-mail car cet espace de travail sur agentes.chat est le vôtre. C’est le seul e-mail au sujet de cet ordinateur.",
+        "Vous recevez cet e-mail car cet espace de travail sur squadchat est le vôtre. C’est le seul e-mail au sujet de cet ordinateur.",
     },
   },
   joinRequest: {
@@ -296,7 +296,7 @@ export const words: EmailWords = {
       small:
         "Si vous pensez qu’il s’agit d’une erreur, demandez à quelqu’un de cet espace de travail de vous inviter par e-mail.",
     },
-    why: (org) => `Vous recevez cet e-mail car cette adresse a demandé à rejoindre ${org} sur agentes.chat.`,
+    why: (org) => `Vous recevez cet e-mail car cette adresse a demandé à rejoindre ${org} sur squadchat.`,
     personal: {
       joined: { body: (who) => `${who} a approuvé votre demande. Vous êtes maintenant dans son espace de travail.` },
       invited: { body: (who) => `${who} a approuvé votre demande pour rejoindre son espace de travail.` },
@@ -306,27 +306,27 @@ export const words: EmailWords = {
         small: "Si vous pensez qu’il s’agit d’une erreur, demandez-lui de vous inviter par e-mail.",
       },
       why: () =>
-        "Vous recevez cet e-mail car cette adresse a demandé à rejoindre un espace de travail personnel sur agentes.chat.",
+        "Vous recevez cet e-mail car cette adresse a demandé à rejoindre un espace de travail personnel sur squadchat.",
     },
   },
   joinCode: {
-    subject: (code) => `${code} est votre code agentes.chat`,
+    subject: (code) => `${code} est votre code squadchat`,
     preheader: "Saisissez-le sur la page pour demander à rejoindre. Il est valable 10 minutes.",
     headline: "Votre code",
     body: (org) => ["Saisissez ce code sur la page pour demander à rejoindre ", { b: org }, "."],
     small: ["Il est valable 10 minutes. Si vous n’avez rien demandé, ", { nobr: "ignorez cet e-mail." }],
     why: (org) =>
-      `Vous recevez cet e-mail car quelqu’un a saisi cette adresse pour demander à rejoindre ${org} sur agentes.chat.`,
+      `Vous recevez cet e-mail car quelqu’un a saisi cette adresse pour demander à rejoindre ${org} sur squadchat.`,
     personal: {
       body: () => "Saisissez ce code sur la page pour demander à rejoindre cet espace de travail.",
       why: () =>
-        "Vous recevez cet e-mail car quelqu’un a saisi cette adresse pour demander à rejoindre un espace de travail personnel sur agentes.chat.",
+        "Vous recevez cet e-mail car quelqu’un a saisi cette adresse pour demander à rejoindre un espace de travail personnel sur squadchat.",
     },
   },
   deletionCode: {
     subjectWorkspace: (code) => `${code} est votre code pour supprimer un espace de travail`,
     subjectAccount: (code) => `${code} est votre code pour supprimer tout votre compte`,
-    preheader: "Saisissez-le dans agentes.chat pour confirmer. Il est valable 10 minutes.",
+    preheader: "Saisissez-le dans squadchat pour confirmer. Il est valable 10 minutes.",
     headline: "Votre code",
     workspace: (org) => [
       "Saisissez ce code pour supprimer l’espace de travail ",
@@ -346,8 +346,8 @@ export const words: EmailWords = {
     noSupport:
       "Il est valable 10 minutes, et rien n’est supprimé sans lui. Si ce n’était pas vous, ne le partagez pas et prévenez les personnes qui gèrent ce serveur.",
     whyWorkspace: (org) =>
-      `Vous recevez cet e-mail car votre compte a demandé la suppression de ${org} sur agentes.chat.`,
-    whyAccount: "Vous recevez cet e-mail car votre compte a demandé sa suppression sur agentes.chat.",
+      `Vous recevez cet e-mail car votre compte a demandé la suppression de ${org} sur squadchat.`,
+    whyAccount: "Vous recevez cet e-mail car votre compte a demandé sa suppression sur squadchat.",
     personal: {
       workspace: (org) => [
         "Saisissez ce code pour supprimer votre espace de travail ",
@@ -359,7 +359,7 @@ export const words: EmailWords = {
   emailChange: {
     code: {
       subject: (code) => `${code} est votre code pour changer votre e-mail`,
-      preheader: "Saisissez-le dans agentes.chat pour confirmer. Il est valable 10 minutes.",
+      preheader: "Saisissez-le dans squadchat pour confirmer. Il est valable 10 minutes.",
       headline: "Votre code",
       body: (email, newEmail) => [
         "Saisissez ce code pour remplacer l’e-mail du compte ",
@@ -375,19 +375,19 @@ export const words: EmailWords = {
       ],
       noSupport:
         "Il est valable 10 minutes, et votre e-mail ne change pas sans lui. Si ce n’était pas vous, ne le partagez pas et prévenez les personnes qui gèrent ce serveur.",
-      why: "Vous recevez cet e-mail car votre compte a demandé à changer d’e-mail sur agentes.chat.",
+      why: "Vous recevez cet e-mail car votre compte a demandé à changer d’e-mail sur squadchat.",
     },
     link: {
-      subject: "Confirmez votre nouvel e-mail pour agentes.chat",
+      subject: "Confirmez votre nouvel e-mail pour squadchat",
       preheader: "Un clic pour vous connecter avec cette adresse désormais. Le lien est valable une heure.",
       headline: "Confirmez votre nouvel e-mail",
       body: "Plus qu’une étape : confirmer que cette adresse est bien la vôtre. Votre compte se connectera ensuite avec elle.",
       button: "Confirmer le nouvel e-mail",
       small: "Le lien est valable une heure. Si vous n’avez rien demandé, vous pouvez ignorer cet e-mail.",
-      why: "Vous recevez cet e-mail car quelqu’un a demandé à utiliser cette adresse pour un compte agentes.chat.",
+      why: "Vous recevez cet e-mail car quelqu’un a demandé à utiliser cette adresse pour un compte squadchat.",
     },
     changed: {
-      subject: "L’e-mail de votre compte agentes.chat a changé",
+      subject: "L’e-mail de votre compte squadchat a changé",
       preheader: "Si ce n’était pas vous, vous pouvez récupérer cette adresse pendant 7 jours.",
       headline: "Votre e-mail a changé",
       body: (email, newEmail) => ["Le compte ", { b: email }, " se connecte désormais avec ", { b: newEmail }, "."],
@@ -395,7 +395,7 @@ export const words: EmailWords = {
         "Ce n’était pas vous ? Appuyez sur le bouton dans les 7 jours. Cette adresse revient, toutes les sessions sont fermées, les apps d’IA sont déconnectées et les moyens de connexion ajoutés depuis ne fonctionnent plus. Le mot de passe est aussi effacé, et « Mot de passe oublié » définit le suivant.",
       button: "Ce n’était pas moi",
       small: "Si c’était vous, il n’y a rien à faire.",
-      why: "Vous recevez cet e-mail car cette adresse était l’e-mail d’un compte agentes.chat.",
+      why: "Vous recevez cet e-mail car cette adresse était l’e-mail d’un compte squadchat.",
     },
   },
   deleting: {
@@ -411,10 +411,10 @@ export const words: EmailWords = {
     owner: "Vous avez changé d’avis ? Restaurez-le d’ici là.",
     button: "Restaurer l’espace de travail",
     member: "Si c’est une erreur, demandez à un propriétaire de le restaurer.",
-    why: (org) => `Vous recevez cet e-mail car vous êtes membre de ${org} sur agentes.chat.`,
+    why: (org) => `Vous recevez cet e-mail car vous êtes membre de ${org} sur squadchat.`,
     personal: {
       member: "Si c’est une erreur, demandez à la personne qui l’a supprimé de le restaurer.",
-      why: () => "Vous recevez cet e-mail car vous êtes membre de cet espace de travail sur agentes.chat.",
+      why: () => "Vous recevez cet e-mail car vous êtes membre de cet espace de travail sur squadchat.",
     },
   },
   restored: {
@@ -423,27 +423,27 @@ export const words: EmailWords = {
     headline: "L’espace de travail est de retour",
     body: (by, org) => [{ b: by }, " a restauré ", { b: org }, ". Il fonctionne à nouveau."],
     button: "Ouvrir l’espace de travail",
-    why: (org) => `Vous recevez cet e-mail car vous êtes membre de ${org} sur agentes.chat.`,
+    why: (org) => `Vous recevez cet e-mail car vous êtes membre de ${org} sur squadchat.`,
     personal: {
-      why: () => "Vous recevez cet e-mail car vous êtes membre de cet espace de travail sur agentes.chat.",
+      why: () => "Vous recevez cet e-mail car vous êtes membre de cet espace de travail sur squadchat.",
     },
   },
   appConnected: {
-    subject: "Une app a été connectée à votre compte agentes.chat",
+    subject: "Une app a été connectée à votre compte squadchat",
     preheader: "Elle peut lire et confier des tâches aux agents en votre nom, dans un espace de travail.",
     headline: "Une app a été connectée",
     body: (app, org) => [{ b: app }, " a maintenant accès à votre compte dans ", { b: org }, "."],
     note: "Ce n’est pas vous ? Déconnectez-la maintenant et changez votre mot de passe.",
     button: "Voir les apps connectées",
-    why: (org) => `Vous recevez cet e-mail car une app a été connectée à votre compte dans ${org} sur agentes.chat.`,
+    why: (org) => `Vous recevez cet e-mail car une app a été connectée à votre compte dans ${org} sur squadchat.`,
     personal: {
       body: (app) => [{ b: app }, " a maintenant accès à votre compte dans votre espace de travail personnel."],
       why: () =>
-        "Vous recevez cet e-mail car une app a été connectée à votre compte dans votre espace de travail personnel sur agentes.chat.",
+        "Vous recevez cet e-mail car une app a été connectée à votre compte dans votre espace de travail personnel sur squadchat.",
     },
   },
   accountDeleting: {
-    subject: (day) => `Votre compte agentes.chat sera supprimé le ${day}`,
+    subject: (day) => `Votre compte squadchat sera supprimé le ${day}`,
     preheader: "Vous avez 7 jours pour changer d’avis.",
     headline: "Votre compte est en cours de suppression",
     body: (email, day, time) => [
@@ -462,10 +462,10 @@ export const words: EmailWords = {
     ],
     undo: "Vous avez changé d’avis ? Connectez-vous avant cette date et appuyez sur Restaurer.",
     button: "Se connecter pour restaurer",
-    why: "Vous recevez cet e-mail parce que cette adresse a un compte sur agentes.chat.",
+    why: "Vous recevez cet e-mail parce que cette adresse a un compte sur squadchat.",
   },
   accountDeleted: {
-    subject: "Votre compte agentes.chat a été supprimé",
+    subject: "Votre compte squadchat a été supprimé",
     preheader: "Il est déconnecté partout et ne peut plus se connecter.",
     headline: "Votre compte a été supprimé",
     body: (email) => ["Nous avons supprimé le compte ", { b: email }, "."],
@@ -479,7 +479,7 @@ export const words: EmailWords = {
     ],
     support: (address) => ["Si ce n’était pas vous, écrivez à ", { mail: address }, "."],
     noSupport: "Si ce n’était pas vous, prévenez les personnes qui gèrent ce serveur.",
-    why: "Vous recevez cet e-mail car cette adresse avait un compte sur agentes.chat.",
+    why: "Vous recevez cet e-mail car cette adresse avait un compte sur squadchat.",
   },
   autonomy: {
     subject: (day, stalls, noise) => `Agents le ${day} : ${stalls} blocages, ${noise} exécutions pour rien`,
@@ -560,34 +560,34 @@ export const words: EmailWords = {
   },
   planWaiting: {
     subject: "Votre équipe attend",
-    preheader: "Votre espace de travail est prêt. Il lui faut un abonnement agentes.chat pour démarrer.",
+    preheader: "Votre espace de travail est prêt. Il lui faut un abonnement squadchat pour démarrer.",
     headline: "Votre équipe attend",
     body: (agents, channels, routines) => {
       const a = plural("fr", agents, { one: `1 agent`, other: `${agents} agents` });
       const c = plural("fr", channels, { one: `1 canal`, other: `${channels} canaux` });
       const r = plural("fr", routines, { one: `1 routine`, other: `${routines} routines` });
       return routines > 0
-        ? `${a}, ${c} et ${r} sont prêts. Il leur faut un abonnement agentes.chat pour démarrer.`
-        : `${a} et ${c} sont prêts. Il leur faut un abonnement agentes.chat pour démarrer.`;
+        ? `${a}, ${c} et ${r} sont prêts. Il leur faut un abonnement squadchat pour démarrer.`
+        : `${a} et ${c} sont prêts. Il leur faut un abonnement squadchat pour démarrer.`;
     },
-    button: "Voir les abonnements agentes.chat",
+    button: "Voir les abonnements squadchat",
     why: (org) =>
-      `Vous recevez cet e-mail parce que vous gérez ${org} sur agentes.chat. Nous n'envoyons que deux rappels comme celui-ci.`,
+      `Vous recevez cet e-mail parce que vous gérez ${org} sur squadchat. Nous n'envoyons que deux rappels comme celui-ci.`,
     personal: {
       subject: "Vos agents attendent",
       headline: "Vos agents attendent",
       body: (agents, _channels, routines) => {
         const a = plural("fr", agents, { one: `1 agent`, other: `${agents} agents` });
         const r = plural("fr", routines, { one: `1 routine`, other: `${routines} routines` });
-        return `Tout est prêt : ${routines > 0 ? `${a} et ${r}` : a}. Il ne manque qu’un abonnement agentes.chat.`;
+        return `Tout est prêt : ${routines > 0 ? `${a} et ${r}` : a}. Il ne manque qu’un abonnement squadchat.`;
       },
       why: () =>
-        "Vous recevez cet e-mail parce que cet espace de travail sur agentes.chat est le vôtre. Nous n’envoyons que deux rappels comme celui-ci.",
+        "Vous recevez cet e-mail parce que cet espace de travail sur squadchat est le vôtre. Nous n’envoyons que deux rappels comme celui-ci.",
     },
   },
   surface: {
     linked: {
-      subject: (surface) => `${surface} a été lié à ton compte agentes.chat`,
+      subject: (surface) => `${surface} a été lié à ton compte squadchat`,
       preheader: "Ton assistant te répond là-bas maintenant. Si ce n'était pas toi, délie-le.",
       headline: (surface) => `${surface} a été lié`,
       body: (surface, display, org) => [
@@ -599,22 +599,22 @@ export const words: EmailWords = {
       notYou: "Ce n'était pas toi ? Délie-le. Les messages venus de là n'atteignent plus ton compte, tout de suite.",
       button: "Délier",
       small: "Si c'était toi, il n'y a rien à faire. Tu peux le délier à tout moment dans les Paramètres.",
-      why: (surface) => `Tu reçois cet e-mail parce que ${surface} a été lié à ton compte agentes.chat.`,
+      why: (surface) => `Tu reçois cet e-mail parce que ${surface} a été lié à ton compte squadchat.`,
       picture: "Ton assistant, maintenant aussi sur ton téléphone",
     },
     unlinked: {
-      subject: (surface) => `${surface} a été délié de ton compte agentes.chat`,
+      subject: (surface) => `${surface} a été délié de ton compte squadchat`,
       preheader: "Son identité a changé. Lie-le à nouveau dans les Paramètres si c'était toi.",
       headline: (surface) => `${surface} a été délié`,
       body: (surface, display) => [{ b: display }, ` sur ${surface} a été délié parce que son identité a changé.`],
       small: "Lie-le à nouveau dans les Paramètres si c'était toi.",
-      why: (surface) => `Tu reçois cet e-mail parce que ${surface} était lié à ton compte agentes.chat.`,
+      why: (surface) => `Tu reçois cet e-mail parce que ${surface} était lié à ton compte squadchat.`,
       picture: "Ton assistant, plus sur ton téléphone",
     },
   },
   supportReply: {
     subject: "Une réponse à votre demande d’aide",
-    preheader: "À propos de l’aide que vous avez demandée sur agentes.chat.",
+    preheader: "À propos de l’aide que vous avez demandée sur squadchat.",
     headline: "Une réponse à votre demande d’aide",
     answers: {
       received: "Nous avons bien reçu votre demande et nous l’examinons.",
@@ -625,10 +625,10 @@ export const words: EmailWords = {
     },
     from: (host) =>
       host
-        ? atHost("Réponse des personnes qui gèrent le serveur agentes.chat", "sur", host)
-        : "Réponse d’agentes.chat.",
+        ? atHost("Réponse des personnes qui gèrent le serveur squadchat", "sur", host)
+        : "Réponse d’squadchat.",
     ai: "Un assistant IA a rédigé cette réponse.",
     reply: (address) => ["Pour répondre, écrivez à ", { mail: address }, "."],
-    why: "Vous recevez cet e-mail car vous avez demandé de l’aide sur agentes.chat.",
+    why: "Vous recevez cet e-mail car vous avez demandé de l’aide sur squadchat.",
   },
 };

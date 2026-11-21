@@ -208,7 +208,7 @@ export const agyChatAgent = (): string =>
   [
     "---",
     `name: ${AGY_CHAT_AGENT}`,
-    "description: Answers the team in agentes.chat through the agentes tools only.",
+    "description: Answers the team in squadchat through the agentes tools only.",
     "tools: []",
     "mainAgent: true",
     "subagent: false",

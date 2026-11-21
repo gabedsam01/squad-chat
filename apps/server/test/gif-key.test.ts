@@ -11,7 +11,7 @@ import {
 } from "./harness";
 
 /**
- * The installation's GIPHY key (ADR 0091, amended 2026-10-31): only its owner has it, never on agentes.chat, and GIFs
+ * The installation's GIPHY key (ADR 0091, amended 2026-10-31): only its owner has it, never on squadchat, and GIFs
  * follow it in every workspace at once, without a restart.
  */
 
@@ -78,7 +78,7 @@ test("only the installation's first account reaches it: signed out 401, anyone e
   expect(await res.json()).toEqual({ source: null, hint: null, state: "off" });
 });
 
-test("on agentes.chat itself nobody has it", async () => {
+test("on squadchat itself nobody has it", async () => {
   const origin = "https://app.agentes.chat";
   t = await createTestServer({ env: { ALLOW_SIGNUP: "true", PUBLIC_URL: origin } });
   const first = browser(t);

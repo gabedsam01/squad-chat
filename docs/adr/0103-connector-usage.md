@@ -75,7 +75,7 @@ A source of Composio tools sets `connector` with the alias key and `via: "compos
 
 - Operators can rank connectors by use, see which ways they take, and estimate Composio's bill before it arrives. An operator's console reads these two routes.
 - One more statement per connector call. Built-in tools, the mention run and the hot paths' query budgets don't change.
-- On agentes.chat Cloud, operators see how much each workspace uses each connector, as counts.
+- On squadchat Cloud, operators see how much each workspace uses each connector, as counts.
 - A custom server's hostname is kept: it says which servers deserve a one-click preset, and ADR 0056 already allows domains.
 - Messages per day aren't counted: `messages` is partitioned by month and no event records them. A count in the daily report would do it.
 

@@ -2,32 +2,32 @@ import { plural } from "@agenteschat/i18n/format";
 import { atHost, sentences, type Words } from "./en";
 
 export const ptBR: Words = {
-  sentBy: (host) => (host ? atHost("Enviado pelo servidor do agentes.chat", "em", host) : "Enviado pelo agentes.chat."),
+  sentBy: (host) => (host ? atHost("Enviado pelo servidor do squadchat", "em", host) : "Enviado pelo squadchat."),
   fallback: "O botão não funcionou? Copie e cole este endereço no navegador:",
   role: { owner: "dono", member: "membro" },
   anAgent: "Um agente",
   someone: "Alguém",
   verify: {
-    subject: "Confirme seu e-mail no agentes.chat",
+    subject: "Confirme seu e-mail no squadchat",
     preheader: "Um clique para confirmar este endereço. O link vale por uma hora.",
     headline: "Confirme seu e-mail",
     body: "Falta um passo: confirmar que este endereço é seu.",
     button: "Confirmar e-mail",
     small: "O link vale por uma hora. Se não foi você que se cadastrou, pode ignorar este e-mail.",
-    why: "Você recebeu este e-mail porque este endereço foi usado para criar uma conta no agentes.chat.",
+    why: "Você recebeu este e-mail porque este endereço foi usado para criar uma conta no squadchat.",
   },
   reset: {
-    subject: "Redefina sua senha do agentes.chat",
+    subject: "Redefina sua senha do squadchat",
     preheader: "Escolha uma senha nova. O link vale por uma hora.",
     headline: "Escolha uma senha nova",
     body: "Recebemos um pedido para redefinir a senha deste endereço.",
     button: "Escolher senha nova",
     note: "Não pediu isso? Ignore este e-mail. Sua senha continua a mesma.",
     small: "O link vale por uma hora.",
-    why: "Você recebeu este e-mail porque alguém pediu para redefinir a senha deste endereço no agentes.chat.",
+    why: "Você recebeu este e-mail porque alguém pediu para redefinir a senha deste endereço no squadchat.",
   },
   invitation: {
-    subject: "Você recebeu um convite para um workspace no agentes.chat",
+    subject: "Você recebeu um convite para um workspace no squadchat",
     preheader: "Aceite em até 7 dias, com este endereço de e-mail.",
     headline: "Você recebeu um convite",
     body: (inviter, email, org, role) =>
@@ -37,7 +37,7 @@ export const ptBR: Words = {
     starts: (channels, agents) =>
       sentences(channels && ["Você já entra em ", ...channels, "."], agents && ["Vai trabalhar com ", ...agents, "."]),
     more: (n) => `mais ${n}`,
-    what: "O agentes.chat é onde pessoas e agentes de IA trabalham juntos.",
+    what: "O squadchat é onde pessoas e agentes de IA trabalham juntos.",
     noteFrom: (inviter, note) => [{ b: inviter ? `${inviter}: ` : "Recado: " }, `“${note}”`],
     button: "Aceitar convite",
     small: "O convite vale por 7 dias. Aceite com este endereço de e-mail.",
@@ -46,8 +46,8 @@ export const ptBR: Words = {
     personal: {
       body: (inviter, email) =>
         inviter
-          ? [{ b: inviter }, `${email ? ` (${email})` : ""} convidou você para um workspace pessoal no agentes.chat.`]
-          : "Você recebeu um convite para um workspace pessoal no agentes.chat.",
+          ? [{ b: inviter }, `${email ? ` (${email})` : ""} convidou você para um workspace pessoal no squadchat.`]
+          : "Você recebeu um convite para um workspace pessoal no squadchat.",
       why: () =>
         "Você recebeu este e-mail porque alguém convidou este endereço para um workspace pessoal. Se não conhece essa pessoa, ignore. Nada acontece até você aceitar.",
     },
@@ -84,40 +84,40 @@ export const ptBR: Words = {
     },
   },
   waitlist: {
-    subject: "Confirme seu lugar na lista do agentes.chat",
+    subject: "Confirme seu lugar na lista do squadchat",
     preheader: "Um clique e seu lugar está guardado.",
     headline: "Confirme seu lugar na lista",
     body: (email) =>
       email
-        ? ["Recebemos um pedido para colocar ", { b: email }, " na lista de espera do agentes.chat."]
-        : "Recebemos um pedido para colocar este endereço na lista de espera do agentes.chat.",
+        ? ["Recebemos um pedido para colocar ", { b: email }, " na lista de espera do squadchat."]
+        : "Recebemos um pedido para colocar este endereço na lista de espera do squadchat.",
     approve: "Aqui, nada importante acontece sem uma pessoa aprovar. Isso vale para este pedido também.",
     button: "Confirmar meu e-mail",
     small: "O link vale por 48 horas. Não foi você? Ignore este e-mail. Sem o clique, o endereço não entra na lista.",
-    why: "Você recebeu este e-mail porque este endereço foi informado na lista de espera do agentes.chat.",
+    why: "Você recebeu este e-mail porque este endereço foi informado na lista de espera do squadchat.",
   },
   earlyAccess: {
-    subject: "Seu convite para o agentes.chat chegou",
+    subject: "Seu convite para o squadchat chegou",
     preheader: (days) => `Crie sua conta em até ${days} dias, com este endereço de e-mail.`,
     headline: "Seu acesso está pronto",
-    body: (email) => [{ b: email }, " já pode criar uma conta e um workspace no agentes.chat."],
-    what: "O agentes.chat é onde pessoas e agentes de IA trabalham juntos.",
+    body: (email) => [{ b: email }, " já pode criar uma conta e um workspace no squadchat."],
+    what: "O squadchat é onde pessoas e agentes de IA trabalham juntos.",
     button: "Criar minha conta",
     small: (days) =>
       `O link vale por ${days} dias, só para este endereço. Cadastre-se com uma senha, ou com Google, GitHub ou Apple neste mesmo endereço.`,
-    why: "Você recebeu este e-mail porque este endereço está na lista de espera do agentes.chat, ou foi convidado para o agentes.chat. Nada acontece até você se cadastrar.",
+    why: "Você recebeu este e-mail porque este endereço está na lista de espera do squadchat, ou foi convidado para o squadchat. Nada acontece até você se cadastrar.",
   },
   earlyAccessAllowed: {
     subject: "Agora você pode criar o seu workspace",
     preheader: "Entre com a conta que você já tem e monte o seu.",
     headline: "Crie o seu workspace",
     body: (email) => [
-      "Agora você pode criar o seu workspace no agentes.chat com ",
+      "Agora você pode criar o seu workspace no squadchat com ",
       { b: email },
       ", a conta que você já tem.",
     ],
     button: "Criar meu workspace",
-    why: "Você recebeu este e-mail porque esta conta ganhou acesso antecipado ao agentes.chat.",
+    why: "Você recebeu este e-mail porque esta conta ganhou acesso antecipado ao squadchat.",
   },
   budget: {
     subject: {
@@ -199,7 +199,7 @@ export const ptBR: Words = {
     },
     button: { ai: "Conectar sua IA", task: "Passar a primeira tarefa", create: "Criar um agente" },
     why: (org) =>
-      `Você recebeu este e-mail porque é dono da ${org} no agentes.chat. É o único e-mail sobre este computador.`,
+      `Você recebeu este e-mail porque é dono da ${org} no squadchat. É o único e-mail sobre este computador.`,
     personal: {
       body: () =>
         "Obrigado por esperar. O computador dos seus agentes está ligado e configurado, com um usuário só para cada agente. Ele fica ligado dia e noite, para os agentes trabalharem a qualquer hora.",
@@ -207,7 +207,7 @@ export const ptBR: Words = {
         task: ["Passe a primeira tarefa.", "Abra uma conversa com um dos seus agentes e diga do que precisa."],
       },
       why: () =>
-        "Você recebeu este e-mail porque este workspace no agentes.chat é seu. É o único e-mail sobre este computador.",
+        "Você recebeu este e-mail porque este workspace no squadchat é seu. É o único e-mail sobre este computador.",
     },
   },
   joinRequest: {
@@ -256,7 +256,7 @@ export const ptBR: Words = {
       reason: (reason) => [{ b: "Recado: " }, `“${reason}”`],
       small: "Se acha que foi engano, peça a alguém de lá para convidar você por e-mail.",
     },
-    why: (org) => `Você recebeu este e-mail porque este endereço pediu para entrar na ${org} no agentes.chat.`,
+    why: (org) => `Você recebeu este e-mail porque este endereço pediu para entrar na ${org} no squadchat.`,
     personal: {
       joined: { body: (who) => `${who} aprovou seu pedido. Agora você está no workspace.` },
       invited: { body: (who) => `${who} aprovou seu pedido para entrar no workspace.` },
@@ -266,27 +266,27 @@ export const ptBR: Words = {
         small: "Se acha que foi engano, peça para ela convidar você por e-mail.",
       },
       why: () =>
-        "Você recebeu este e-mail porque este endereço pediu para entrar num workspace pessoal no agentes.chat.",
+        "Você recebeu este e-mail porque este endereço pediu para entrar num workspace pessoal no squadchat.",
     },
   },
   joinCode: {
-    subject: (code) => `${code} é seu código do agentes.chat`,
+    subject: (code) => `${code} é seu código do squadchat`,
     preheader: "Digite na página para pedir para entrar. Vale por 10 minutos.",
     headline: "Seu código",
     body: (org) => ["Digite este código na página para pedir para entrar na ", { b: org }, "."],
     small: ["Vale por 10 minutos. Se não foi você, ", { nobr: "ignore este e-mail." }],
     why: (org) =>
-      `Você recebeu este e-mail porque alguém digitou este endereço para pedir para entrar na ${org} no agentes.chat.`,
+      `Você recebeu este e-mail porque alguém digitou este endereço para pedir para entrar na ${org} no squadchat.`,
     personal: {
       body: () => "Digite este código na página para pedir para entrar neste workspace.",
       why: () =>
-        "Você recebeu este e-mail porque alguém digitou este endereço para pedir para entrar num workspace pessoal no agentes.chat.",
+        "Você recebeu este e-mail porque alguém digitou este endereço para pedir para entrar num workspace pessoal no squadchat.",
     },
   },
   deletionCode: {
     subjectWorkspace: (code) => `${code} é seu código para apagar um workspace`,
     subjectAccount: (code) => `${code} é seu código para apagar sua conta inteira`,
-    preheader: "Digite no agentes.chat para confirmar. Vale por 10 minutos.",
+    preheader: "Digite no squadchat para confirmar. Vale por 10 minutos.",
     headline: "Seu código",
     workspace: (org) => [
       "Digite este código para apagar o workspace ",
@@ -306,8 +306,8 @@ export const ptBR: Words = {
     noSupport:
       "Vale por 10 minutos, e nada é apagado sem ele. Se não foi você, não passe para ninguém e avise quem cuida deste servidor.",
     whyWorkspace: (org) =>
-      `Você recebeu este e-mail porque sua conta pediu para apagar o workspace ${org} no agentes.chat.`,
-    whyAccount: "Você recebeu este e-mail porque sua conta pediu para ser apagada no agentes.chat.",
+      `Você recebeu este e-mail porque sua conta pediu para apagar o workspace ${org} no squadchat.`,
+    whyAccount: "Você recebeu este e-mail porque sua conta pediu para ser apagada no squadchat.",
     personal: {
       workspace: (org) => [
         "Digite este código para apagar o seu workspace ",
@@ -319,7 +319,7 @@ export const ptBR: Words = {
   emailChange: {
     code: {
       subject: (code) => `${code} é seu código para mudar seu e-mail`,
-      preheader: "Digite no agentes.chat para confirmar. Vale por 10 minutos.",
+      preheader: "Digite no squadchat para confirmar. Vale por 10 minutos.",
       headline: "Seu código",
       body: (email, newEmail) => [
         "Digite este código para mudar o e-mail da conta ",
@@ -335,19 +335,19 @@ export const ptBR: Words = {
       ],
       noSupport:
         "Vale por 10 minutos, e o seu e-mail não muda sem ele. Se não foi você, não passe para ninguém e avise quem cuida deste servidor.",
-      why: "Você recebeu este e-mail porque sua conta pediu para mudar o e-mail no agentes.chat.",
+      why: "Você recebeu este e-mail porque sua conta pediu para mudar o e-mail no squadchat.",
     },
     link: {
-      subject: "Confirme seu novo e-mail no agentes.chat",
+      subject: "Confirme seu novo e-mail no squadchat",
       preheader: "Um clique para entrar com este endereço daqui em diante. O link vale por uma hora.",
       headline: "Confirme seu novo e-mail",
       body: "Falta um passo: confirmar que este endereço é seu. Daí em diante, sua conta entra com ele.",
       button: "Confirmar novo e-mail",
       small: "O link vale por uma hora. Se não foi você que pediu, pode ignorar este e-mail.",
-      why: "Você recebeu este e-mail porque alguém pediu para usar este endereço numa conta do agentes.chat.",
+      why: "Você recebeu este e-mail porque alguém pediu para usar este endereço numa conta do squadchat.",
     },
     changed: {
-      subject: "O e-mail da sua conta do agentes.chat mudou",
+      subject: "O e-mail da sua conta do squadchat mudou",
       preheader: "Se não foi você, dá para trazer este endereço de volta por 7 dias.",
       headline: "Seu e-mail mudou",
       body: (email, newEmail) => ["A conta ", { b: email }, " agora entra com ", { b: newEmail }, "."],
@@ -355,7 +355,7 @@ export const ptBR: Words = {
         "Não foi você? Aperte o botão em até 7 dias. Este endereço volta, todas as sessões são encerradas, os apps de IA são desconectados e jeitos de entrar adicionados desde então deixam de valer. A senha também é apagada, e “Esqueci a senha” cria a próxima.",
       button: "Não fui eu",
       small: "Se foi você, não precisa fazer nada.",
-      why: "Você recebeu este e-mail porque este endereço era o e-mail de uma conta do agentes.chat.",
+      why: "Você recebeu este e-mail porque este endereço era o e-mail de uma conta do squadchat.",
     },
   },
   deleting: {
@@ -371,10 +371,10 @@ export const ptBR: Words = {
     owner: "Mudou de ideia? Restaure antes disso.",
     button: "Restaurar o workspace",
     member: "Se foi um engano, peça para um dono restaurar.",
-    why: (org) => `Você recebeu este e-mail porque está na ${org} no agentes.chat.`,
+    why: (org) => `Você recebeu este e-mail porque está na ${org} no squadchat.`,
     personal: {
       member: "Se foi um engano, peça para quem apagou restaurar.",
-      why: () => "Você recebeu este e-mail porque está neste workspace no agentes.chat.",
+      why: () => "Você recebeu este e-mail porque está neste workspace no squadchat.",
     },
   },
   restored: {
@@ -383,27 +383,27 @@ export const ptBR: Words = {
     headline: "O workspace voltou",
     body: (by, org) => [{ b: by }, " restaurou ", { b: org }, ". Ele voltou a funcionar."],
     button: "Abrir o workspace",
-    why: (org) => `Você recebeu este e-mail porque está na ${org} no agentes.chat.`,
+    why: (org) => `Você recebeu este e-mail porque está na ${org} no squadchat.`,
     personal: {
-      why: () => "Você recebeu este e-mail porque está neste workspace no agentes.chat.",
+      why: () => "Você recebeu este e-mail porque está neste workspace no squadchat.",
     },
   },
   appConnected: {
-    subject: "Um app foi conectado à sua conta do agentes.chat",
+    subject: "Um app foi conectado à sua conta do squadchat",
     preheader: "Ele pode ler e mandar tarefas aos agentes em seu nome em um workspace.",
     headline: "Um app foi conectado",
     body: (app, org) => [{ b: app }, " agora tem acesso à sua conta na ", { b: org }, "."],
     note: "Não foi você? Desconecte agora e troque sua senha.",
     button: "Ver apps conectados",
-    why: (org) => `Você recebeu este e-mail porque um app foi conectado à sua conta na ${org} no agentes.chat.`,
+    why: (org) => `Você recebeu este e-mail porque um app foi conectado à sua conta na ${org} no squadchat.`,
     personal: {
       body: (app) => [{ b: app }, " agora tem acesso à sua conta no seu workspace pessoal."],
       why: () =>
-        "Você recebeu este e-mail porque um app foi conectado à sua conta no seu workspace pessoal no agentes.chat.",
+        "Você recebeu este e-mail porque um app foi conectado à sua conta no seu workspace pessoal no squadchat.",
     },
   },
   accountDeleting: {
-    subject: (day) => `Sua conta do agentes.chat vai ser apagada em ${day}`,
+    subject: (day) => `Sua conta do squadchat vai ser apagada em ${day}`,
     preheader: "Você tem 7 dias para mudar de ideia.",
     headline: "Sua conta está sendo apagada",
     body: (email, day, time) => [
@@ -421,10 +421,10 @@ export const ptBR: Words = {
     ],
     undo: "Mudou de ideia? Entre antes dessa data e aperte Restaurar.",
     button: "Entrar para restaurar",
-    why: "Você recebeu este e-mail porque este endereço tem uma conta no agentes.chat.",
+    why: "Você recebeu este e-mail porque este endereço tem uma conta no squadchat.",
   },
   accountDeleted: {
-    subject: "Sua conta do agentes.chat foi apagada",
+    subject: "Sua conta do squadchat foi apagada",
     preheader: "Ela saiu de todos os aparelhos e não entra mais.",
     headline: "Sua conta foi apagada",
     body: (email) => ["Apagamos a conta ", { b: email }, "."],
@@ -438,7 +438,7 @@ export const ptBR: Words = {
     ],
     support: (address) => ["Se não foi você, escreva para ", { mail: address }, "."],
     noSupport: "Se não foi você, avise quem cuida deste servidor.",
-    why: "Você recebeu este e-mail porque este endereço tinha uma conta no agentes.chat.",
+    why: "Você recebeu este e-mail porque este endereço tinha uma conta no squadchat.",
   },
   autonomy: {
     subject: (day, stalls, noise) => `Agentes em ${day}: ${stalls} travas, ${noise} execuções à toa`,
@@ -518,32 +518,32 @@ export const ptBR: Words = {
   },
   planWaiting: {
     subject: "Seu time está esperando",
-    preheader: "Seu workspace está pronto. Falta um plano do agentes.chat para ele começar.",
+    preheader: "Seu workspace está pronto. Falta um plano do squadchat para ele começar.",
     headline: "Seu time está esperando",
     body: (agents, channels, routines) => {
       const a = plural("pt-BR", agents, { one: `1 agente`, other: `${agents} agentes` });
       const c = plural("pt-BR", channels, { one: `1 canal`, other: `${channels} canais` });
       const r = plural("pt-BR", routines, { one: `1 rotina`, other: `${routines} rotinas` });
       return routines > 0
-        ? `${a}, ${c} e ${r} estão prontos. Falta um plano do agentes.chat para eles começarem.`
-        : `${a} e ${c} estão prontos. Falta um plano do agentes.chat para eles começarem.`;
+        ? `${a}, ${c} e ${r} estão prontos. Falta um plano do squadchat para eles começarem.`
+        : `${a} e ${c} estão prontos. Falta um plano do squadchat para eles começarem.`;
     },
-    button: "Ver planos do agentes.chat",
-    why: (org) => `Você recebeu este e-mail porque administra ${org} no agentes.chat. São só dois avisos como este.`,
+    button: "Ver planos do squadchat",
+    why: (org) => `Você recebeu este e-mail porque administra ${org} no squadchat. São só dois avisos como este.`,
     personal: {
       subject: "Seus agentes estão esperando",
       headline: "Seus agentes estão esperando",
       body: (agents, _channels, routines) => {
         const a = plural("pt-BR", agents, { one: `1 agente`, other: `${agents} agentes` });
         const r = plural("pt-BR", routines, { one: `1 rotina`, other: `${routines} rotinas` });
-        return `Tudo pronto: ${routines > 0 ? `${a} e ${r}` : a}. Só falta um plano do agentes.chat.`;
+        return `Tudo pronto: ${routines > 0 ? `${a} e ${r}` : a}. Só falta um plano do squadchat.`;
       },
-      why: () => "Você recebeu este e-mail porque este workspace no agentes.chat é seu. São só dois avisos como este.",
+      why: () => "Você recebeu este e-mail porque este workspace no squadchat é seu. São só dois avisos como este.",
     },
   },
   surface: {
     linked: {
-      subject: (surface) => `${surface} foi vinculado à sua conta do agentes.chat`,
+      subject: (surface) => `${surface} foi vinculado à sua conta do squadchat`,
       preheader: "Seu assistente responde você por lá agora. Se não foi você, desvincule.",
       headline: (surface) => `${surface} foi vinculado`,
       body: (surface, display, org) => [
@@ -555,22 +555,22 @@ export const ptBR: Words = {
       notYou: "Não foi você? Desvincule. As mensagens de lá param de chegar à sua conta na hora.",
       button: "Desvincular",
       small: "Se foi você, não precisa fazer nada. Dá para desvincular quando quiser em Configurações.",
-      why: (surface) => `Você recebeu este e-mail porque ${surface} foi vinculado à sua conta do agentes.chat.`,
+      why: (surface) => `Você recebeu este e-mail porque ${surface} foi vinculado à sua conta do squadchat.`,
       picture: "Seu assistente, agora também no seu celular",
     },
     unlinked: {
-      subject: (surface) => `${surface} foi desvinculado da sua conta do agentes.chat`,
+      subject: (surface) => `${surface} foi desvinculado da sua conta do squadchat`,
       preheader: "A identidade mudou. Vincule de novo em Configurações se foi você.",
       headline: (surface) => `${surface} foi desvinculado`,
       body: (surface, display) => [{ b: display }, ` no ${surface} foi desvinculado porque a identidade mudou.`],
       small: "Vincule de novo em Configurações se foi você.",
-      why: (surface) => `Você recebeu este e-mail porque ${surface} estava vinculado à sua conta do agentes.chat.`,
+      why: (surface) => `Você recebeu este e-mail porque ${surface} estava vinculado à sua conta do squadchat.`,
       picture: "Seu assistente, não mais no seu celular",
     },
   },
   supportReply: {
     subject: "Uma resposta ao seu pedido de ajuda",
-    preheader: "Sobre a ajuda que você pediu no agentes.chat.",
+    preheader: "Sobre a ajuda que você pediu no squadchat.",
     headline: "Uma resposta ao seu pedido de ajuda",
     answers: {
       received: "Recebemos seu pedido e já estamos vendo.",
@@ -580,10 +580,10 @@ export const ptBR: Words = {
     },
     from: (host) =>
       host
-        ? atHost("Respondido por quem cuida do servidor do agentes.chat", "em", host)
-        : "Respondido pelo agentes.chat.",
+        ? atHost("Respondido por quem cuida do servidor do squadchat", "em", host)
+        : "Respondido pelo squadchat.",
     ai: "Um assistente de IA escreveu esta resposta.",
     reply: (address) => ["Para responder, escreva para ", { mail: address }, "."],
-    why: "Você recebeu este e-mail porque pediu ajuda no agentes.chat.",
+    why: "Você recebeu este e-mail porque pediu ajuda no squadchat.",
   },
 };

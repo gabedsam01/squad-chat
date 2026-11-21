@@ -188,7 +188,7 @@ describe("Auditoria in words (web and phone)", () => {
       null,
     ]);
 
-    // What was read, by the entry's target. On agentes.chat's own servers, its support.
+    // What was read, by the entry's target. On squadchat's own servers, its support.
     const what = (type: string, details: Record<string, unknown> = {}) =>
       auditSentence(t, read({ purpose: "fault", ...details }, { target: { type, id: null } }), "en").text;
     for (const kind of ["run_step", "agent", "routine", "task", "channel", "connection", "support_request"]) {
@@ -241,7 +241,7 @@ describe("Auditoria in words (web and phone)", () => {
     // The panel's title is the sentence: the entry holds nothing a hint could be.
     expect(auditHint(t, own)).toBeNull();
 
-    // One of the server's own sentences, sent with an AI assistant. On agentes.chat's own servers, its support.
+    // One of the server's own sentences, sent with an AI assistant. On squadchat's own servers, its support.
     const assisted = replied({ template: "received", chars: 0, assistedByAi: true, cloud: true });
     expect(auditSentence(t, assisted, "en").text).toBe("audit.operatorReply.sentence(audit.operatorRead.who.cloud)");
     const withAi = `${whose} · audit.operatorRead.ai`;

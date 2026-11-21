@@ -11,17 +11,17 @@ const read = (path: string) => readFileSync(join(REPO, path), "utf8");
 const lines = (b: HelpBlock): string[] => (typeof b === "string" ? [b] : "list" in b ? b.list : [b.code]);
 
 /** The folders the app keeps, as the code names them: a guide to deleting them names each one exactly. */
-const FOLDERS = [".agentes", ".agentes-runner", "agentes.chat erased", "chat.agentes.desktop", "agentes.chat.plist"];
+const FOLDERS = [".agentes", ".agentes-runner", "squadchat erased", "chat.agentes.desktop", "squadchat.plist"];
 
 describe("the help page on starting over and uninstalling", () => {
   test("the folders it names are the ones the code keeps", () => {
     const local = read("apps/desktop/src-tauri/src/local_server.rs");
     expect(local).toContain('const FOLDER: &str = ".agentes";');
-    expect(local).toContain('home.join(format!("agentes.chat erased {date}"))');
+    expect(local).toContain('home.join(format!("squadchat erased {date}"))');
     expect(read("apps/desktop/src-tauri/src/runners.rs")).toContain('home.join(".agentes-runner").join("orgs")');
     expect(JSON.parse(read("apps/desktop/src-tauri/tauri.conf.json")).identifier).toBe("chat.agentes.desktop");
     // The login item is named after the app (`migrate_login_item` in lib.rs).
-    expect(JSON.parse(read("apps/desktop/src-tauri/tauri.conf.json")).productName).toBe("agentes.chat");
+    expect(JSON.parse(read("apps/desktop/src-tauri/tauri.conf.json")).productName).toBe("squadchat");
     const selfHosting = read("SELF_HOSTING.md");
     expect(FOLDERS.filter((f) => !selfHosting.includes(f))).toEqual([]);
     // A terminal install keeps running as its own service after the app quits.
@@ -56,7 +56,7 @@ describe("the help page on starting over and uninstalling", () => {
       expect({ code, missing: names.filter((n) => !text.includes(n)) }).toEqual({ code, missing: [] });
       // How an erased one comes back: its dated folder renamed to the data folder's own name.
       const paragraphs = section?.blocks.filter((b): b is string => typeof b === "string") ?? [];
-      expect(paragraphs.filter((l) => l.includes("`agentes.chat erased`") && l.includes("`.agentes`"))).toHaveLength(1);
+      expect(paragraphs.filter((l) => l.includes("`squadchat erased`") && l.includes("`.agentes`"))).toHaveLength(1);
       // Quitting comes before any deleting.
       const steps = section?.blocks.find((b): b is { list: string[] } => typeof b === "object" && "list" in b);
       expect(steps?.list.findIndex((l) => l.includes(`**${d.tray.quit}**`))).toBe(1);

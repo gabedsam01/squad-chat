@@ -192,7 +192,7 @@ describe("refusals in the phone's words", () => {
     expect(refusalText(en, { status: 429 })).toBe(en("auth.tooManyTries"));
     expect(refusalText(en, new ApiError(429, "join.code_limit", "x"))).toBe(en("errors.code.limit"));
     expect(refusalText(en, { status: 403, code: "ACCOUNT_BLOCKED" })).toBe(en("auth.accountBlocked"));
-    // On agentes.chat Cloud: the block's kind and how to contest it, never its reason.
+    // On squadchat Cloud: the block's kind and how to contest it, never its reason.
     expect(refusalText(en, { status: 403, code: "ACCOUNT_BLOCKED", kind: "abuse", cloud: true })).toBe(
       "This account is blocked. Our checks linked it to an account closed for abuse (Terms, section 5). To contest it, write to legal@agentes.chat.",
     );
@@ -215,7 +215,7 @@ describe("refusals in the phone's words", () => {
     expect(lookUpFailureText(en, new TypeError("Network request failed"))).toBe(en("mobile.auth.errors.network"));
   });
 
-  test("a social sign-in refused: a blocked account's line, with its kind on agentes.chat Cloud, else it failed", async () => {
+  test("a social sign-in refused: a blocked account's line, with its kind on squadchat Cloud, else it failed", async () => {
     const en = await translator("en");
     // Apple's native sign-in gets the server's answer itself.
     const blocked = "ACCOUNT_BLOCKED";

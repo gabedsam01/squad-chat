@@ -104,7 +104,7 @@ export interface DecisionHost {
 }
 
 /**
- * The installation's GIPHY key, for its pinned owner on a server that isn't agentes.chat's own (`GET
+ * The installation's GIPHY key, for its pinned owner on a server that isn't squadchat's own (`GET
  * /api/app/gif-key`, ADR 0091): with it, every workspace has GIFs (`OrgSettings.gifsAvailable`).
  */
 export interface GifKey {
@@ -120,7 +120,7 @@ export interface GifKey {
 export type SpeechProvider = "assemblyai" | "elevenlabs" | "soniox" | "groq" | "openai" | "local" | "deepinfra";
 
 /**
- * The installation's speech engine, for its pinned owner on a server that isn't agentes.chat's own (`GET
+ * The installation's speech engine, for its pinned owner on a server that isn't squadchat's own (`GET
  * /api/app/speech-key`, ADR 0100): with one, every workspace has voice messages (`OrgSettings.voiceAvailable`).
  */
 export interface SpeechKey {
@@ -218,7 +218,7 @@ export interface AuthConfig {
   supportEmail?: string | null;
   /** The server takes feedback (`POST /api/app/feedback`): the apps show the form; absent: a server too old to. */
   feedback?: boolean;
-  /** It goes to the agentes.chat team, not to whoever runs this server: the form says so and takes pictures only. */
+  /** It goes to the squadchat team, not to whoever runs this server: the form says so and takes pictures only. */
   feedbackRelay?: boolean;
   /** Every workspace gets a computer of its own (the Cloud); absent: a server too old to say. */
   workspaceComputer?: boolean;
@@ -226,7 +226,7 @@ export interface AuthConfig {
   billingUrl?: string | null;
   /** The referral service (ADR 0192): "Refer and earn" opens it (`account.referralsLink`); null or absent: none. */
   referralsUrl?: string | null;
-  /** One of agentes.chat's own servers (`Instance.cloud`); absent: a self-hosted server too old to say. */
+  /** One of squadchat's own servers (`Instance.cloud`); absent: a self-hosted server too old to say. */
   cloud?: boolean;
   /** The bot check's site key (Cloudflare Turnstile, ADR 0075); null or absent: no check, nothing from Cloudflare. */
   turnstileSiteKey?: string | null;
@@ -311,7 +311,7 @@ export interface SignInOptions {
 
 /** `GET /api/instance`: what the phone and desktop apps check before using a server. Public, nothing secret. */
 export interface Instance {
-  /** Always "agentes.chat". */
+  /** Always "squadchat". */
   name: string;
   version: string;
   /** The app API contract the server speaks, and the oldest one it still serves. */
@@ -325,7 +325,7 @@ export interface Instance {
   signup: "open" | "invite";
   /** No account yet, and the first one only through the owner link the setup printed (absent: false). */
   ownerClaim?: boolean;
-  /** One of agentes.chat's own servers: `/terms` and `/privacy` are agentes.chat Cloud's (absent: an older server). */
+  /** One of squadchat's own servers: `/terms` and `/privacy` are squadchat Cloud's (absent: an older server). */
   cloud?: boolean;
 }
 
@@ -388,7 +388,7 @@ export interface User {
    */
   confirmsOnThisMac?: boolean;
   /**
-   * A new workspace would be made for them (false on agentes.chat Cloud while sign-up is by invitation, unless early
+   * A new workspace would be made for them (false on squadchat Cloud while sign-up is by invitation, unless early
    * access allowed them; `org.create_refused` and `org.create_unpaid` can still refuse it).
    */
   canCreateWorkspace?: boolean;
@@ -409,7 +409,7 @@ export type StandingState = "active" | "hold" | "suspended";
 export interface OrgStanding {
   state: StandingState;
   reason: string | null;
-  /** agentes.chat Cloud: a reason reads with how to contest it, and `review` as the automatic hold's line. */
+  /** squadchat Cloud: a reason reads with how to contest it, and `review` as the automatic hold's line. */
   cloud?: boolean;
 }
 
@@ -2350,7 +2350,7 @@ export type ConnectorCategory =
   | "automation"
   | "social";
 
-/** A connector agentes.chat knows (`GET /connectors/catalog`: ours and the one-click MCP servers, one per service). */
+/** A connector squadchat knows (`GET /connectors/catalog`: ours and the one-click MCP servers, one per service). */
 export interface ConnectorDef {
   id: string;
   label: string;
@@ -2368,7 +2368,7 @@ export interface ConnectorDef {
   oauthConfigured: boolean;
   /** Can be connected on this server; `false` shows "Em breve". */
   available: boolean;
-  /** The vendor hasn't approved agentes.chat yet: greyed out with a lock, nothing to open. Older servers leave it out. */
+  /** The vendor hasn't approved squadchat yet: greyed out with a lock, nothing to open. Older servers leave it out. */
   soon?: boolean;
   /** Connects through Composio (ADR 0107): its page signs in. Unavailable on a server without Composio. */
   via?: "composio";
@@ -2447,9 +2447,9 @@ export interface GitHubAppSetup {
 export interface GitHubAppInfo {
   installable: boolean;
   installations: GitHubAppInstallation[];
-  /** The server's pinned owner only; null for everyone else and on agentes.chat. */
+  /** The server's pinned owner only; null for everyone else and on squadchat. */
   setup?: GitHubAppSetup | null;
-  /** The server has no app and its owner can make one in Settings (never on agentes.chat). */
+  /** The server has no app and its owner can make one in Settings (never on squadchat). */
   ownerCreates?: boolean;
 }
 
@@ -3172,7 +3172,7 @@ export type CustomConnectStart =
   | { status: "connected"; server: CustomServer; outcome?: ConnectOutcome }
   | { status: "oauth"; authorizeUrl: string }
   /**
-   * `not_approved`: it has OAuth but only lets in apps it approved, and agentes.chat isn't one yet. `detail`: how it
+   * `not_approved`: it has OAuth but only lets in apps it approved, and squadchat isn't one yet. `detail`: how it
    * refused our registration, in its own words (`error: error_description`, short).
    */
   | { status: "needs_key"; reason?: "not_approved"; detail?: string };
@@ -6896,7 +6896,7 @@ export type NotificationKind =
   | "secret_request"
   /**
    * ADR 0056 §8: the workspace was held, suspended or restored (owners and admins). `latest.statusTo`, `latest.text`:
-   * why. On agentes.chat Cloud also an agent held (`statusTo: "agent_hold"`, `latest.holdKind`, `source.agentId`).
+   * why. On squadchat Cloud also an agent held (`statusTo: "agent_hold"`, `latest.holdKind`, `source.agentId`).
    */
   | "org_standing"
   /** ADR 0056 §10: the workspace's own computer is ready (owners). `source.machineId`; `source.label` = its name. */
@@ -7146,9 +7146,9 @@ export interface NotificationLatest {
   detail?: string;
   /** `approval`: asked while nobody watched, by a routine or an unattended run (ADR 0053 §8). */
   origin?: ApprovalOrigin;
-  /** `org_standing` to `agent_hold` (agentes.chat Cloud): `network` or `operator`, never the hold's reason. */
+  /** `org_standing` to `agent_hold` (squadchat Cloud): `network` or `operator`, never the hold's reason. */
   holdKind?: string;
-  /** `org_standing` on agentes.chat Cloud: `text` is the reason a restriction reads with (`restrictionOf`). */
+  /** `org_standing` on squadchat Cloud: `text` is the reason a restriction reads with (`restrictionOf`). */
   cloud?: boolean;
   /** `join_request`: the first two people who asked, in the order they asked (`count` says how many in all). */
   names?: string[];
@@ -8476,7 +8476,7 @@ export interface WifiIphone {
   osVersion: string;
 }
 
-/** The iPhones a Mac offers over Wi-Fi; `update`: its agentes.chat is too old for it. */
+/** The iPhones a Mac offers over Wi-Fi; `update`: its squadchat is too old for it. */
 export interface WifiIphones {
   available: WifiIphone[];
   update?: true;
@@ -8510,7 +8510,7 @@ export interface CliInstall {
   cause?: "git_missing" | "still_missing";
 }
 
-/** `fix: null`: none ran; `update`: the Mac's agentes.chat is too old to fix it (the Terminal way instead). */
+/** `fix: null`: none ran; `update`: the Mac's squadchat is too old to fix it (the Terminal way instead). */
 export interface XcodeFixView {
   fix: XcodeFix | null;
   update?: true;
@@ -8521,7 +8521,7 @@ export interface WifiPairing {
   id: string;
   way: "qr" | "code";
   state: "waiting" | "pairing" | "connecting" | "connected" | "failed";
-  /** Why it failed; `update`: the computer's agentes.chat is too old for it. */
+  /** Why it failed; `update`: the computer's squadchat is too old for it. */
   reason?: WifiPairFailure;
   /** Only when it starts: Android's QR text for Wireless debugging. */
   qr?: string;

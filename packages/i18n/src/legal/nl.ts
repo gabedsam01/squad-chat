@@ -5,7 +5,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
   terms: {
     title: "Gebruiksvoorwaarden",
     summary:
-      "De overeenkomst voor het gebruik van agentes.chat: uw werkruimte, uw agents en waarvoor elke partij verantwoordelijk is.",
+      "De overeenkomst voor het gebruik van squadchat: uw werkruimte, uw agents en waarvoor elke partij verantwoordelijk is.",
     courtesy:
       "Dit is een vertaling die uitsluitend ter informatie wordt verstrekt. Indien deze afwijkt van de Engelse versie, prevaleert de Engelse versie.",
     updated: "2026-11-18",
@@ -14,7 +14,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "agreement",
         heading: "1. Overeenkomst",
         blocks: [
-          'Deze Gebruiksvoorwaarden (de "Voorwaarden") vormen een bindende overeenkomst tussen AGENTESCHAT, LLC, een limited liability company naar het recht van Delaware die handelt onder de naam agentes.chat ("agentes.chat", "wij", "ons"), en de persoon of entiteit die een account of een werkruimte aanmaakt ("u"). Door een account aan te maken, lid te worden van een werkruimte of agentes.chat anderszins te gebruiken via het web, de Mac-app of de telefoonapp (de "Dienst"), aanvaardt u deze Voorwaarden en ons Privacybeleid. Indien u de Dienst gebruikt namens een bedrijf of andere entiteit, verklaart u bevoegd te zijn deze te binden.',
+          'Deze Gebruiksvoorwaarden (de "Voorwaarden") vormen een bindende overeenkomst tussen AGENTESCHAT, LLC, een limited liability company naar het recht van Delaware die handelt onder de naam squadchat ("squadchat", "wij", "ons"), en de persoon of entiteit die een account of een werkruimte aanmaakt ("u"). Door een account aan te maken, lid te worden van een werkruimte of squadchat anderszins te gebruiken via het web, de Mac-app of de telefoonapp (de "Dienst"), aanvaardt u deze Voorwaarden en ons Privacybeleid. Indien u de Dienst gebruikt namens een bedrijf of andere entiteit, verklaart u bevoegd te zijn deze te binden.',
           "Om de Dienst te gebruiken, moet u ten minste 18 jaar oud zijn en bevoegd zijn een overeenkomst aan te gaan.",
         ],
       },
@@ -96,7 +96,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "fees",
         heading: "10. Abonnementen, betalingen en redelijk gebruik",
         blocks: [
-          "Elke werkruimte betaalt voor haar eigen agentes.chat-abonnement. De volgende regels gelden voor elk abonnement:",
+          "Elke werkruimte betaalt voor haar eigen squadchat-abonnement. De volgende regels gelden voor elk abonnement:",
           {
             list: [
               "**Verkoper.** Elke aankoop wordt gedaan bij, en gefactureerd door, AGENTESCHAT, LLC, een Amerikaans bedrijf opgericht in Delaware.",
@@ -116,7 +116,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "ip",
         heading: "11. Intellectuele eigendom en feedback",
         blocks: [
-          "Met uitzondering van uw Werkruimte-inhoud behouden wij en onze licentiegevers alle rechten, aanspraken en belangen in de Dienst, met inbegrip van de software, het ontwerp en de naam en merken agentes.chat. Feedback die u ons vrijwillig toestuurt, mag worden gebruikt zonder enige verplichting jegens u.",
+          "Met uitzondering van uw Werkruimte-inhoud behouden wij en onze licentiegevers alle rechten, aanspraken en belangen in de Dienst, met inbegrip van de software, het ontwerp en de naam en merken squadchat. Feedback die u ons vrijwillig toestuurt, mag worden gebruikt zonder enige verplichting jegens u.",
         ],
       },
       {
@@ -165,7 +165,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "contact",
         heading: "18. Contact",
         blocks: [
-          "AGENTESCHAT, LLC, handelend onder de naam agentes.chat. Kennisgevingen: 2810 North Church Street, Ste 91038, Wilmington, DE 19802, USA · legal@agentes.chat · Al het overige: hello@agentes.chat",
+          "AGENTESCHAT, LLC, handelend onder de naam squadchat. Kennisgevingen: 2810 North Church Street, Ste 91038, Wilmington, DE 19802, USA · legal@agentes.chat · Al het overige: hello@agentes.chat",
         ],
       },
     ],
@@ -181,7 +181,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "overview",
         heading: "1. Overzicht",
         blocks: [
-          'AGENTESCHAT, LLC, een limited liability company naar het recht van Delaware die handelt onder de naam agentes.chat ("agentes.chat", "wij"), exploiteert agentes.chat: een werkruimte waarin mensen en AI-agents samenwerken, beschikbaar via het web, als Mac-app en als telefoonapp (de "Dienst"). Dit beleid onderscheidt twee rollen:',
+          'AGENTESCHAT, LLC, een limited liability company naar het recht van Delaware die handelt onder de naam squadchat ("squadchat", "wij"), exploiteert squadchat: een werkruimte waarin mensen en AI-agents samenwerken, beschikbaar via het web, als Mac-app en als telefoonapp (de "Dienst"). Dit beleid onderscheidt twee rollen:',
           {
             list: [
               "Voor **accountgegevens**, de informatie die personen ons verstrekken om een account aan te maken en te gebruiken, zijn wij de verwerkingsverantwoordelijke.",
@@ -198,11 +198,11 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
             list: [
               "**Accountgegevens:** naam, e-mailadres, wachtwoordhash, profielfoto, taal en tijdzone. Indien u zich aanmeldt met Google, Apple of GitHub, ontvangen wij van die aanbieder uw naam, e-mailadres en de accountidentificatie, nooit het wachtwoord.",
               "**Werkruimtegegevens:** de naam, leden, rollen en uitnodigingen van de werkruimte.",
-              "**Factuurgegevens:** voor een werkruimte met een agentes.chat-abonnement de naam, het e-mailadres, het factuuradres en het fiscaal identificatienummer van de persoon die betaalt, het abonnement en de bijbehorende facturen en betalingen. Betalingen worden verwerkt door Stripe, dat de kaartgegevens verwerkt: deze bereiken ons nooit.",
+              "**Factuurgegevens:** voor een werkruimte met een squadchat-abonnement de naam, het e-mailadres, het factuuradres en het fiscaal identificatienummer van de persoon die betaalt, het abonnement en de bijbehorende facturen en betalingen. Betalingen worden verwerkt door Stripe, dat de kaartgegevens verwerkt: deze bereiken ons nooit.",
               "**Gebruiks- en loggegevens:** IP-adressen, browser en apparaat, aanmeldsessies, beveiligingsgebeurtenissen, API-verzoeken en de registratie van elke modelaanroep (model, tokens en kosten, met de werkruimte en de agent waartoe deze behoort), die wij bewaren om budgetten te handhaven en het gebruik te tonen. Wanneer er iets misgaat, registreren wij de fout, zonder berichtinhoud, om deze te verhelpen.",
               "**Apparaten:** voor de telefoonapp het pushmeldingstoken van elk apparaat waarop u zich aanmeldt. Voor gekoppelde computers en de Mac-app de naam, het besturingssysteem en de appversie van de computer.",
-              "**Wachtlijst:** het e-mailadres en de taal die u ons op agentes.chat opgeeft, en of u het adres hebt bevestigd.",
-              "**Websiteanalyse:** op agentes.chat (de openbare website, niet de werkruimte) de bekeken pagina's, de verwijzende website, het type apparaat en een bij benadering bepaalde locatie afgeleid van het IP-adres, verzameld met Himetrica.",
+              "**Wachtlijst:** het e-mailadres en de taal die u ons op squadchat opgeeft, en of u het adres hebt bevestigd.",
+              "**Websiteanalyse:** op squadchat (de openbare website, niet de werkruimte) de bekeken pagina's, de verwijzende website, het type apparaat en een bij benadering bepaalde locatie afgeleid van het IP-adres, verzameld met Himetrica.",
             ],
           },
         ],
@@ -238,7 +238,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
               "**Connectoren.** Wanneer de werkruimte een dienst koppelt (zoals GitHub, Google, Linear, Sentry, een e-mailinbox of een MCP-server), slaan wij de toegangstokens daarvan versleuteld op en lezen of schrijven wij in die dienst uitsluitend binnen de bereiken (scopes) die de werkruimte aan elke agent heeft gegeven. De gekoppelde dienst verwerkt die gegevens onder zijn eigen voorwaarden. Koppelingen met Gmail- en Outlook-inboxen, en met Google Drive, Google Calendar, Google Sheets, Google Docs, Slack, Microsoft Teams, OneDrive, HubSpot, Salesforce, Zendesk, Asana, Figma, Intercom, Dropbox, Square, Instagram, Facebook, LinkedIn, YouTube, Pinterest, Reddit en WhatsApp, lopen via Composio, dat verwerkt wat agents daar lezen en schrijven.",
               "**Databases.** Databaseverbindingen zijn alleen-lezen. Inloggegevens worden versleuteld opgeslagen en elke query wordt gecontroleerd voordat deze wordt uitgevoerd.",
               "**Gekoppelde computers.** Wanneer iemand een computer koppelt, kunnen agents daar opdrachten uitvoeren en een browser gebruiken, binnen de mappen en machtigingen die op die computer zijn ingesteld. De live weergave van de browser van een agent gaat via onze netwerkaanbieder en via het geheugen van onze servers, en wordt niet opgenomen. Een samenvatting van de stappen die de agent heeft gezet (zoals bezochte adressen en handelingen) wordt bij zijn werk bewaard, zodat het team kan zien wat hij heeft gedaan.",
-              "**De computer van de werkruimte.** Op agentes.chat Cloud werken de agents van een werkruimte op een computer die wij voor die werkruimte beheren, op onze servers of die van een hostingaanbieder, in de Europese Unie of de Verenigde Staten. Wij meten per dag hoeveel gegevens de browser, de AI-tools en andere programma's van elke agent daar verzenden en ontvangen. De computer wordt gewist nadat het agentes.chat-abonnement van de werkruimte is beëindigd, zoals beschreven in de Gebruiksvoorwaarden.",
+              "**De computer van de werkruimte.** Op squadchat Cloud werken de agents van een werkruimte op een computer die wij voor die werkruimte beheren, op onze servers of die van een hostingaanbieder, in de Europese Unie of de Verenigde Staten. Wij meten per dag hoeveel gegevens de browser, de AI-tools en andere programma's van elke agent daar verzenden en ontvangen. De computer wordt gewist nadat het squadchat-abonnement van de werkruimte is beëindigd, zoals beschreven in de Gebruiksvoorwaarden.",
             ],
           },
           "Handelingen die moeilijk ongedaan te maken zijn (zoals het samenvoegen van code, het uitrollen of het verzenden namens iemand), worden een goedkeuringsverzoek aan een persoon voordat zij plaatsvinden. Tekst die van buiten de werkruimte afkomstig is (webpagina's, e-mails, bestanden), wordt als onbetrouwbaar gemarkeerd voordat een agent deze leest.",
@@ -246,9 +246,9 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
       },
       {
         id: "staff-access",
-        heading: "6. Wanneer medewerkers van agentes.chat Werkruimte-inhoud kunnen zien",
+        heading: "6. Wanneer medewerkers van squadchat Werkruimte-inhoud kunnen zien",
         blocks: [
-          "Wij kijken niet zomaar rond in werkruimten. Een persoon bij agentes.chat kan Werkruimte-inhoud uitsluitend zien:",
+          "Wij kijken niet zomaar rond in werkruimten. Een persoon bij squadchat kan Werkruimte-inhoud uitsluitend zien:",
           {
             list: [
               "**Op uw verzoek,** om te helpen bij een ondersteuningsverzoek, en alleen voor zover het verzoek dat vereist.",
@@ -266,7 +266,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
           {
             list: [
               "**Accountgegevens:** gedurende het bestaan van het account. Wanneer u uw account in de app verwijdert, wordt het onmiddellijk overal uitgelogd en 7 dagen later verwijderd, tenzij u het daarvoor herstelt, en verdwijnt het daarna binnen 30 dagen uit onze back-ups, met uitzondering van gegevens die wij wettelijk moeten bewaren. Elke werkruimte waarvan u het enige lid was, wordt tegelijkertijd gesloten, en de inhoud daarvan wordt 7 dagen later verwijderd zoals hierna beschreven. De werkruimten waarvan u lid was, behouden uw naam en e-mailadres in hun auditlogs zolang elk daarvan bestaat.",
-              "**Werkruimte-inhoud:** gedurende het bestaan van de werkruimte, en eerder wanneer de werkruimte specifieke inhoud verwijdert. Wanneer het agentes.chat-abonnement van een werkruimte eindigt, blijft de inhoud ervan 90 dagen beschikbaar en wordt deze daarna verwijderd. Wanneer een eigenaar een werkruimte verwijdert, wordt deze onmiddellijk voor iedereen gesloten en wordt de inhoud 7 dagen later verwijderd, tenzij een eigenaar de werkruimte vóór die tijd herstelt, en verdwijnt deze binnen 30 dagen daarna uit onze back-ups, met uitzondering van inhoud die wij wettelijk of als registratie van misbruik (hieronder) moeten bewaren.",
+              "**Werkruimte-inhoud:** gedurende het bestaan van de werkruimte, en eerder wanneer de werkruimte specifieke inhoud verwijdert. Wanneer het squadchat-abonnement van een werkruimte eindigt, blijft de inhoud ervan 90 dagen beschikbaar en wordt deze daarna verwijderd. Wanneer een eigenaar een werkruimte verwijdert, wordt deze onmiddellijk voor iedereen gesloten en wordt de inhoud 7 dagen later verwijderd, tenzij een eigenaar de werkruimte vóór die tijd herstelt, en verdwijnt deze binnen 30 dagen daarna uit onze back-ups, met uitzondering van inhoud die wij wettelijk of als registratie van misbruik (hieronder) moeten bewaren.",
               "**Logs:** verzoek- en beveiligingslogs gedurende maximaal 90 dagen. Registraties van modelgebruik (tokens en kosten) gedurende het bestaan van de werkruimte, omdat budgetten en gebruiksrapporten daarvan afhankelijk zijn.",
               "**Factuurgegevens:** zolang u voor een werkruimte betaalt, en daarna zolang de fiscale en boekhoudkundige wetgeving dat vereist.",
               "**Wachtlijst:** totdat u wordt uitgenodigd en gedurende 12 maanden daarna, of totdat u ons vraagt u te verwijderen.",
@@ -321,7 +321,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "cookies",
         heading: "14. Cookies en lokale opslag",
         blocks: [
-          "De werkruimte gebruikt uitsluitend de cookies en lokale opslag die nodig zijn om u aangemeld te houden, formulieren te beschermen en voorkeuren zoals thema en taal te onthouden. De openbare website agentes.chat onthoudt de taal die u hebt gekozen en gebruikt Himetrica-analyse (artikel 2). Wij gebruiken geen advertentiecookies of cookies voor tracking over websites heen.",
+          "De werkruimte gebruikt uitsluitend de cookies en lokale opslag die nodig zijn om u aangemeld te houden, formulieren te beschermen en voorkeuren zoals thema en taal te onthouden. De openbare website squadchat onthoudt de taal die u hebt gekozen en gebruikt Himetrica-analyse (artikel 2). Wij gebruiken geen advertentiecookies of cookies voor tracking over websites heen.",
         ],
       },
       {
@@ -342,7 +342,7 @@ export const legalNl: Partial<Record<LegalKind, LegalDocument>> = {
         id: "contact",
         heading: "17. Contact",
         blocks: [
-          "AGENTESCHAT, LLC, handelend onder de naam agentes.chat. Kennisgevingen: 2810 North Church Street, Ste 91038, Wilmington, DE 19802, USA · privacy@agentes.chat. Vragen over gegevensbescherming uit de EU, het Verenigd Koninkrijk en Brazilië bereiken ons privacyteam via hetzelfde adres. Voor al het overige kunt u schrijven naar hello@agentes.chat.",
+          "AGENTESCHAT, LLC, handelend onder de naam squadchat. Kennisgevingen: 2810 North Church Street, Ste 91038, Wilmington, DE 19802, USA · privacy@agentes.chat. Vragen over gegevensbescherming uit de EU, het Verenigd Koninkrijk en Brazilië bereiken ons privacyteam via hetzelfde adres. Voor al het overige kunt u schrijven naar hello@agentes.chat.",
         ],
       },
     ],

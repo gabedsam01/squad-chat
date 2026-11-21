@@ -71,7 +71,7 @@ describe("the sign-in page", () => {
     expect(screen().getByRole("button", { name: /Continuar com GitHub/ })).toBeTruthy();
     expect(agentVar()).toBe("");
     await settle(4);
-    expect(document.querySelector(".auth__place")?.textContent).toContain("Entrando no agentes.chat Cloud");
+    expect(document.querySelector(".auth__place")?.textContent).toContain("Entrando no squadchat Cloud");
   });
 });
 

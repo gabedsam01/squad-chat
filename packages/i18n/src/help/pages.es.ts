@@ -4,15 +4,15 @@ import type { HelpDocument } from "./types";
 /** The help pages in es: a page not here shows in English. */
 export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
   "run-on-your-computer": {
-    title: "Usa agentes.chat en tu computadora",
+    title: "Usa squadchat en tu computadora",
     summary:
-      "La app de agentes.chat también puede ejecutar el propio agentes.chat, en una Mac, una PC o una computadora con Linux, para ti o un equipo pequeño.",
+      "La app de squadchat también puede ejecutar el propio squadchat, en una Mac, una PC o una computadora con Linux, para ti o un equipo pequeño.",
     sections: [
       {
         id: "download",
         heading: "Descarga la app",
         blocks: [
-          "[Descarga la app de agentes.chat](/download) para tu Mac, PC o computadora con Linux y ábrela. Elige **En tu propio servidor**, pulsa **Continuar en mi servidor** y luego **Ejecutar agentes.chat en esta computadora**.",
+          "[Descarga la app de squadchat](/download) para tu Mac, PC o computadora con Linux y ábrela. Elige **En tu propio servidor**, pulsa **Continuar en mi servidor** y luego **Ejecutar squadchat en esta computadora**.",
         ],
       },
       {
@@ -20,14 +20,14 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         heading: "Cómo funciona",
         blocks: [
           "Se ejecuta dentro de la app, con su propia base de datos integrada, y guarda todo en una carpeta de esta computadora, `.agentes` en tu carpeta personal. No hay nada más que instalar: ni Docker, ni una base de datos que configurar.",
-          "Arranca con la app y se detiene cuando la cierras. Al cerrarla te pregunta antes, porque nadie puede usar agentes.chat hasta que la app se vuelva a abrir. Para detenerlo un rato sin cerrar la app, haz clic en el ícono de agentes.chat junto al reloj y elige **Detener** en el menú **⋯** de su tarjeta.",
+          "Arranca con la app y se detiene cuando la cierras. Al cerrarla te pregunta antes, porque nadie puede usar squadchat hasta que la app se vuelva a abrir. Para detenerlo un rato sin cerrar la app, haz clic en el ícono de squadchat junto al reloj y elige **Detener** en el menú **⋯** de su tarjeta.",
         ],
       },
       {
         id: "who",
         heading: "Para quién es",
         blocks: [
-          "Tú o un equipo pequeño. Una Mac mini, una PC que no uses o una laptop que se queda encendida es un buen lugar: déjala lista como en [Mantenerla encendida](#keep-on). En una Mac o una PC, la app es la forma de usar agentes.chat sin Docker.",
+          "Tú o un equipo pequeño. Una Mac mini, una PC que no uses o una laptop que se queda encendida es un buen lugar: déjala lista como en [Mantenerla encendida](#keep-on). En una Mac o una PC, la app es la forma de usar squadchat sin Docker.",
           "Para un equipo más grande, consulta [Qué opción elegir](/help/install-on-a-server#choose). Tus datos pueden mudarse a un servidor más adelante.",
         ],
       },
@@ -58,7 +58,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "another-workspace",
         heading: "Préstala también a otro espacio de trabajo",
         blocks: [
-          "Los espacios de trabajo del servidor que ejecutas aquí ya usan esta computadora sin que hagas nada. Para que un espacio de trabajo de otro lugar también la use, como uno en agentes.chat Cloud, pulsa **Agregar un espacio de trabajo…** al final de la primera tarjeta de **Preferencias\u00a0›\u00a0General**, o **Agregar un servidor…** en **Preferencias\u00a0›\u00a0Servidores**. Inicia sesión en ese espacio de trabajo y pulsa **Permitir** cuando la app te lo pregunte.",
+          "Los espacios de trabajo del servidor que ejecutas aquí ya usan esta computadora sin que hagas nada. Para que un espacio de trabajo de otro lugar también la use, como uno en squadchat Cloud, pulsa **Agregar un espacio de trabajo…** al final de la primera tarjeta de **Preferencias\u00a0›\u00a0General**, o **Agregar un servidor…** en **Preferencias\u00a0›\u00a0Servidores**. Inicia sesión en ese espacio de trabajo y pulsa **Permitir** cuando la app te lo pregunte.",
           "Cada espacio de trabajo tiene aquí sus propios agentes y carpetas. Los **Comandos** también vienen activados para él. Desactívalos en la pregunta de la app antes de pulsar **Permitir**, o más tarde en **Preferencias\u00a0›\u00a0Herramientas**, donde cada espacio de trabajo tiene su propio interruptor y la app pregunta antes de volver a activar uno.",
         ],
       },
@@ -66,8 +66,8 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "reach",
         heading: "Desde tu teléfono y tu equipo",
         blocks: [
-          "**Accede desde tu teléfono y tu equipo** pone agentes.chat en Tailscale, una red privada para tus dispositivos: tu teléfono y las personas que invites se unen a ella, y nadie más puede acceder a agentes.chat. Tailscale es gratis: https://tailscale.com/download. Si está desactivado, agentes.chat solo funciona en esta computadora.",
-          "Si esta computadora ya comparte otra cosa en el puerto 443 de Tailscale, agentes.chat usa el 8443, y su dirección termina en `:8443`.",
+          "**Accede desde tu teléfono y tu equipo** pone squadchat en Tailscale, una red privada para tus dispositivos: tu teléfono y las personas que invites se unen a ella, y nadie más puede acceder a squadchat. Tailscale es gratis: https://tailscale.com/download. Si está desactivado, squadchat solo funciona en esta computadora.",
+          "Si esta computadora ya comparte otra cosa en el puerto 443 de Tailscale, squadchat usa el 8443, y su dirección termina en `:8443`.",
         ],
       },
       {
@@ -90,24 +90,24 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         heading: "Copias de seguridad",
         blocks: [
           "Con **Hacer una copia cada noche** activado (app 0.8.1 y posteriores), en **Preferencias\u00a0›\u00a0Servidores**, la app guarda la base de datos, los archivos y el `.env` en `.agentes/backups`, en tu carpeta personal, cada noche a las 3:00. Una computadora que estaba dormida hace la copia cuando despierta. **Hacer una copia ahora** hace lo mismo al momento. Cada copia detiene el servidor un momento, y se conservan las dos más recientes.",
-          "**Copiar en** también pone cada copia nueva en una carpeta que elijas, como una memoria USB o iCloud Drive, donde se conservan las dos más recientes. Contienen tus claves: guárdalas en privado. **Restaurar…** devuelve agentes.chat a una copia: mensajes, archivos y ajustes. Se detiene un minuto, y lo que había antes se guarda en la carpeta de copias.",
+          "**Copiar en** también pone cada copia nueva en una carpeta que elijas, como una memoria USB o iCloud Drive, donde se conservan las dos más recientes. Contienen tus claves: guárdalas en privado. **Restaurar…** devuelve squadchat a una copia: mensajes, archivos y ajustes. Se detiene un minuto, y lo que había antes se guarda en la carpeta de copias.",
         ],
       },
       {
         id: "uninstall",
         heading: "Empezar de nuevo o desinstalar",
         blocks: [
-          "Todo lo que agentes.chat guarda en esta computadora está en carpetas de tu carpeta personal, no dentro de la app. Por eso, mover la app a la Papelera no borra nada de eso, y no detiene agentes.chat si está en marcha.",
-          "Para empezar de nuevo, pulsa **Borrar y empezar de nuevo…** en **Preferencias\u00a0›\u00a0Servidores**. agentes.chat se detiene aquí y todo lo que guarda pasa a una carpeta nueva en tu carpeta personal, llamada `agentes.chat erased` con la fecha del día, donde queda hasta que la borres. Lo que sus agentes guardaban en esta computadora, como sus navegadores e inicios de sesión, se borra de `.agentes-runner`. Sus espacios de trabajo desaparecen para todos los que los usan. Luego se abre la ventana de bienvenida y lo configuras de nuevo con una nueva cuenta de propietario. Los archivos de los agentes, en `agentes` en tu carpeta personal, se quedan donde están.",
-          "Para recuperarlo más tarde, sal de la app, aparta una carpeta `.agentes` más nueva si la hay, cambia el nombre de la carpeta `agentes.chat erased` a `.agentes`, abre la app y configúralo otra vez en esta computadora. Vuelve con sus espacios de trabajo y su propietario como estaban. Lo que sus agentes guardaban en esta computadora no vuelve, así que tienen que iniciar sesión de nuevo.",
-          "Para quitar agentes.chat de esta computadora por completo:",
+          "Todo lo que squadchat guarda en esta computadora está en carpetas de tu carpeta personal, no dentro de la app. Por eso, mover la app a la Papelera no borra nada de eso, y no detiene squadchat si está en marcha.",
+          "Para empezar de nuevo, pulsa **Borrar y empezar de nuevo…** en **Preferencias\u00a0›\u00a0Servidores**. squadchat se detiene aquí y todo lo que guarda pasa a una carpeta nueva en tu carpeta personal, llamada `squadchat erased` con la fecha del día, donde queda hasta que la borres. Lo que sus agentes guardaban en esta computadora, como sus navegadores e inicios de sesión, se borra de `.agentes-runner`. Sus espacios de trabajo desaparecen para todos los que los usan. Luego se abre la ventana de bienvenida y lo configuras de nuevo con una nueva cuenta de propietario. Los archivos de los agentes, en `agentes` en tu carpeta personal, se quedan donde están.",
+          "Para recuperarlo más tarde, sal de la app, aparta una carpeta `.agentes` más nueva si la hay, cambia el nombre de la carpeta `squadchat erased` a `.agentes`, abre la app y configúralo otra vez en esta computadora. Vuelve con sus espacios de trabajo y su propietario como estaban. Lo que sus agentes guardaban en esta computadora no vuelve, así que tienen que iniciar sesión de nuevo.",
+          "Para quitar squadchat de esta computadora por completo:",
           {
             list: [
               "Desactiva **Abrir al iniciar sesión** en **Preferencias\u00a0›\u00a0General**.",
-              "Sal de la app. Cerrar su ventana no basta. En una Mac, haz clic en su ícono del Dock y elige **Salir de agentes.chat** en el menú agentes.chat, arriba en la pantalla, o pulsa ⌘Q. En Windows y Linux, haz clic en el ícono de agentes.chat junto al reloj y elige **Salir de agentes.chat**. Si pregunta **¿Salir de agentes.chat?**, pulsa **Salir**.",
+              "Sal de la app. Cerrar su ventana no basta. En una Mac, haz clic en su ícono del Dock y elige **Salir de squadchat** en el menú squadchat, arriba en la pantalla, o pulsa ⌘Q. En Windows y Linux, haz clic en el ícono de squadchat junto al reloj y elige **Salir de squadchat**. Si pregunta **¿Salir de squadchat?**, pulsa **Salir**.",
               "Borra la app. En una Mac, muévela a la Papelera. En Windows y Linux, desinstálala como cualquier otra app.",
-              "Borra estas carpetas de tu carpeta personal. Contienen tus datos, y una vez borrados no vuelven, así que guarda antes una copia en otro lugar si quizá los quieras: `.agentes` (mensajes, archivos, cuentas, ajustes y copias), cada carpeta `agentes.chat erased`, `.agentes-runner` (lo que los agentes guardan en esta computadora, como sus navegadores e inicios de sesión) y `agentes` (los archivos de los agentes). Las carpetas cuyo nombre empieza por un punto están ocultas. En una Mac, abre tu carpeta personal en el Finder y pulsa ⇧⌘. (Mayúsculas, Comando y la tecla del punto) para verlas.",
-              "Borra las carpetas de la propia app. Solo contienen sus ajustes, las sesiones de su ventana y sus registros. En una Mac: todo lo que empiece por `chat.agentes.desktop` en las carpetas Application Support, Caches, HTTPStorages, Logs, Preferences y WebKit de `~/Library`, y `agentes.chat.plist` en `~/Library/LaunchAgents`. En Windows: `%APPDATA%\\chat.agentes.desktop` y `%LOCALAPPDATA%\\chat.agentes.desktop`. En Linux: `~/.config/chat.agentes.desktop` y `~/.local/share/chat.agentes.desktop`. En una Mac, para abrir una de estas carpetas, pulsa ⇧⌘G en el Finder y escribe su ruta, como `~/Library/Caches`.",
+              "Borra estas carpetas de tu carpeta personal. Contienen tus datos, y una vez borrados no vuelven, así que guarda antes una copia en otro lugar si quizá los quieras: `.agentes` (mensajes, archivos, cuentas, ajustes y copias), cada carpeta `squadchat erased`, `.agentes-runner` (lo que los agentes guardan en esta computadora, como sus navegadores e inicios de sesión) y `agentes` (los archivos de los agentes). Las carpetas cuyo nombre empieza por un punto están ocultas. En una Mac, abre tu carpeta personal en el Finder y pulsa ⇧⌘. (Mayúsculas, Comando y la tecla del punto) para verlas.",
+              "Borra las carpetas de la propia app. Solo contienen sus ajustes, las sesiones de su ventana y sus registros. En una Mac: todo lo que empiece por `chat.agentes.desktop` en las carpetas Application Support, Caches, HTTPStorages, Logs, Preferences y WebKit de `~/Library`, y `squadchat.plist` en `~/Library/LaunchAgents`. En Windows: `%APPDATA%\\chat.agentes.desktop` y `%LOCALAPPDATA%\\chat.agentes.desktop`. En Linux: `~/.config/chat.agentes.desktop` y `~/.local/share/chat.agentes.desktop`. En una Mac, para abrir una de estas carpetas, pulsa ⇧⌘G en el Finder y escribe su ruta, como `~/Library/Caches`.",
             ],
           },
         ],
@@ -129,11 +129,11 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
             ],
           },
           {
-            code: "BUN_BE_BUN=1 /Applications/agentes.chat.app/Contents/MacOS/agentes-runner \\\n  ~/.agentes/app/current/server/native.js db dump --data ~/.agentes --out agentes.sql",
+            code: "BUN_BE_BUN=1 /Applications/squadchat.app/Contents/MacOS/agentes-runner \\\n  ~/.agentes/app/current/server/native.js db dump --data ~/.agentes --out agentes.sql",
           },
           {
             list: [
-              "[Instala agentes.chat en un servidor](/help/install-on-a-server), pero no lo inicies todavía. En su `.env`, pon el `AGENTES_SECRET` de `~/.agentes/.env` y luego inicia solo la base de datos: `docker compose up -d postgres`.",
+              "[Instala squadchat en un servidor](/help/install-on-a-server), pero no lo inicies todavía. En su `.env`, pon el `AGENTES_SECRET` de `~/.agentes/.env` y luego inicia solo la base de datos: `docker compose up -d postgres`.",
               "Carga la exportación: `docker compose exec -T postgres psql -U agentes -d agentes -v ON_ERROR_STOP=1 < agentes.sql`.",
               "Inícialo con `docker compose up -d`, copia `~/.agentes/files` en él como muestra la guía completa, e inicia sesión como antes.",
             ],
@@ -157,14 +157,14 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "own",
         heading: "Tus propias computadoras y teléfonos",
         blocks: [
-          "Los agentes también pueden trabajar en computadoras y teléfonos que conectes: una Mac o una PC con la app de agentes.chat, un servidor, un teléfono Android o un iPhone. Consulta [Computadoras y teléfonos que conectas](/help/computers).",
+          "Los agentes también pueden trabajar en computadoras y teléfonos que conectes: una Mac o una PC con la app de squadchat, un servidor, un teléfono Android o un iPhone. Consulta [Computadoras y teléfonos que conectas](/help/computers).",
         ],
       },
       {
         id: "plans",
         heading: "Tus planes de IA",
         blocks: [
-          "Tus agentes pueden pensar con tu propio plan de IA, como Claude, ChatGPT, GLM o Kimi, con la sesión iniciada en esta computadora: no hace falta una clave de API. La cuenta se queda en esta computadora, y agentes.chat nunca ve la contraseña ni el acceso.",
+          "Tus agentes pueden pensar con tu propio plan de IA, como Claude, ChatGPT, GLM o Kimi, con la sesión iniciada en esta computadora: no hace falta una clave de API. La cuenta se queda en esta computadora, y squadchat nunca ve la contraseña ni el acceso.",
           "Los planes AI Pro y Ultra de Google no funcionan aquí: los términos de Google no permiten usarlos en otros productos. Una clave de API de Gemini sí funciona.",
         ],
       },
@@ -183,11 +183,11 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
   computers: {
     title: "Tus computadoras y teléfonos",
     summary:
-      "Trae una Mac, una PC, una computadora con Linux, un servidor o un teléfono, y tus agentes trabajan en él. Tanto en agentes.chat Cloud como en un servidor propio.",
+      "Trae una Mac, una PC, una computadora con Linux, un servidor o un teléfono, y tus agentes trabajan en él. Tanto en squadchat Cloud como en un servidor propio.",
     sections: [
       {
         id: "app",
-        heading: "Desde la app de agentes.chat",
+        heading: "Desde la app de squadchat",
         blocks: [
           "Instala la app en la computadora, ábrela e inicia sesión en tu espacio de trabajo. Te pregunta **¿Dejar que los agentes de <workspace> usen esta Mac?** (esta PC en Windows, esta computadora en Linux). Elige quién puede usarla y pulsa **Permitir**. Eso es todo.",
           "¿Ya iniciaste sesión? Abre **Preferencias\u00a0›\u00a0General** y pulsa **Permitir** en la fila del espacio de trabajo, en la primera tarjeta. ¿No aparece? Pulsa **Agregar un espacio de trabajo…** al final de esa tarjeta e inicia sesión.",
@@ -226,14 +226,14 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "open",
         heading: "Mientras la app está abierta",
         blocks: [
-          "Los agentes trabajan en una computadora solo mientras la app funciona allí y la computadora está despierta. Cuando la app pregunte, deja marcada **Tenerla lista: abrir agentes.chat al iniciar sesión**. Una computadora apagada o en reposo aparece como **Sin conexión**, y los agentes esperan a que vuelva.",
+          "Los agentes trabajan en una computadora solo mientras la app funciona allí y la computadora está despierta. Cuando la app pregunte, deja marcada **Tenerla lista: abrir squadchat al iniciar sesión**. Una computadora apagada o en reposo aparece como **Sin conexión**, y los agentes esperan a que vuelva.",
         ],
       },
       {
         id: "pausing",
         heading: "Pausar y desconectar",
         blocks: [
-          "En la computadora, el ícono de agentes.chat junto al reloj pausa a los agentes de todos los espacios de trabajo, o de uno solo. En **Preferencias\u00a0›\u00a0General**, el interruptor de cada espacio de trabajo pausa solo ese, y **Salir**, en su menú **⋯**, lo desconecta. No empieza nada nuevo mientras está en pausa, y lo que estaba en marcha termina. Al desconectar, las carpetas de los agentes se quedan en el disco.",
+          "En la computadora, el ícono de squadchat junto al reloj pausa a los agentes de todos los espacios de trabajo, o de uno solo. En **Preferencias\u00a0›\u00a0General**, el interruptor de cada espacio de trabajo pausa solo ese, y **Salir**, en su menú **⋯**, lo desconecta. No empieza nada nuevo mientras está en pausa, y lo que estaba en marcha termina. Al desconectar, las carpetas de los agentes se quedan en el disco.",
           "Desde el sitio web, **Quitar** en la página del dispositivo lo desconecta.",
         ],
       },
@@ -241,7 +241,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "organizations",
         heading: "Varios espacios de trabajo, una computadora",
         blocks: [
-          "Inicia sesión en cada espacio de trabajo en la misma app y pulsa **Permitir** para cada uno. Los espacios de trabajo en agentes.chat Cloud y en tus propios servidores pueden compartir una computadora (app 0.6.1 y posteriores). Cada uno tiene allí sus propios agentes y carpetas, y desconectar uno no afecta a los demás.",
+          "Inicia sesión en cada espacio de trabajo en la misma app y pulsa **Permitir** para cada uno. Los espacios de trabajo en squadchat Cloud y en tus propios servidores pueden compartir una computadora (app 0.6.1 y posteriores). Cada uno tiene allí sus propios agentes y carpetas, y desconectar uno no afecta a los demás.",
           "Un servidor que la app ejecuta en esta computadora ya está conectado y no necesita nada. Para prestar también esa computadora a un espacio de trabajo de otro lugar, consulta [Préstala también a otro espacio de trabajo](/help/run-on-your-computer#another-workspace).",
           "¿Usas la app en una laptop solo como ventana a tu espacio de trabajo? Cuando te pida dejar que los agentes usen la laptop, **Ahora no** la deja como una simple ventana.",
           "Un servidor conectado con la línea de la terminal trabaja para un solo workspace. Conectarlo desde otro workspace pasa el servidor a ese otro, y el primero deja de alcanzarlo. Para varios workspaces en una computadora, usa la app.",
@@ -272,10 +272,10 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
               "tus archivos y tus sesiones iniciadas",
               "las carpetas de otros agentes, incluidas las de otros espacios de trabajo, y las sesiones que guardan sus navegadores",
               "el token que conecta esta computadora",
-              "en una computadora que también ejecuta agentes.chat, su base de datos y sus claves en `.agentes`",
+              "en una computadora que también ejecuta squadchat, su base de datos y sus claves en `.agentes`",
             ],
           },
-          "agentes.chat rechaza los comandos que nombran sus claves, tokens e inicios de sesión, pero es una regla, no un muro. Los **Comandos** vienen activados. Desactívalos en la pregunta de la app antes de pulsar **Permitir**, o más tarde en **Preferencias\u00a0›\u00a0Herramientas**, donde cada espacio de trabajo tiene su propio interruptor (app 0.8.1 y posteriores) y la app pregunta antes de volver a activar uno. Claude Code y Codex ejecutan sus propios comandos en la carpeta del agente, con sus propias reglas, incluso con los comandos desactivados.",
+          "squadchat rechaza los comandos que nombran sus claves, tokens e inicios de sesión, pero es una regla, no un muro. Los **Comandos** vienen activados. Desactívalos en la pregunta de la app antes de pulsar **Permitir**, o más tarde en **Preferencias\u00a0›\u00a0Herramientas**, donde cada espacio de trabajo tiene su propio interruptor (app 0.8.1 y posteriores) y la app pregunta antes de volver a activar uno. Claude Code y Codex ejecutan sus propios comandos en la carpeta del agente, con sus propias reglas, incluso con los comandos desactivados.",
           "Para un muro de verdad, usa un servidor Linux. En Debian 13, instalado con `--system`, cada agente es un usuario propio. En Ubuntu, los agentes comparten un usuario, `agentes`: ven las carpetas de los demás, no las tuyas ni las del servidor. O dales a los agentes una computadora propia.",
         ],
       },
@@ -284,7 +284,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
   import: {
     title: "Trae a tus agentes",
     summary:
-      "Trae agentes de otra app, o de otro espacio de trabajo de agentes.chat, con sus instrucciones, habilidades, rutinas y memoria.",
+      "Trae agentes de otra app, o de otro espacio de trabajo de squadchat, con sus instrucciones, habilidades, rutinas y memoria.",
     sections: [
       {
         id: "comes",
@@ -472,7 +472,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
   },
   "who-answers": {
     title: "Quién responde un mensaje",
-    summary: "Una mención elige al agente. Sin ella, agentes.chat elige por ti, en este orden.",
+    summary: "Una mención elige al agente. Sin ella, squadchat elige por ti, en este orden.",
     sections: [
       {
         id: "order",
@@ -494,7 +494,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "jev",
         heading: "Jev",
         blocks: [
-          "Cuando agentes.chat aloja tu espacio de trabajo, Jev viene incluido. En un servidor que administras tú, usa la clave de TypeSafe u OpenRouter del propietario, unos US$ 0.0001 por mensaje: [Configura Jev](/help/jev#setup).",
+          "Cuando squadchat aloja tu espacio de trabajo, Jev viene incluido. En un servidor que administras tú, usa la clave de TypeSafe u OpenRouter del propietario, unos US$ 0.0001 por mensaje: [Configura Jev](/help/jev#setup).",
         ],
       },
       {
@@ -555,7 +555,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
               "Abre https://console.typesafe.ai e inicia sesión con Google o tu correo. Una cuenta nueva se crea de la misma forma.",
               "Agrega saldo en la consola. Jev es prepago.",
               "Abre https://console.typesafe.ai/keys, crea una clave y cópiala de inmediato.",
-              "En agentes.chat, abre **Configuración › IA y uso** y pégala en **Jev**. Solo la persona que configuró este servidor la ve.",
+              "En squadchat, abre **Configuración › IA y uso** y pégala en **Jev**. Solo la persona que configuró este servidor la ve.",
             ],
           },
           "¿Ya pagas OpenRouter? Elige **OpenRouter** en **Jev** y pega una clave de https://openrouter.ai/keys, o activa Jev con un clic usando la clave de OpenRouter del espacio de trabajo. Es el mismo Jev, cobrado a través de OpenRouter al mismo precio.",
@@ -615,14 +615,14 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
   "apps-de-ia": {
     title: "Apps de IA",
     summary:
-      "Pide tareas a los agentes de agentes.chat desde Claude, Cursor u otra app MCP, sin salir de ella, y recibe la respuesta ahí mismo.",
+      "Pide tareas a los agentes de squadchat desde Claude, Cursor u otra app MCP, sin salir de ella, y recibe la respuesta ahí mismo.",
     sections: [
       {
         id: "what",
         heading: "Cómo funciona",
         blocks: [
-          "agentes.chat es un servidor MCP. Pegas su dirección en tu app de IA, inicias sesión con tu cuenta y eliges un espacio de trabajo. A partir de ahí, la app puede listar agentes y canales, enviar una tarea a un agente en tu nombre, esperar la respuesta y leer las tareas recientes.",
-          'Por ejemplo, en medio de una escena en Unity o Blender, pídele a Claude: "Pídele al agente de marketing un texto para el lanzamiento". El mensaje aparece en agentes.chat como tuyo, marcado **vía Claude**, y la respuesta del agente vuelve a Claude.',
+          "squadchat es un servidor MCP. Pegas su dirección en tu app de IA, inicias sesión con tu cuenta y eliges un espacio de trabajo. A partir de ahí, la app puede listar agentes y canales, enviar una tarea a un agente en tu nombre, esperar la respuesta y leer las tareas recientes.",
+          'Por ejemplo, en medio de una escena en Unity o Blender, pídele a Claude: "Pídele al agente de marketing un texto para el lanzamiento". El mensaje aparece en squadchat como tuyo, marcado **vía Claude**, y la respuesta del agente vuelve a Claude.',
           "La dirección está en **Configuración › Apps de IA**. Termina en `/mcp`.",
         ],
       },
@@ -632,14 +632,14 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         blocks: [
           {
             list: [
-              "**Claude** (claude.ai, Claude Desktop y el teléfono): en **Personalizar › Conectores**, haz clic en **+ Agregar**, luego en **Agregar conector personalizado**, llámalo agentes.chat, pega la dirección y haz clic en **Continuar**. Elige **Iniciar sesión ahora**, haz clic en **Agregar** y autoriza. En los planes Team y Enterprise, el propietario de la organización de Claude agrega el conector en Configuración de la organización › Conectores, y cada persona hace clic en **Conectar** en Personalizar › Conectores. El plan gratuito de Claude tiene lugar para un conector personalizado.",
+              "**Claude** (claude.ai, Claude Desktop y el teléfono): en **Personalizar › Conectores**, haz clic en **+ Agregar**, luego en **Agregar conector personalizado**, llámalo squadchat, pega la dirección y haz clic en **Continuar**. Elige **Iniciar sesión ahora**, haz clic en **Agregar** y autoriza. En los planes Team y Enterprise, el propietario de la organización de Claude agrega el conector en Configuración de la organización › Conectores, y cada persona hace clic en **Conectar** en Personalizar › Conectores. El plan gratuito de Claude tiene lugar para un conector personalizado.",
               "**Claude Code:** ejecuta `claude mcp add --transport http --scope user agentes <address>`, luego escribe `/mcp`, elige agentes y **Authenticate**. Solo para la carpeta actual, quita `--scope user`.",
               "**Cursor:** **Agregar a Cursor** en **Configuración › Apps de IA**, o la dirección en `~/.cursor/mcp.json`. Cursor te pide iniciar sesión la primera vez que lo usas.",
               '**VS Code:** **Agregar a VS Code**, o la dirección en `.vscode/mcp.json` con `"type": "http"`.',
               "**Otras apps:** ChatGPT, Gemini, Grok, Perplexity, Codex, Zed, JetBrains y más tienen cada una sus pasos en **Conectar una app**, con tu dirección ya puesta.",
             ],
           },
-          "Cuando inicias sesión, agentes.chat muestra qué app pidió acceso y adónde vuelve. Continúa solo si acabas de iniciar la conexión.",
+          "Cuando inicias sesión, squadchat muestra qué app pidió acceso y adónde vuelve. Continúa solo si acabas de iniciar la conexión.",
         ],
       },
       {
@@ -656,7 +656,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
               "`list_recent_tasks`: las tareas que enviaste desde apps y lo que los agentes están haciendo ahora.",
             ],
           },
-          "La app actúa en tu nombre y solo ve lo que tú ves. Nunca aprueba las acciones de los agentes: cuando un agente se detiene para pedir aprobación, la respuesta lo dice con un enlace, y una persona decide en agentes.chat. Tampoco cambia la configuración, los miembros ni los permisos.",
+          "La app actúa en tu nombre y solo ve lo que tú ves. Nunca aprueba las acciones de los agentes: cuando un agente se detiene para pedir aprobación, la respuesta lo dice con un enlace, y una persona decide en squadchat. Tampoco cambia la configuración, los miembros ni los permisos.",
         ],
       },
       {
@@ -692,7 +692,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "safety",
         heading: "Texto de otras personas",
         blocks: [
-          "Las respuestas traen texto escrito por agentes y personas en agentes.chat. La app recibe ese texto marcado como contenido, no como instrucciones, pero un texto aun así puede intentar convencer a la app de hacer otra cosa. Revisa lo que tu app está por hacer antes de confirmar.",
+          "Las respuestas traen texto escrito por agentes y personas en squadchat. La app recibe ese texto marcado como contenido, no como instrucciones, pero un texto aun así puede intentar convencer a la app de hacer otra cosa. Revisa lo que tu app está por hacer antes de confirmar.",
         ],
       },
       {
@@ -711,8 +711,8 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
     ],
   },
   "install-on-a-server": {
-    title: "Instala agentes.chat en un servidor",
-    summary: "Usa agentes.chat en un servidor tuyo, gratis, para todo tu equipo. Un comando lo deja listo.",
+    title: "Instala squadchat en un servidor",
+    summary: "Usa squadchat en un servidor tuyo, gratis, para todo tu equipo. Un comando lo deja listo.",
     sections: [
       {
         id: "choose",
@@ -720,7 +720,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         blocks: [
           {
             list: [
-              "**agentes.chat Cloud**: para cualquier equipo, accesible desde cualquier lugar. Nosotros lo ejecutamos, lo actualizamos y hacemos las copias de seguridad. Cada espacio de trabajo tiene su propia computadora, donde cada agente es un usuario propio.",
+              "**squadchat Cloud**: para cualquier equipo, accesible desde cualquier lugar. Nosotros lo ejecutamos, lo actualizamos y hacemos las copias de seguridad. Cada espacio de trabajo tiene su propia computadora, donde cada agente es un usuario propio.",
               "**Tu computadora, con la app**: para ti o un equipo pequeño, accesible mientras esa computadora esté encendida. Una Mac mini que se queda encendida funciona bien. La actualizas con un clic y haces las copias a mano. Los agentes se ejecutan como tú en esa computadora.",
               "**Un servidor**: para un equipo más grande, en marcha todo el tiempo. Lo actualizas con tres comandos, y puede hacer una copia cada día por sí solo. En Debian 13, cada agente es un usuario propio.",
             ],
@@ -734,7 +734,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         blocks: [
           {
             list: [
-              "Un servidor o VPS con Linux de 64 bits, en x64 o arm64. Para un equipo pequeño, 2 CPU, 4 GB de memoria y 20 GB de disco son un buen comienzo. En una Mac o una PC, [la app ejecuta agentes.chat](/help/run-on-your-computer) sin Docker.",
+              "Un servidor o VPS con Linux de 64 bits, en x64 o arm64. Para un equipo pequeño, 2 CPU, 4 GB de memoria y 20 GB de disco son un buen comienzo. En una Mac o una PC, [la app ejecuta squadchat](/help/run-on-your-computer) sin Docker.",
               "Docker con Compose. En Linux, el instalador los añade si faltan, después de preguntar.",
               "Una forma de llegar: una cuenta gratis de Tailscale (la opción por defecto, privada, sin dominio y sin puertos abiertos) o un dominio que apunte al servidor, con los puertos 80 y 443 abiertos.",
             ],
@@ -747,7 +747,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         blocks: [
           "En el servidor, ejecuta:",
           {
-            code: "curl -fsSL https://agentes.chat/install | sh",
+            code: "curl -fsSL https://squad-chat-6wd.pages.dev/install | sh",
           },
           "Instala lo que falta y luego hace unas preguntas: cómo llega la gente, el correo, si este servidor también es la computadora de tus agentes y si envía estadísticas de uso anónimas. Enter acepta la respuesta sugerida. Se instala en `/opt/agentes` (`~/agentes` si tu usuario ya puede usar Docker) y la primera vez descarga unos 2 GB.",
           "Al final muestra la dirección de tu servidor y un código QR para tu teléfono. Ejecutarlo otra vez no rompe nada: conserva tus ajustes y solo completa lo que falta.",
@@ -777,14 +777,14 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         heading: "Tu cuenta",
         blocks: [
           "Abre la dirección de tu servidor y regístrate: la primera cuenta es la del dueño. Después el registro se cierra y la gente entra por invitación, desde **Configuración\u00a0›\u00a0Miembros e invitaciones**.",
-          "En Tailscale, las personas que invitas también necesitan estar en tu tailnet. Invítalas primero en https://console.tailscale.com/admin/users y luego en agentes.chat.",
+          "En Tailscale, las personas que invitas también necesitan estar en tu tailnet. Invítalas primero en https://console.tailscale.com/admin/users y luego en squadchat.",
         ],
       },
       {
         id: "email",
         heading: "Correo",
         blocks: [
-          "Sin correo, agentes.chat escribe cada correo en su registro en vez de enviarlo, así que puedes copiar de ahí un enlace de invitación. Restablecer la contraseña queda desactivado, y un correo nuevo para una cuenta cambia al instante, sin código ni enlace.",
+          "Sin correo, squadchat escribe cada correo en su registro en vez de enviarlo, así que puedes copiar de ahí un enlace de invitación. Restablecer la contraseña queda desactivado, y un correo nuevo para una cuenta cambia al instante, sin código ni enlace.",
           {
             code: "docker compose logs agentes | grep 'email (not sent'",
           },
@@ -798,7 +798,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
           {
             list: [
               "En Tailscale, instala la app de Tailscale en tu teléfono e inicia sesión en la misma tailnet.",
-              "Instala la app de agentes.chat.",
+              "Instala la app de squadchat.",
               "Escanea el código QR que mostró la configuración, o el de **Configuración\u00a0›\u00a0Tu cuenta\u00a0›\u00a0Abrir en tu teléfono**, que además inicia tu sesión.",
             ],
           },
@@ -810,9 +810,9 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         blocks: [
           "La configuración puede hacer de este servidor también la computadora de tus agentes, donde ejecutan comandos, usan un navegador y guardan sus archivos. Pregunta, y sugiere que sí donde el servidor puede hacerlo bien. En Debian 13, cada agente tiene su propio usuario, con una pantalla. En Ubuntu, los agentes comparten un usuario, `agentes`. Si dijiste que no, ejecuta la instalación otra vez con `--computer yes`:",
           {
-            code: "curl -fsSL https://agentes.chat/install | sh -s -- --computer yes",
+            code: "curl -fsSL https://squad-chat-6wd.pages.dev/install | sh -s -- --computer yes",
           },
-          "Otras computadoras, como una Mac con la app de agentes.chat u otro servidor, se conectan desde **Configuración\u00a0›\u00a0Dispositivos**, como en [Tus computadoras y teléfonos](/help/computers). En Tailscale, antes entran en tu tailnet.",
+          "Otras computadoras, como una Mac con la app de squadchat u otro servidor, se conectan desde **Configuración\u00a0›\u00a0Dispositivos**, como en [Tus computadoras y teléfonos](/help/computers). En Tailscale, antes entran en tu tailnet.",
         ],
       },
       {
@@ -838,7 +838,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         blocks: [
           "En la carpeta de la instalación, ejecuta:",
           {
-            code: "curl -fsSLO https://agentes.chat/install/docker-compose.yml\ndocker compose pull\ndocker compose up -d",
+            code: "curl -fsSLO https://squad-chat-6wd.pages.dev/install/docker-compose.yml\ndocker compose pull\ndocker compose up -d",
           },
           "La base se actualiza sola cuando arranca la versión nueva. Deja tus ajustes en `.env` y nunca edites `docker-compose.yml`, porque cada actualización lo reemplaza. Haz una copia antes de un salto grande: una base que actualizó una versión más nueva no abre en una más antigua.",
         ],
@@ -847,7 +847,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "data",
         heading: "Lo que envía",
         blocks: [
-          "Una vez al día, el servidor envía a agentes.chat estadísticas de uso anónimas: recuentos como personas, agentes, tamaño de las máquinas, tokens de IA usados y cuántos datos envían y reciben los navegadores de los agentes. Nunca mensajes, archivos, nombres ni sitios. `docker compose run --rm agentes telemetry` muestra exactamente lo que enviaría. El dueño lo desactiva en **Configuración\u00a0›\u00a0General**, o con `TELEMETRY=off` en `.env`.",
+          "Una vez al día, el servidor envía a squadchat estadísticas de uso anónimas: recuentos como personas, agentes, tamaño de las máquinas, tokens de IA usados y cuántos datos envían y reciben los navegadores de los agentes. Nunca mensajes, archivos, nombres ni sitios. `docker compose run --rm agentes telemetry` muestra exactamente lo que enviaría. El dueño lo desactiva en **Configuración\u00a0›\u00a0General**, o con `TELEMETRY=off` en `.env`.",
           "Los informes de errores no van a ningún sitio salvo que pongas en `SENTRY_DSN` un servidor compatible con Sentry que tú elijas. Un informe lleva el error y dónde pasó, nunca mensajes, correos, direcciones IP, cookies ni tokens.",
         ],
       },
@@ -855,7 +855,7 @@ export const helpEs: Partial<Record<HelpSlug, HelpDocument>> = {
         id: "reference",
         heading: "La guía completa",
         blocks: [
-          "Todos los ajustes, un proxy propio como nginx, usarlo sin Docker, una guía para agentes de IA que lo instalan solos y qué hacer cuando algo falla están en `SELF_HOSTING.md`, en el repositorio de agentes.chat.",
+          "Todos los ajustes, un proxy propio como nginx, usarlo sin Docker, una guía para agentes de IA que lo instalan solos y qué hacer cuando algo falla están en `SELF_HOSTING.md`, en el repositorio de squadchat.",
         ],
       },
     ],

@@ -476,7 +476,7 @@ export function createSurfaceApp(deps: AppDeps, token: string, version: string) 
   api.doc31("/openapi.json", {
     openapi: "3.1.0",
     info: {
-      title: "agentes.chat chat surface bridge",
+      title: "squadchat chat surface bridge",
       version,
       description:
         "For the separate service that carries linked people's messages between an outside chat surface and their DM with the workspace's right hand (ADR 0187). Every call is recorded (route, answer, whom it touched; never content).",

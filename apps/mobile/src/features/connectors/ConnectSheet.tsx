@@ -142,7 +142,7 @@ function StepHead({
  * place. A connected one opens on who uses it (its tools are a screen of their own; `item`: that connection, when the
  * service is connected more than once; `start`, back from a sign-in that finished elsewhere). `mode` starts at
  * connecting: `add`, another account of the service, or `reconnect`, a new sign-in for `item` (a toast says it, and
- * the sheet closes). `account`: GitHub's sign-in alone, without the agentes.chat app first (GitHub through the app
+ * the sheet closes). `account`: GitHub's sign-in alone, without the squadchat app first (GitHub through the app
  * alone connecting an account). `personal`: opened from Pessoal, so a connection already there is the person's own and
  * a new one starts as theirs (who may not add the team's connects their own whatever this says).
  */
@@ -670,7 +670,7 @@ export function ConnectedNote({ name, text }: { name: string; text: string | nul
  * with its own session) and/or paste a key. `url`: the address typed on the step before (a server by its address).
  * `item`: an account of a server by address (its address; `reconnect`: a new sign-in for it). A new account
  * goes on (`onConnected`); a new sign-in, or the same account again, ends with a toast (`onDone`). GitHub, where
- * the server has the agentes.chat app (ADR 0156), offers the app first and an account as the other way, unless
+ * the server has the squadchat app (ADR 0156), offers the app first and an account as the other way, unless
  * `accountOnly` (a sign-in asked for as such). A server by address the catalog doesn't list also takes request headers
  * (ADR 0186), under its key: with a key or alone. Where the workspace has more than one person, a new connection asks
  * "Para quem": the person's own (Pessoal, which any member adds) or the team's (who manages connectors). Another

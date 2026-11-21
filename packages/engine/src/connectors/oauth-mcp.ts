@@ -104,7 +104,7 @@ export async function probeMcpServer(
         jsonrpc: "2.0",
         id: 1,
         method: "initialize",
-        params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "agentes.chat", version: "1" } },
+        params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "squadchat", version: "1" } },
       }),
     });
   } catch {
@@ -207,7 +207,7 @@ export function oauthScope(meta: AuthServerMetadata, scopes: string[]): string |
 }
 
 /**
- * The client agentes.chat registered with this issuer for this org, or a new
+ * The client squadchat registered with this issuer for this org, or a new
  * one (Dynamic Client Registration). A registration is reused only while an
  * active connection uses it: once every connection to that server is gone,
  * the server may have dropped the client (Supabase answered "Unrecognized
@@ -266,7 +266,7 @@ export async function ensureOAuthClient(
     }).catch(() => null);
     return { res, refusal: res && !res.ok ? await res.text().catch(() => "") : "" };
   };
-  let { res, refusal } = await register("agentes.chat");
+  let { res, refusal } = await register("squadchat");
   // Calendly takes only letters, digits, hyphens and spaces in a client's name. The others keep the brand's,
   // the name people see on the consent screen.
   if (res?.status === 400 && /\b(client_)?name\b/i.test(refusal)) ({ res, refusal } = await register("agentes chat"));

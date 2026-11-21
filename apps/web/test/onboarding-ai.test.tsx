@@ -50,7 +50,7 @@ const arrivals = (router: Router) => {
 
 /**
  * Acme being set up, its name and what it does saved and its team made, none of its agents with an AI yet;
- * `held`: agentes.chat Cloud, waiting for its first plan.
+ * `held`: squadchat Cloud, waiting for its first plan.
  */
 const madeTeam = (opts: { held?: boolean } = {}) => {
   const state = withRightHand(seedState());
@@ -219,7 +219,7 @@ describe("Connect an AI, the rail's last step", () => {
     expect(document.querySelector(".onb-ai__connected .ac-option__title")?.textContent).toBe("Chave de API");
   });
 
-  test("on agentes.chat Cloud, a plan left for later skips the step: Lodi's DM, the beta notice alone", async () => {
+  test("on squadchat Cloud, a plan left for later skips the step: Lodi's DM, the beta notice alone", async () => {
     const state = madeTeam({ held: true });
     // The billing service's plan list can't be read: the plan step names a plan generically.
     globalThis.fetch = (async () => new Response("", { status: 404 })) as unknown as typeof fetch;

@@ -57,7 +57,7 @@ export const SETTINGS_SECTIONS: {
   { id: "general", icon: "settings", allowed: (o) => can(o, "configure") },
   // GIFs and stickers in chat (ADR 0091): who configures the workspace.
   { id: "media", icon: "sticker", allowed: (o) => can(o, "configure") },
-  // Voice messages (ADR 0100): who configures the workspace, on a self-hosted server only. agentes.chat Cloud runs its
+  // Voice messages (ADR 0100): who configures the workspace, on a self-hosted server only. squadchat Cloud runs its
   // own speech engine, so the section has nothing to offer there (product decision).
   { id: "voice", icon: "mic", allowed: (o, server) => selfHosted(server) && can(o, "configure") },
   { id: "members", icon: "members", allowed: () => true },
@@ -84,7 +84,7 @@ export const SETTINGS_SECTIONS: {
   // What agents did and people changed: only for who may see it (it shows everyone's work).
   { id: "audit", icon: "shield", allowed: (o) => can(o, "view_audit") },
   // AGPL-3.0's legal notices and the license's required attribution: for everyone on a self-hosted server, never
-  // hidden there; none on agentes.chat Cloud (`showsAbout`).
+  // hidden there; none on squadchat Cloud (`showsAbout`).
   { id: "about", icon: "info", allowed: (_o, server) => showsAbout(server) },
 ];
 

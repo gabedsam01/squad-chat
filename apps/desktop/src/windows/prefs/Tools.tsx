@@ -96,7 +96,7 @@ export function Tools() {
         toast(t(command ? "desktop.tools.stillMissing" : "desktop.tools.notFoundYet", { tool: name }), "alert");
     });
 
-  // The vendor's own installer, run by this computer's agentes.chat for the person here; once it ends, every
+  // The vendor's own installer, run by this computer's squadchat for the person here; once it ends, every
   // organization's runner looks again, so each server hears of it.
   const [installs, setInstalls] = useState<Partial<Record<Cli, CliInstall | null>>>({});
   const installHome = homes.find((h) => (h.status?.protocol ?? 0) >= CLI_INSTALL_PROTOCOL);

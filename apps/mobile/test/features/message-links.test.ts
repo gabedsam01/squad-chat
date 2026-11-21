@@ -51,7 +51,7 @@ describe("a message link in the phone's chat", () => {
 });
 
 describe("a link pill on the phone (`Spans`: a link whose words are its address)", () => {
-  const PR = "https://github.com/agentes-chat/agentes.chat/pull/148";
+  const PR = "https://github.com/agentes-chat/squadchat/pull/148";
   const bare = (text: string) =>
     parseInline(text).flatMap((s) => (s.kind === "link" && s.text === s.href ? [linkPill(s.href)?.ref] : []));
 

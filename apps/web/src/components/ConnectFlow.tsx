@@ -113,7 +113,7 @@ export type FlowState =
   /**
    * Step 1: a catalog entry, or `null` for any MCP server by address. `add`: another account of `item`'s server
    * (an MCP server takes several); `reconnect`: a new sign-in for `item`, whose name, tools and agents stay. `url`: the
-   * address already typed in (an agent's card). `account`: GitHub's sign-in alone, without the agentes.chat app first.
+   * address already typed in (an agent's card). `account`: GitHub's sign-in alone, without the squadchat app first.
    * `personal`: where "Para quem" starts (Pessoal for who may not add the team's, whatever this says).
    */
   | {
@@ -247,7 +247,7 @@ export function ConnectFlow({
 /**
  * Step 1: OAuth ("Continuar no Linear"), or an API key. A service through Composio signs in on Composio's page
  * ("Continuar na Composio"): no key field of ours. A new account goes on to its confirmation; a new sign-in for an account,
- * or the same account again, ends here with a toast saying which. GitHub, where the server has the agentes.chat app
+ * or the same account again, ends here with a toast saying which. GitHub, where the server has the squadchat app
  * (ADR 0156), offers the app first (installed on GitHub's page, which comes back to Conectores) and an account second.
  * A server by address the catalog doesn't list also takes request headers (ADR 0186), with a key or alone.
  * Where the workspace has more than one person, a new connection asks "Para quem": the person's own (Pessoal, which
