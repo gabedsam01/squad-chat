@@ -7,7 +7,7 @@ export const keys = {
   instance: ["instance"] as const,
   telemetry: ["telemetry"] as const,
   jev: ["jev"] as const,
-  /** The installation's optional decision model (ADR 0195), like Jev's key. */
+  /** The installation's optional decision model (ADR 9001), like Jev's key. */
   decisionModel: ["decision-model"] as const,
   decisionHost: ["decision-model", "host"] as const,
   /** The installation's GIPHY key (ADR 0091), not a workspace's: it stays when switching organizations. */

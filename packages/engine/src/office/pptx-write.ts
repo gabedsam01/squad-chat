@@ -594,7 +594,7 @@ export async function writePptx(deck: DeckView, media: DeckMediaReader): Promise
     ],
     [
       "docProps/app.xml",
-      `${XML_HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>agentes.chat</Application><Slides>${slides.length}</Slides></Properties>`,
+      `${XML_HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>squadchat</Application><Slides>${slides.length}</Slides></Properties>`,
     ],
     [
       "ppt/presentation.xml",
@@ -610,8 +610,8 @@ export async function writePptx(deck: DeckView, media: DeckMediaReader): Promise
       `${XML_HEAD}<p:viewPr ${ROOT_NS}><p:normalViewPr><p:restoredLeft sz="15620"/><p:restoredTop sz="94660"/></p:normalViewPr><p:gridSpacing cx="76200" cy="76200"/></p:viewPr>`,
     ],
     ["ppt/tableStyles.xml", `${XML_HEAD}<a:tblStyleLst xmlns:a="${NS_A}" def="${TABLE_STYLE}"/>`],
-    ["ppt/theme/theme1.xml", themeXml(w.theme, "agentes.chat")],
-    ["ppt/theme/theme2.xml", themeXml(w.theme, "agentes.chat notes")],
+    ["ppt/theme/theme1.xml", themeXml(w.theme, "squadchat")],
+    ["ppt/theme/theme2.xml", themeXml(w.theme, "squadchat notes")],
     ["ppt/slideMasters/slideMaster1.xml", masterXml(w)],
     [
       "ppt/slideMasters/_rels/slideMaster1.xml.rels",

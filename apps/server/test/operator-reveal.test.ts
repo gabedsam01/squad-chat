@@ -1543,7 +1543,7 @@ test("the disclosure writes one entry with the period and the count, and nothing
   expect((await everyAuditLine()).length).toBe(before + 1);
   expect(await db.select().from(schema.operatorEvents)).toEqual([]);
 
-  // On agentes.chat's own servers the entry says so, for the apps to name who read.
+  // On squadchat's own servers the entry says so, for the apps to name who read.
   await undisclose();
   setRestrictionNotices("https://app.agentes.chat");
   try {

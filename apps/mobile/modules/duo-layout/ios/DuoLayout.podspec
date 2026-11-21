@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.summary        = "Where the iPhone Duo's fold crosses a view, and whether the window is regular width."
   s.description    = s.summary
   s.license        = 'AGPL-3.0-only'
-  s.author         = 'agentes.chat'
+  s.author         = 'squadchat'
   s.homepage       = 'https://agentes.chat'
   s.platforms      = { :ios => '16.4' }
   s.swift_version  = '5.9'

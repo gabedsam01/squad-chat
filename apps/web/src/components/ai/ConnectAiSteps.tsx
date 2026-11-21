@@ -1812,7 +1812,7 @@ export function KeyPanel({
   onDraft: (draft: KeyDraft) => void;
   /** The "Outro provedor" form, shown when it is chosen. */
   endpoint?: ReactNode;
-  /** OpenRouter: the models the key uses (ADR 0199), chosen beside it. */
+  /** OpenRouter: the models the key uses (ADR 9005), chosen beside it. */
   openrouter?: ReactNode;
   /** The save waits for this (an OpenRouter key with no model chosen). */
   ready?: boolean;
@@ -1826,13 +1826,13 @@ export function KeyPanel({
   /** The provider refused the key on its test call: nothing was kept. */
   refused?: ReturnType<typeof keyRefusal>;
   saving?: boolean;
-  /** Save it; `syncEfforts`: also check its models' effort levels in the background (ADR 0199). */
+  /** Save it; `syncEfforts`: also check its models' effort levels in the background (ADR 9005). */
   onSave?: (syncEfforts?: boolean) => void;
 }) {
   const { t } = useTranslation();
   const fieldId = useId();
   const [touched, setTouched] = useState(false);
-  // An OpenRouter key's models: whether to check their effort levels, asked before saving (ADR 0199).
+  // An OpenRouter key's models: whether to check their effort levels, asked before saving (ADR 9005).
   const [askEffort, setAskEffort] = useState(false);
   const { provider, apiKey } = draft;
   const keyOf = provider === CUSTOM_PROVIDER ? null : provider;

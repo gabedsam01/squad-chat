@@ -342,7 +342,7 @@ export function writeXlsx(data: WorkbookData): Uint8Array {
     ],
     [
       "docProps/app.xml",
-      `${XML_HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>agentes.chat</Application></Properties>`,
+      `${XML_HEAD}<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"><Application>squadchat</Application></Properties>`,
     ],
     [
       "xl/workbook.xml",

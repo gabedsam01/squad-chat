@@ -287,7 +287,7 @@ describe("Auditoria in words (web and phone)", () => {
     expect(under({ ...week, count: 10000 })).toBe(
       "audit.operatorReview.items(10000,10,000) · audit.operatorReview.period(Mar 3,Mar 9)",
     );
-    // A review that began and ended on one day names that day once. On agentes.chat's own servers, its support.
+    // A review that began and ended on one day names that day once. On squadchat's own servers, its support.
     const day = disclosed({
       from: `${year}-03-09T10:00:00.000Z`,
       to: `${year}-03-09T13:00:00.000Z`,

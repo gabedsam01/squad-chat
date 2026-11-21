@@ -413,7 +413,7 @@ export interface FakeState {
   telemetry?: ServerTelemetry;
   /** `system.jev`: the installation's Jev key; unset = I'm not its owner on a self-hosted server (null). */
   jev?: JevKey;
-  /** `system.decisionModel`: the installation's optional decision model (ADR 0195); unset = null. */
+  /** `system.decisionModel`: the installation's optional decision model (ADR 9001); unset = null. */
   decisionModel?: DecisionModel;
   /** `system.decisionHost`: this server's size and the local model that fits it. */
   decisionHost?: DecisionHost;

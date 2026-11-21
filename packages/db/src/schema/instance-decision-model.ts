@@ -3,7 +3,7 @@ import { boolean, check, integer, jsonb, pgTable, text, timestamp, uuid } from "
 import { users } from "./auth";
 
 /**
- * The installation's optional decision model (ADR 0195): one row, off until its owner turns it on. It holds the
+ * The installation's optional decision model (ADR 9001): one row, off until its owner turns it on. It holds the
  * provider and model, a sealed key (OpenAI and Gemini; a local runtime may take none) and the progress of the
  * background install that downloads or checks the model. Not a tenant's, so no org_id, as instance_secrets.
  */
@@ -28,7 +28,7 @@ export const instanceDecisionModel = pgTable(
     keyHint: text("key_hint"),
     /**
      * Every provider's key, sealed as above, kept when another one is turned on: going back to a provider takes no
-     * new key (ADR 0195 addendum). The active provider's key is also in the columns above.
+     * new key (ADR 9001 addendum). The active provider's key is also in the columns above.
      */
     keys: jsonb()
       .$type<

@@ -779,7 +779,7 @@ export async function operatorDisclose(db: Database, orgId: string, input: Discl
       actor: { type: "system", id: null },
       action: CONTENT_REVIEW_DISCLOSED,
       target: { type: "organization", id: null },
-      // Who "the operator" is to the workspace's people: the apps name agentes.chat's own support there.
+      // Who "the operator" is to the workspace's people: the apps name squadchat's own support there.
       details: { ...period, count: input.count, ...cloudNotice() },
     });
     return { ...period, count: input.count };

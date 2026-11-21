@@ -35,7 +35,7 @@ export interface WebPicture {
   url: string;
 }
 
-const USER_AGENT = "Mozilla/5.0 (compatible; agentes.chat; +https://agentes.chat)";
+const USER_AGENT = "Mozilla/5.0 (compatible; squadchat; +https://agentes.chat)";
 const ACCEPT = "image/webp,image/png,image/jpeg,image/gif,image/svg+xml;q=0.9,image/*;q=0.5";
 
 const refuse = (message: string, code = "live.web_picture") => new ValidationError(message, code);

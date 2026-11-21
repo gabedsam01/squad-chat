@@ -75,7 +75,7 @@ export function useConnectKey(orgId: string, draft: KeyDraft, setDraft: (patch: 
   const setProvider = (next: ProviderId) => setDraft({ provider: next, ...(next !== provider ? { models: [] } : {}) });
   // "Outro provedor" (ADR 0146): its own form, saved by its own button.
   const setCustom = (on: boolean) => setDraft({ custom: on });
-  // OpenRouter: the models this key uses (ADR 0199), chosen before it is saved.
+  // OpenRouter: the models this key uses (ADR 9005), chosen before it is saved.
   const setModels = (next: string[]) => setDraft({ models: next });
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -119,7 +119,7 @@ export function useConnectKey(orgId: string, draft: KeyDraft, setDraft: (patch: 
   };
   const save = async (syncEfforts = false): Promise<Credential | null> => {
     if (!clean || saving) return null;
-    // An OpenRouter key is saved with the models it uses: none chosen is nothing to save (ADR 0199).
+    // An OpenRouter key is saved with the models it uses: none chosen is nothing to save (ADR 9005).
     if (provider === "openrouter" && models.length === 0) return null;
     setSaving(true);
     setFailed(false);

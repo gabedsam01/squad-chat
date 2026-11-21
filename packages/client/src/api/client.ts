@@ -421,7 +421,7 @@ export interface ApiClient {
     saveJev(input: JevKeyInput): Promise<JevKey>;
     checkJev(): Promise<JevKey>;
     removeJev(): Promise<JevKey>;
-    /** The installation's optional decision model (ADR 0195); null unless I am its owner on a self-hosted server. */
+    /** The installation's optional decision model (ADR 9001); null unless I am its owner on a self-hosted server. */
     decisionModel(): Promise<DecisionModel | null>;
     /** This server's CPUs, memory and disk, and the local model that fits them. */
     decisionHost(): Promise<DecisionHost>;
@@ -891,9 +891,9 @@ export interface ApiClient {
         projectId?: string | null;
         /** `custom` only: the endpoint's address, API and models (ADR 0146). */
         endpoint?: { style: EndpointStyle; baseURL: string; models: EndpointModel[] };
-        /** `openrouter` only: the models this workspace chooses to use with the key (ADR 0199). */
+        /** `openrouter` only: the models this workspace chooses to use with the key (ADR 9005). */
         openrouter?: { models: string[] };
-        /** `custom` only: check the models' effort levels in the background (ADR 0199). */
+        /** `custom` only: check the models' effort levels in the background (ADR 9005). */
         syncEfforts?: boolean;
       },
     ): Promise<Credential & { checks?: EndpointCheck[] }>;
@@ -909,11 +909,11 @@ export interface ApiClient {
       models: EndpointModel[],
       syncEfforts?: boolean,
     ): Promise<{ models: EndpointModel[]; checks: EndpointCheck[] }>;
-    /** OpenRouter's models, with the key checked when given (admins): the list to choose from (ADR 0199). */
+    /** OpenRouter's models, with the key checked when given (admins): the list to choose from (ADR 9005). */
     openRouterModels(orgId: string, input: { apiKey?: string }): Promise<{ models: OpenRouterChoice[] }>;
-    /** The models an OpenRouter key uses (admins, ADR 0199). */
+    /** The models an OpenRouter key uses (admins, ADR 9005). */
     setOpenRouterModels(orgId: string, credentialId: string, models: string[]): Promise<Credential>;
-    /** Checks an endpoint's models' effort levels in the background (admins, ADR 0199). */
+    /** Checks an endpoint's models' effort levels in the background (admins, ADR 9005). */
     testEndpointEfforts(orgId: string, credentialId: string): Promise<void>;
     /** Replaces the key, keeping the id (agents keep using it). */
     rotateCredential(

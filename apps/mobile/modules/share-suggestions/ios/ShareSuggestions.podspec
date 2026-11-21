@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
   s.summary        = 'The agents a person sends to, offered at the top of the system share sheet.'
   s.description    = s.summary
   s.license        = 'AGPL-3.0-only'
-  s.author         = 'agentes.chat'
+  s.author         = 'squadchat'
   s.homepage       = 'https://agentes.chat'
   s.platforms      = { :ios => '16.4' }
   s.swift_version  = '5.9'

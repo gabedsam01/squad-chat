@@ -33,10 +33,10 @@ import { HelpLink } from "@/components/HelpLink";
 import { CHIP, JevSettings } from "./Jev";
 
 /**
- * Settings › AI and usage: who decides, as one list (ADR 0195). Jev is the default and keeps its key; the other three
+ * Settings › AI and usage: who decides, as one list (ADR 9001). Jev is the default and keeps its key; the other three
  * replace it, and each row is the same row — a name, what it is, its state, and, once chosen, its settings under it.
  * Choosing another while one is on asks first, since the new one may take a while. Each provider's key is kept on the
- * server: turning a provider on again takes no new key (ADR 0195 addendum).
+ * server: turning a provider on again takes no new key (ADR 9001 addendum).
  */
 
 /** Every provider a person can choose from, in the order the list shows them. */

@@ -339,7 +339,7 @@ export async function openXcode(
 /** Repairs of an iPhone's test helper per person, and per agent: each stops what runs on the phone and rebuilds it. */
 export const IPHONE_REPAIR_LIMIT = { limit: 10, windowMs: 10 * 60_000 };
 
-/** A repair of an iPhone's test helper started; `update`: the Mac's agentes.chat is too old to repair it. */
+/** A repair of an iPhone's test helper started; `update`: the Mac's squadchat is too old to repair it. */
 export interface IphoneRepairView {
   repairing: boolean;
   update?: true;

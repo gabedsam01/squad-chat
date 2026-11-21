@@ -255,7 +255,7 @@ class PdfDoc {
       pagesId,
       `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`,
     );
-    const info = this.add(`<< /Title (${escapePdfString(title)}) /Producer (agentes.chat) >>`);
+    const info = this.add(`<< /Title (${escapePdfString(title)}) /Producer (squadchat) >>`);
     const chunks: Uint8Array[] = [];
     let length = 0;
     const push = (part: string | Uint8Array) => {

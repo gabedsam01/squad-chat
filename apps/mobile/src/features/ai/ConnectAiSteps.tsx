@@ -1525,7 +1525,7 @@ function GateWait({
  * two numbered steps: create the key on the maker's page, paste it here. Saved by its button.
  */
 /**
- * The models an OpenRouter key uses (ADR 0199), the web's `OpenRouterModels` on the phone: the list read with the
+ * The models an OpenRouter key uses (ADR 9005), the web's `OpenRouterModels` on the phone: the list read with the
  * key checked, the good picks first, a search over it, and the ones chosen. Only those are offered afterwards.
  */
 function OpenRouterChoices({
@@ -1617,7 +1617,7 @@ function KeyPage({
   const hold = usePlanHold(orgId, org);
   const [touched, setTouched] = useState(false);
   const [opened, setOpened] = useState(false);
-  // An OpenRouter key asks whether to check its models' levels before saving (ADR 0199).
+  // An OpenRouter key asks whether to check its models' levels before saving (ADR 9005).
   const [askEffort, setAskEffort] = useState(false);
   const { custom } = form;
   const [endpointSaved, setEndpointSaved] = useState(false);

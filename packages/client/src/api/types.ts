@@ -46,7 +46,7 @@ export interface JevKey {
 /** Jev's key to save: one pasted (TypeSafe's or OpenRouter's), or the workspace's own OpenRouter key. */
 export type JevKeyInput = string | { orgId: string; credentialId: string };
 
-/** A decision provider the installation's switch can use (ADR 0195). */
+/** A decision provider the installation's switch can use (ADR 9001). */
 export type DecisionProvider = "openai" | "gemini" | "local";
 export type DecisionRuntime = "ollama" | "llamacpp" | "lmstudio" | "custom";
 export type DecisionShownState = "off" | "ok" | "invalid" | "no_credit" | "unreachable";
@@ -61,7 +61,7 @@ export type DecisionInstallState =
   | "failed"
   | "cancelled";
 
-/** The installation's optional decision model (ADR 0195): off until its owner turns the switch on. */
+/** The installation's optional decision model (ADR 9001): off until its owner turns the switch on. */
 export interface DecisionModel {
   source: "settings" | null;
   enabled: boolean;
@@ -884,7 +884,7 @@ export interface Credential {
   workspaceIdHint?: string | null;
   /** `custom` (ADR 0146): the endpoint's address, API and models. */
   endpoint?: { style: EndpointStyle; baseURL: string; models: EndpointModel[] };
-  /** OpenRouter (ADR 0199): the models this workspace chose to use with the key; absent: all of them. */
+  /** OpenRouter (ADR 9005): the models this workspace chose to use with the key; absent: all of them. */
   openrouter?: { models: string[] };
   /** The agents that think with it, in a list of keys: what removing it would change. */
   usedBy?: { id: string; name: string }[];
@@ -920,7 +920,7 @@ export interface EndpointModel {
   /** Absent: unpriced (its calls cost 0, so no budget limits them). */
   prices?: EndpointPrices;
   check?: EndpointCheckResult;
-  /** The effort levels its check found it takes (ADR 0199); absent: never checked. */
+  /** The effort levels its check found it takes (ADR 9005); absent: never checked. */
   efforts?: string[];
   effortsAt?: string;
 }
@@ -1439,13 +1439,13 @@ export interface Model {
   endpoint?: { credentialId: string; name: string };
   /** No prices known: its calls cost 0, so a budget can't count money for it. */
   unpriced?: boolean;
-  /** The effort levels it takes, when known (ADR 0199). */
+  /** The effort levels it takes, when known (ADR 9005). */
   efforts?: string[];
   /** It takes a reasoning effort at all (`false`: no effort control on its ramp). */
   reasoning?: boolean;
 }
 
-/** A model an OpenRouter key can be limited to (ADR 0199): its list, the good picks first. */
+/** A model an OpenRouter key can be limited to (ADR 9005): its list, the good picks first. */
 export interface OpenRouterChoice {
   id: string;
   label: string;
@@ -7033,7 +7033,7 @@ export type NotificationKind =
   /** A routine's run waits for its agent's plan to reset (once per outage). Opens it in Rotinas. */
   | "routine_waiting_plan"
   | "plan_reset_unknown"
-  /** A workspace endpoint's effort check finished (ADR 0199), from the right hand. */
+  /** A workspace endpoint's effort check finished (ADR 9005), from the right hand. */
   | "credential_efforts"
   /** ADR 0136: an agent back from its plan or budget skipped catch-ups that looked handled (its owner; `count`). */
   | "catch_up_closed"

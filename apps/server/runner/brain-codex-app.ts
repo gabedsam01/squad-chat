@@ -653,7 +653,7 @@ export class CodexAppMapper {
 // ── Approvals (ADR 0053 §3) ──────────────────────────────────────────────────
 
 /** How the reason of a declined command or change starts, steered to Codex: from the computer, not a person. */
-export const DECLINED_PREFIX = "[agentes.chat, not the person] The computer declined that command or change: ";
+export const DECLINED_PREFIX = "[squadchat, not the person] The computer declined that command or change: ";
 
 /** A call as the command policy reads it (Claude Code's permission prompt arguments). */
 export type PolicyCall = { tool_name: string; input: Record<string, unknown> };

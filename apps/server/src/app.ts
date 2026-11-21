@@ -165,7 +165,7 @@ export function createApp(options: AppOptions) {
 
   registerHealth(api, {
     version,
-    // agentes.chat itself runs the self-host image: its apps must still hide what only a self-hosted server has.
+    // squadchat itself runs the self-host image: its apps must still hide what only a self-hosted server has.
     edition: options.services && isAgentesCloud(options.services.config.PUBLIC_URL) ? "cloud" : options.edition,
     modules: options.modules.map((m) => m.name),
     pingDatabase: options.pingDatabase,

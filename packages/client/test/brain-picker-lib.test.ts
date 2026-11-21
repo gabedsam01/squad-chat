@@ -108,7 +108,7 @@ describe("Quem pensa as one list (the new agent's step)", () => {
     expect(options.find((o) => o.value === "none:chatgpt")?.disabled).toBe(true);
     // Cursor and OpenCode show only where a computer runs them.
     expect(options.some((o) => o.value.startsWith("cursor") || o.value.startsWith("zen"))).toBe(false);
-    // A model without the provider's key isn't offered (ADR 0199).
+    // A model without the provider's key isn't offered (ADR 9005).
     expect(options.some((o) => o.value === "gpt-6.1-sol")).toBe(false);
   });
 
@@ -118,7 +118,7 @@ describe("Quem pensa as one list (the new agent's step)", () => {
     const plan = options.filter((o) => o.value.startsWith("claude@m1/"));
     expect(plan.map((o) => o.label)).toEqual(["brain.auto.label", "Opus", "Sonnet", "Haiku"]);
     expect(plan.every((o) => !o.disabled)).toBe(true);
-    // ChatGPT's plan isn't ready there and there's no OpenAI key: its API models aren't offered (ADR 0199).
+    // ChatGPT's plan isn't ready there and there's no OpenAI key: its API models aren't offered (ADR 9005).
     expect(options.some((o) => o.value === "gpt-6.1-sol")).toBe(false);
     const noComputer = brainPickOptions(t, "pt-BR", {
       api: modelChoices(MODELS, [], false),
@@ -167,7 +167,7 @@ describe("Quem pensa as one list (the new agent's step)", () => {
   test("search finds free models by 'free', and a plan's model by its name or maker", () => {
     const options = build([goKey]);
     const free = finds(options, "free");
-    // No OpenRouter key: its free model isn't offered (ADR 0199).
+    // No OpenRouter key: its free model isn't offered (ADR 9005).
     expect(free).not.toContain("some-free-model");
     expect(free).toContain("opencode@m1#acc-go/beam-free");
     expect(free).toContain("opencode@m1#acc-go/iceman-contributor-free");
