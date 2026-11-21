@@ -220,8 +220,7 @@ const CONTAINERS_START = [
 const CONTAINERS_LOG = "agentes-containers";
 
 /** Podman's banner before every `docker compose` (an external provider's) off. */
-const CONTAINERS_CONF =
-  "# squadchat wrote this once: change it as you like.\n[engine]\ncompose_warning_logs = false\n";
+const CONTAINERS_CONF = "# squadchat wrote this once: change it as you like.\n[engine]\ncompose_warning_logs = false\n";
 /** Images, containers and volumes in the agent's home: its disk, which moves with the workspace. */
 const storageConf = (home: string) =>
   `# squadchat wrote this once: change it as you like.\n[storage]\ndriver = "overlay"\ngraphroot = "${home}/.local/share/containers/storage"\n`;
@@ -671,7 +670,8 @@ export function containersCommand(
  */
 export function ensureContainers(u: AgentUser, run: RunCommand = runSync): string | null {
   const [file = "", ...args] = containersCommand(u);
-  const description = `squadchat containers ${createHash("sha256")
+  // Compared with the running unit's: a new word here would restart every agent's containers once.
+  const description = `agentes.chat containers ${createHash("sha256")
     .update([file, ...args].join("\0"))
     .digest("hex")
     .slice(0, 16)}`;

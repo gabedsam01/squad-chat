@@ -11,11 +11,7 @@ describe("linkPill", () => {
     ["https://www.github.com/agentes-chat/squadchat/issues/7?x=1", "squadchat #7", "github"],
     ["https://github.com/agentes-chat/squadchat/commit/a1b2c3d4e5f60718", "squadchat a1b2c3d", "github"],
     ["https://github.com/agentes-chat/squadchat/releases/tag/v1.2.0", "squadchat v1.2.0", "github"],
-    [
-      "https://github.com/agentes-chat/squadchat/blob/main/apps/web/src/main.tsx#L10",
-      "squadchat main.tsx",
-      "github",
-    ],
+    ["https://github.com/agentes-chat/squadchat/blob/main/apps/web/src/main.tsx#L10", "squadchat main.tsx", "github"],
     ["https://github.com/agentes-chat/agentes.chat", "agentes-chat/agentes.chat", "github"],
     ["https://gitlab.com/acme/tools/app/-/merge_requests/12", "app !12", "gitlab"],
     ["https://gitlab.com/acme/app/-/issues/3", "app #3", "gitlab"],

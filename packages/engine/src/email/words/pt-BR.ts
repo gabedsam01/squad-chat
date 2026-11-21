@@ -265,8 +265,7 @@ export const ptBR: Words = {
         body: () => "A pessoa para quem você pediu viu seu pedido e não aprovou.",
         small: "Se acha que foi engano, peça para ela convidar você por e-mail.",
       },
-      why: () =>
-        "Você recebeu este e-mail porque este endereço pediu para entrar num workspace pessoal no squadchat.",
+      why: () => "Você recebeu este e-mail porque este endereço pediu para entrar num workspace pessoal no squadchat.",
     },
   },
   joinCode: {
@@ -579,9 +578,7 @@ export const ptBR: Words = {
       handed_over: "Uma pessoa já está com o seu pedido e vai responder a você.",
     },
     from: (host) =>
-      host
-        ? atHost("Respondido por quem cuida do servidor do squadchat", "em", host)
-        : "Respondido pelo squadchat.",
+      host ? atHost("Respondido por quem cuida do servidor do squadchat", "em", host) : "Respondido pelo squadchat.",
     ai: "Um assistente de IA escreveu esta resposta.",
     reply: (address) => ["Para responder, escreva para ", { mail: address }, "."],
     why: "Você recebeu este e-mail porque pediu ajuda no squadchat.",

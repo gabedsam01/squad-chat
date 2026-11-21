@@ -708,8 +708,7 @@ export const helpId: Partial<Record<HelpSlug, HelpDocument>> = {
   },
   "install-on-a-server": {
     title: "Pasang squadchat di server",
-    summary:
-      "Jalankan squadchat di servermu sendiri, gratis, untuk seluruh timmu. Satu perintah menyiapkan semuanya.",
+    summary: "Jalankan squadchat di servermu sendiri, gratis, untuk seluruh timmu. Satu perintah menyiapkan semuanya.",
     sections: [
       {
         id: "choose",

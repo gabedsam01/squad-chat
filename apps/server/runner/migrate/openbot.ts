@@ -420,9 +420,7 @@ function read(query: Query, options: OpenBotOptions): Collected {
   if (messagingConnections.length === 1)
     notes.push("1 messaging connection is named only: it has no match on squadchat.");
   else if (messagingConnections.length > 1) {
-    notes.push(
-      `${messagingConnections.length} messaging connections are named only: they have no match on squadchat.`,
-    );
+    notes.push(`${messagingConnections.length} messaging connections are named only: they have no match on squadchat.`);
   }
 
   const manifest = {

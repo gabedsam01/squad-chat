@@ -120,7 +120,7 @@ describe("GET /api/instance", () => {
     expect(first.status).toBe(200);
     expect(first.headers.get("access-control-allow-origin")).toBe("*");
     expect(await first.json()).toEqual({
-      name: "squadchat",
+      name: "agentes.chat",
       version: "test",
       api: 1,
       minApi: 1,

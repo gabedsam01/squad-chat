@@ -261,8 +261,7 @@ export const words: EmailWords = {
       reason: (reason) => [{ b: "メッセージ: " }, `「${reason}」`],
       small: "間違いだと思う場合は、そのワークスペースの人にメールで招待してもらってください。",
     },
-    why: (org) =>
-      `このアドレスから squadchat の ${org} への参加がリクエストされたため、このメールをお送りしています。`,
+    why: (org) => `このアドレスから squadchat の ${org} への参加がリクエストされたため、このメールをお送りしています。`,
     personal: {
       joined: { body: (who) => `${who} がリクエストを承認しました。これでワークスペースに参加しています。` },
       invited: { body: (who) => `${who} がワークスペースへの参加リクエストを承認しました。` },

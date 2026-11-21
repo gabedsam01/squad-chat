@@ -116,7 +116,7 @@ const FAKE_NOTCH = { width: 186, height: 32 };
 const CLAIM_LINK = `agenteschat://connect?server=${encodeURIComponent(FAKE_SERVER)}&claim=b3duZXItY2xhaW0tYWJjZGVmZ2hpamtsbW5vcHFy`;
 
 const instance = (url: string, over: Record<string, unknown> = {}) => ({
-  name: "squadchat",
+  name: "agentes.chat",
   version: "1.4.0",
   api: 1,
   minApi: 1,

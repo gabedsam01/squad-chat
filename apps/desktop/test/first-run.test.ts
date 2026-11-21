@@ -22,7 +22,7 @@ const TOKEN = "Qm9vdHN0cmFwLXRva2VuLTEyMzQ1Njc4OTBhYmNkZWY";
 const CLAIM = "b3duZXItY2xhaW0tYWJjZGVmZ2hpamtsbW5vcHFyc3R1";
 
 const instance = (url: string, over: Record<string, unknown> = {}) => ({
-  name: "squadchat",
+  name: "agentes.chat",
   version: "1.4.0",
   api: 1,
   minApi: 1,

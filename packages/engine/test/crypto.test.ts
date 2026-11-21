@@ -75,3 +75,9 @@ test("an input's digest is the same for one workspace and one hash, and another 
   // Keyed: nobody without the server's secret makes it from the hash.
   expect(hash).not.toContain(digest);
 });
+
+test("derived keys stay the ones already in use: changing a label would lock every sealed value out", () => {
+  expect(deriveSecret("known-answer-master-secret", "provider-credentials-kek")).toBe(
+    "09d71478650ba827a1b6e5a7ccdc11304684f7e97d3a83f7bac389f5a61078d1",
+  );
+});

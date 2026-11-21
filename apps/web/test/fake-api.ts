@@ -1455,7 +1455,7 @@ export function createFakeHttpApi(state: FakeState): Omit<HttpApi, FakedParts> {
     system: {
       health: async () => ({ status: "ok", version: "test", edition: state.edition ?? "cloud" }),
       instance: async () => ({
-        name: "squadchat",
+        name: "agentes.chat",
         version: "test",
         api: 1,
         minApi: 1,

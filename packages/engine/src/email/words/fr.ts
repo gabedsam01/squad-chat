@@ -345,8 +345,7 @@ export const words: EmailWords = {
     ],
     noSupport:
       "Il est valable 10 minutes, et rien n’est supprimé sans lui. Si ce n’était pas vous, ne le partagez pas et prévenez les personnes qui gèrent ce serveur.",
-    whyWorkspace: (org) =>
-      `Vous recevez cet e-mail car votre compte a demandé la suppression de ${org} sur squadchat.`,
+    whyWorkspace: (org) => `Vous recevez cet e-mail car votre compte a demandé la suppression de ${org} sur squadchat.`,
     whyAccount: "Vous recevez cet e-mail car votre compte a demandé sa suppression sur squadchat.",
     personal: {
       workspace: (org) => [
@@ -624,9 +623,7 @@ export const words: EmailWords = {
       handed_over: "Une personne a maintenant votre demande et va vous répondre.",
     },
     from: (host) =>
-      host
-        ? atHost("Réponse des personnes qui gèrent le serveur squadchat", "sur", host)
-        : "Réponse d’squadchat.",
+      host ? atHost("Réponse des personnes qui gèrent le serveur squadchat", "sur", host) : "Réponse d’squadchat.",
     ai: "Un assistant IA a rédigé cette réponse.",
     reply: (address) => ["Pour répondre, écrivez à ", { mail: address }, "."],
     why: "Vous recevez cet e-mail car vous avez demandé de l’aide sur squadchat.",

@@ -423,8 +423,7 @@ export const words: EmailWords = {
     body: (app, org) => [{ b: app }, " hat jetzt Zugriff auf dein Konto in ", { b: org }, "."],
     note: "Das warst nicht du? Trenne die Verbindung sofort und ändere dein Passwort.",
     button: "Verbundene Apps ansehen",
-    why: (org) =>
-      `Du erhältst diese E-Mail, weil eine App mit deinem Konto in ${org} auf squadchat verbunden wurde.`,
+    why: (org) => `Du erhältst diese E-Mail, weil eine App mit deinem Konto in ${org} auf squadchat verbunden wurde.`,
     personal: {
       body: (app) => [{ b: app }, " hat jetzt Zugriff auf dein Konto in deinem persönlichen Workspace."],
       why: () =>
@@ -616,9 +615,7 @@ export const words: EmailWords = {
       handed_over: "Eine Person hat deine Anfrage jetzt übernommen und antwortet dir.",
     },
     from: (host) =>
-      host
-        ? atHost("Beantwortet von den Betreibern des squadchat-Servers", "auf", host)
-        : "Beantwortet von squadchat.",
+      host ? atHost("Beantwortet von den Betreibern des squadchat-Servers", "auf", host) : "Beantwortet von squadchat.",
     ai: "Ein KI-Assistent hat diese Antwort geschrieben.",
     reply: (address) => ["Zum Antworten schreib an ", { mail: address }, "."],
     why: "Du erhältst diese E-Mail, weil du auf squadchat um Hilfe gebeten hast.",

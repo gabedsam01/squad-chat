@@ -464,8 +464,7 @@ export const desktopEn = {
     eraseMoveFailed:
       "Its data couldn't be moved, so nothing was erased and it stays in {{path}}. It's stopped until you start it again.",
     /** Another agentes-server, started outside the app, holds the folder's lock, so the folder can't move. */
-    eraseHeld:
-      "Another squadchat server is using its folder, so nothing was erased. Stop that server, then try again.",
+    eraseHeld: "Another squadchat server is using its folder, so nothing was erased. Stop that server, then try again.",
     noPassword: "Add a password to sign in from your phone and other computers.",
     addPassword: "Add a password",
     keep: "Keep it running",
@@ -571,8 +570,7 @@ export const desktopEn = {
     commandsDesc: "Tests, builds and other Terminal commands. Each one shows in Activity.",
     commandsWarn: "Commands can reach the rest of this {{device}}, not only the allowed folders.",
     commandsWarnOrgs: "Commands can reach the rest of this {{device}}, other workspaces' folders included.",
-    commandsWarnHere:
-      "Commands run as you and can reach the rest of this {{device}}, squadchat's own data included.",
+    commandsWarnHere: "Commands run as you and can reach the rest of this {{device}}, squadchat's own data included.",
     commandsSome: "On only for {{orgs}}. Turn it on for every workspace here.",
     commandsAbout:
       "Tests, builds and other Terminal commands. Each one shows in Activity. Commands run as you. They can read anything you can on this {{device}}, squadchat's database and keys included. Turn them on only for workspaces you trust with all of it.",

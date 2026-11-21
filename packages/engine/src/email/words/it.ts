@@ -546,8 +546,7 @@ export const words: EmailWords = {
         : `${a} e ${c} sono pronti. Serve un piano squadchat per iniziare.`;
     },
     button: "Vedi i piani squadchat",
-    why: (org) =>
-      `Hai ricevuto questa email perché gestisci ${org} su squadchat. Inviamo solo due avvisi come questo.`,
+    why: (org) => `Hai ricevuto questa email perché gestisci ${org} su squadchat. Inviamo solo due avvisi come questo.`,
     personal: {
       subject: "I tuoi agenti stanno aspettando",
       headline: "I tuoi agenti stanno aspettando",

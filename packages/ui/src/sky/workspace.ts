@@ -14,7 +14,7 @@ export type SkyHour = "day" | "dusk";
 /** squadchat and its subdomains are the Cloud (as the server's `isAgentesCloud`); any other host is one's own. */
 export function skyHourOf(host: string): SkyHour {
   const name = host.toLowerCase().replace(/:\d+$/, "");
-  return name === "squadchat" || name.endsWith(".agentes.chat") ? "day" : "dusk";
+  return name === "agentes.chat" || name.endsWith(".agentes.chat") ? "day" : "dusk";
 }
 
 /** The hour's light end, three steps each: pale on a light surface, deeper on a dark one. */

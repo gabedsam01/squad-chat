@@ -674,9 +674,9 @@ describe("one click where a tool is off (ADR 0036 §8)", () => {
   });
 
   test("the runner's refusal of a browser that is off is read in every runner version's words", () => {
-    expect(
-      browserOffMessage("Browser is turned off on this computer (its owner can turn it on from squadchat)"),
-    ).toBe(true);
+    expect(browserOffMessage("Browser is turned off on this computer (its owner can turn it on from squadchat)")).toBe(
+      true,
+    );
     expect(
       browserOffMessage(
         "Browser is turned off on this computer (its owner can turn it on in the agentes app (Preferences > Tools))",

@@ -717,10 +717,7 @@ export class RunnerDaemon implements RequestObserver {
   async openBrowser(agent: AgentScope, installing: () => void): Promise<void> {
     const session = this.session;
     if (!session) {
-      throw new RunnerError(
-        "internal",
-        "This computer isn't connected to squadchat right now. Try again in a minute.",
-      );
+      throw new RunnerError("internal", "This computer isn't connected to squadchat right now. Try again in a minute.");
     }
     const { tools } = this.access();
     if (tools.browser !== true || tools.desktop !== true) {

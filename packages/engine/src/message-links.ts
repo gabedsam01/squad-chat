@@ -18,7 +18,7 @@ export function setMessageLinkBase(publicUrl: string) {
 export const appPageLink = (orgId: string, path: string) => `${base}/org/${orgId}${path}`;
 
 /** The Cloud's domain: an address under it is our own app wherever this server runs. */
-const PRODUCT_HOST = "squadchat";
+const PRODUCT_HOST = "agentes.chat";
 
 /** A loopback `PUBLIC_URL` (a self-host's default): there, on the agent's computer, it is some other app. */
 const LOOPBACK = /^(localhost|127(\.\d+){3}|\[::1\])$/;

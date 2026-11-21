@@ -16,7 +16,7 @@ import {
 } from "../src/lib/server";
 
 const instance = (over: Record<string, unknown> = {}) => ({
-  name: "squadchat",
+  name: "agentes.chat",
   version: "1.2.0",
   api: APP_API,
   minApi: APP_API,

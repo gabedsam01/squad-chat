@@ -441,7 +441,9 @@ describe("Install on a computer that's always on", () => {
           "On the computer that stays on, open the Terminal and paste this",
           "At the end a link shows up. Open it here and that's it.",
         ]);
-        expect(el.querySelector(".dk-fr__ways code")?.textContent).toBe("curl -fsSL https://squad-chat-6wd.pages.dev/install | sh");
+        expect(el.querySelector(".dk-fr__ways code")?.textContent).toBe(
+          "curl -fsSL https://squad-chat-6wd.pages.dev/install | sh",
+        );
         await press("Copy the instructions");
         await until(() => button("Instructions copied"));
         expect(copied).toHaveLength(1);
@@ -773,9 +775,7 @@ describe("Setting it up here", () => {
         await until(() => button("Try again"));
         const step = stepOf(el, "Turning squadchat on") as HTMLElement;
         expect(step.dataset.state).toBe("failed");
-        expect(step.querySelector(".dk-honest")?.textContent).toBe(
-          "squadchat didn't start on this Mac. Copy details",
-        );
+        expect(step.querySelector(".dk-honest")?.textContent).toBe("squadchat didn't start on this Mac. Copy details");
         expect(runButtons(el)).toEqual(["Cancel", "Try again"]);
         expect(document.activeElement).toBe(button("Try again") ?? null);
         // The computer dims.

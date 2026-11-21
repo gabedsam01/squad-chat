@@ -52,9 +52,7 @@ function manualTimers() {
 
 describe("RealtimeConnection", () => {
   test("url uses ws/wss and the org id", () => {
-    expect(realtimeUrl({ protocol: "https:", host: "squadchat" }, "o 1")).toBe(
-      "wss://squadchat/api/ws?orgId=o%201",
-    );
+    expect(realtimeUrl({ protocol: "https:", host: "squadchat" }, "o 1")).toBe("wss://squadchat/api/ws?orgId=o%201");
     expect(realtimeUrl({ protocol: "http:", host: "localhost:5173" }, "o1")).toBe(
       "ws://localhost:5173/api/ws?orgId=o1",
     );

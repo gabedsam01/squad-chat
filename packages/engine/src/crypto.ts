@@ -28,7 +28,8 @@ export type KeyPurpose =
   | "operator-input-digest";
 
 function deriveKey(masterSecret: string, purpose: KeyPurpose): Buffer {
-  return Buffer.from(hkdfSync("sha256", masterSecret, "squadchat", `squadchat/${purpose}/v1`, 32));
+  // Part of every key, not a product name: another label derives other keys, and what they sealed won't open.
+  return Buffer.from(hkdfSync("sha256", masterSecret, "agentes.chat", `agentes.chat/${purpose}/v1`, 32));
 }
 
 /** A purpose-specific secret (hex) for libraries that take a string secret, e.g. Better Auth. */

@@ -8,9 +8,7 @@ import type { EmailWords } from "./index";
  */
 export const words: EmailWords = {
   sentBy: (host) =>
-    host
-      ? atHost("squadchat sunucusu tarafından gönderildi.", "Sunucu:", host)
-      : "squadchat tarafından gönderildi.",
+    host ? atHost("squadchat sunucusu tarafından gönderildi.", "Sunucu:", host) : "squadchat tarafından gönderildi.",
   fallback: "Düğme çalışmıyor mu? Bu adresi tarayıcınıza kopyalayın:",
   role: { owner: "sahip", member: "üye" },
   anAgent: "Bir ajan",

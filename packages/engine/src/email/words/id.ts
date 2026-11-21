@@ -579,8 +579,7 @@ export const words: EmailWords = {
       resolved: "Yang kamu laporkan sudah diperbaiki.",
       handed_over: "Sekarang permintaanmu ditangani seseorang, dan dia akan membalasmu.",
     },
-    from: (host) =>
-      host ? atHost("Dijawab oleh pengelola server squadchat", "di", host) : "Dijawab oleh squadchat.",
+    from: (host) => (host ? atHost("Dijawab oleh pengelola server squadchat", "di", host) : "Dijawab oleh squadchat."),
     ai: "Jawaban ini ditulis oleh asisten AI.",
     reply: (address) => ["Untuk membalas, kirim email ke ", { mail: address }, "."],
     why: "Kamu menerima email ini karena kamu meminta bantuan di squadchat.",

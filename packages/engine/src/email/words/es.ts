@@ -7,8 +7,7 @@ import type { EmailWords } from "./index";
  * forms with `plural("es", n, { one, few, many, other })` from `@agenteschat/i18n/format`.
  */
 export const words: EmailWords = {
-  sentBy: (host) =>
-    host ? atHost("Enviado por el servidor de squadchat", "en", host) : "Enviado por squadchat.",
+  sentBy: (host) => (host ? atHost("Enviado por el servidor de squadchat", "en", host) : "Enviado por squadchat."),
   fallback: "¿El botón no funciona? Copia esta dirección en tu navegador:",
   role: { owner: "propietario", member: "miembro" },
   anAgent: "Un agente",
@@ -55,10 +54,7 @@ export const words: EmailWords = {
     personal: {
       body: (inviter, email) =>
         inviter
-          ? [
-              { b: inviter },
-              `${email ? ` (${email})` : ""} te invitó a su espacio de trabajo personal en squadchat.`,
-            ]
+          ? [{ b: inviter }, `${email ? ` (${email})` : ""} te invitó a su espacio de trabajo personal en squadchat.`]
           : "Te invitaron a un espacio de trabajo personal en squadchat.",
       why: () =>
         "Recibiste este correo porque alguien invitó a esta dirección a su espacio de trabajo personal. Si no sabes quién es, ignóralo. No pasa nada hasta que aceptes.",
@@ -550,8 +546,7 @@ export const words: EmailWords = {
         : `${a} y ${c} están listos. Falta un plan de squadchat para que empiecen.`;
     },
     button: "Ver planes de squadchat",
-    why: (org) =>
-      `Recibiste este correo porque administras ${org} en squadchat. Solo enviamos dos avisos como este.`,
+    why: (org) => `Recibiste este correo porque administras ${org} en squadchat. Solo enviamos dos avisos como este.`,
     personal: {
       subject: "Tus agentes están esperando",
       headline: "Tus agentes están esperando",

@@ -519,8 +519,7 @@ export const words: EmailWords = {
       resolved: "你报告的问题已经修复。",
       handed_over: "现在已有专人接手你的请求，并会回复你。",
     },
-    from: (host) =>
-      host ? ["由 ", { nobr: host }, " 上 squadchat 服务器的管理人员回复。"] : "由 squadchat 回复。",
+    from: (host) => (host ? ["由 ", { nobr: host }, " 上 squadchat 服务器的管理人员回复。"] : "由 squadchat 回复。"),
     ai: "这条回复由 AI 助手撰写。",
     reply: (address) => ["如需回复，请写信至 ", { mail: address }, "。"],
     why: "你收到这封邮件，是因为你在 squadchat 上请求了帮助。",

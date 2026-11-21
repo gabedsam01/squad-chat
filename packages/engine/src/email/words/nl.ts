@@ -7,8 +7,7 @@ import type { EmailWords } from "./index";
  * forms with `plural("nl", n, { one, few, many, other })` from `@agenteschat/i18n/format`.
  */
 export const words: EmailWords = {
-  sentBy: (host) =>
-    host ? atHost("Verstuurd door de squadchat-server", "op", host) : "Verstuurd door squadchat.",
+  sentBy: (host) => (host ? atHost("Verstuurd door de squadchat-server", "op", host) : "Verstuurd door squadchat."),
   fallback: "Werkt de knop niet? Kopieer dit adres naar je browser:",
   role: { owner: "eigenaar", member: "lid" },
   anAgent: "Een agent",
@@ -556,8 +555,7 @@ export const words: EmailWords = {
         : `${a} en ${c} staan klaar. Er is een squadchat-abonnement nodig om te beginnen.`;
     },
     button: "squadchat-abonnementen bekijken",
-    why: (org) =>
-      `Je krijgt deze e-mail omdat je ${org} beheert op squadchat. We sturen maar twee van deze berichten.`,
+    why: (org) => `Je krijgt deze e-mail omdat je ${org} beheert op squadchat. We sturen maar twee van deze berichten.`,
     personal: {
       subject: "Je agents wachten",
       headline: "Je agents wachten",
@@ -608,9 +606,7 @@ export const words: EmailWords = {
       handed_over: "Een persoon heeft je vraag nu en geeft je antwoord.",
     },
     from: (host) =>
-      host
-        ? atHost("Beantwoord door de beheerders van de squadchat-server", "op", host)
-        : "Beantwoord door squadchat.",
+      host ? atHost("Beantwoord door de beheerders van de squadchat-server", "op", host) : "Beantwoord door squadchat.",
     ai: "Een AI-assistent schreef dit antwoord.",
     reply: (address) => ["Wil je antwoorden? Schrijf naar ", { mail: address }, "."],
     why: "Je krijgt deze e-mail omdat je om hulp vroeg op squadchat.",

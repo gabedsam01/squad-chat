@@ -710,8 +710,7 @@ export const helpTr: Partial<Record<HelpSlug, HelpDocument>> = {
   },
   "install-on-a-server": {
     title: "squadchat'i bir sunucuya kurun",
-    summary:
-      "squadchat'i kendi sunucunuzda, ücretsiz, tüm ekibiniz için çalıştırın. Tek bir komut her şeyi hazırlar.",
+    summary: "squadchat'i kendi sunucunuzda, ücretsiz, tüm ekibiniz için çalıştırın. Tek bir komut her şeyi hazırlar.",
     sections: [
       {
         id: "choose",

@@ -132,9 +132,7 @@ describe("the rules every agent reads", () => {
     const personal = await ask();
     expect(personal.personal).toBe(true);
     const text = systemText(personal.system);
-    expect(text).toContain(
-      'You work in "Acme" on squadchat, a personal workspace: one person, and maybe their family',
-    );
+    expect(text).toContain('You work in "Acme" on squadchat, a personal workspace: one person, and maybe their family');
     expect(text).toContain("# About the person\nAcme builds rockets.");
     expect(text).toContain("one of this person's AI agents.");
     expect(text).toContain("Write like a trusted assistant texting the person");

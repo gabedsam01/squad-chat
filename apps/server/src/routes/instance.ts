@@ -15,7 +15,8 @@ const MIN_API = 1;
 
 const InstanceResponse = z
   .object({
-    name: z.literal("squadchat"),
+    // Protocol, not a product name: the phone and desktop apps already installed accept a server only with this name.
+    name: z.literal("agentes.chat"),
     version: z.string(),
     api: z.number().int().openapi({ description: "The app API contract this server speaks." }),
     minApi: z.number().int().openapi({ description: "The oldest app API contract it still serves." }),
@@ -68,7 +69,7 @@ export function registerInstance(api: OpenAPIHono, deps: AppDeps, version: strin
     const open = await signupOpen(deps.db, config, users);
     return c.json(
       {
-        name: "squadchat" as const,
+        name: "agentes.chat" as const,
         version,
         api: API,
         minApi: MIN_API,
