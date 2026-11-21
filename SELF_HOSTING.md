@@ -1878,11 +1878,11 @@ setup from a checkout. You need Git, Docker and [Bun](https://bun.sh) (`packageM
 package.json names the version):
 
 ```sh
-git clone https://github.com/agentes-chat/agentes-chat.git
-cd agentes-chat
+git clone https://github.com/gabedsam01/squad-chat.git
+cd squad-chat
 bun install
 bun run --filter '@agenteschat/setup' build
-docker build -t ghcr.io/agentes-chat/agentes:latest .
+docker build -t ghcr.io/gabedsam01/squad-chat:latest .
 mkdir -p ~/agentes && cp docker-compose.yml ~/agentes/
 AGENTES_INSTALL_SETUP=$PWD/packages/setup/dist/index.js sh install.sh --dir ~/agentes
 ```

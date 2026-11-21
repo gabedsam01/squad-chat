@@ -528,12 +528,12 @@
       <div>
         <div class="sec-head">
           <p class="sec-kicker">Self-hosting</p>
-          <h2 id="host-title">No seu servidor, <em>com um compose só.</em></h2>
-          <p class="sec-lede">O app e o Postgres com pgvector sobem juntos e as migrações rodam no boot.</p>
+          <h2 id="host-title">No seu servidor, <em>com um comando só.</em></h2>
+          <p class="sec-lede">O instalador prepara o servidor, sobe o app e o Postgres com pgvector juntos, e as migrações rodam no boot.</p>
         </div>
         <ol class="host-steps">
-          <li><span class="step-n" aria-hidden="true">1</span><div><h3>Um servidor Linux</h3><p>Com Docker instalado. O compose sobe o app e o banco juntos.</p></div></li>
-          <li><span class="step-n" aria-hidden="true">2</span><div><h3>Ajuste o <code>.env</code></h3><p>Endereço público, domínio ou rede privada. O exemplo do repositório explica cada opção.</p></div></li>
+          <li><span class="step-n" aria-hidden="true">1</span><div><h3>Um servidor Linux</h3><p>64 bits, amd64 ou arm64. Se faltar o Docker, o instalador pergunta e instala.</p></div></li>
+          <li><span class="step-n" aria-hidden="true">2</span><div><h3>Rode o instalador</h3><p>Ele pergunta como as pessoas chegam ao servidor, Tailscale ou um domínio seu, e gera o <code>.env</code> com os segredos.</p></div></li>
           <li><span class="step-n" aria-hidden="true">3</span><div><h3>Adicione a chave do modelo</h3><p>No app, em Configurações. Cada organização usa a própria chave.</p></div></li>
         </ol>
       </div>
@@ -543,11 +543,8 @@
             <span class="scr-title"><svg class="od-icon" aria-hidden="true"><use href="#i-code"/></svg>servidor Linux</span>
             <button class="copy2" type="button" id="copy-btn"><svg class="od-icon" aria-hidden="true"><use href="#i-copy"/></svg><span id="copy-label">Copiar</span></button>
           </div>
-<pre class="term host-pre" id="install-cmd" tabindex="0" aria-label="Comandos de instalação"><code><span class="pr">$</span> git clone https://github.com/gabedsam01/squad-chat.git
-<span class="pr">$</span> cd squad-chat
-<span class="pr">$</span> cp .env.example .env
-<span class="pr">$</span> docker compose up -d
-<span class="dim"># abra o endereço do servidor e crie a organização</span></code></pre>
+<pre class="term host-pre" id="install-cmd" tabindex="0" aria-label="Comandos de instalação"><code><span class="pr">$</span> curl -fsSL https://squad-chat-6wd.pages.dev/install | sh
+<span class="dim"># abra o endereço que ele mostrar e crie a organização</span></code></pre>
           <p class="copy-feedback" id="copy-feedback" aria-live="polite" hidden></p>
         </div>
         <ul class="host-platforms" aria-label="Plataformas">

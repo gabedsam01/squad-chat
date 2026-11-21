@@ -146,7 +146,7 @@
     var label = $("#copy-label");
     var pre = $("#install-cmd");
     var feedback = $("#copy-feedback");
-    var text = "git clone https://github.com/gabedsam01/squad-chat.git\ncd squad-chat\ncp .env.example .env\ndocker compose up -d";
+    var text = "curl -fsSL https://squad-chat-6wd.pages.dev/install | sh";
     var timer;
 
     var done = function (ok) {

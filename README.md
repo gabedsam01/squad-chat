@@ -51,12 +51,21 @@ as Grok Bot, ChatGPT dots, OpenBot.run and OpenMausBot (all of which it imports 
 ## Quick start
 
 - **Website:** [squad-chat-6wd.pages.dev](https://squad-chat-6wd.pages.dev)
-- **Self-host with Docker Compose:**
+- **Self-host in one command** (a 64-bit Linux server, or a Mac with Docker):
 
   ```sh
-  git clone https://github.com/gabedsam01/squad-chat.git
-  cd squad-chat
-  cp .env.example .env   # set PUBLIC_URL, DATABASE_URL and AGENTES_SECRET (openssl rand -base64 48)
+  curl -fsSL https://squad-chat-6wd.pages.dev/install | sh
+  ```
+
+  It installs Docker when it's missing (after asking), downloads the compose file, asks how people reach
+  the server (Tailscale or your own domain), writes `.env` with generated secrets and starts it.
+  To read what it would do first: `curl -fsSL https://squad-chat-6wd.pages.dev/install | sh -s -- --plan`.
+
+- **Or with Docker Compose by hand**, at http://localhost:3000, in an empty directory:
+
+  ```sh
+  curl -fsSLO https://squad-chat-6wd.pages.dev/install/docker-compose.yml
+  (umask 077 && printf 'AGENTES_SECRET=%s\nPOSTGRES_PASSWORD=%s\nPUBLIC_URL=http://localhost:3000\n' "$(openssl rand -base64 48)" "$(openssl rand -hex 24)" > .env)
   docker compose up -d
   ```
 
