@@ -150,10 +150,10 @@ test("a reply Automático gave with another model: 'Usar o X em todos' opens the
   expect(document.querySelector(".mp")).toBeTruthy();
 });
 
-test("on an API key with a fixed model the picker's ramp has the three levels the API takes, none chosen yet", async () => {
+test("on an API key with a fixed model the picker's ramp shows the seven-step ladder with model support, none chosen yet", async () => {
   const { state, panel } = await openPicker();
   const ramp = within(panel).getByRole("slider", { name: "Esforço" });
-  expect(ramp.getAttribute("aria-valuemax")).toBe("3");
+  expect(ramp.getAttribute("aria-valuemax")).toBe("7");
   expect(ramp.getAttribute("aria-valuetext")).toBe("Padrão do modelo");
   await act(async () => fireEvent.keyDown(ramp, { key: "ArrowRight" }));
   await settle(6);

@@ -796,23 +796,22 @@
   }
 }
 
-/* The DM header's buttons: their dot in the agent's color while it works, amber while a request waits. The icon's dot
-   is its `::before`, since a header icon's `::after` is its touch target; ringed in the header's color. */
+/* The DM header's buttons: their dot in the agent's color while it works, amber while a request waits. A child span,
+   not `::before` (the geometry plate rule reads `::before` as a drawn plate) or `::after` (the 44px touch target). */
 .brw-dm[data-state="live"]::after {
   background: var(--dot, var(--ok));
 }
-.dm-computer[data-state]::before {
-  content: "";
+.dm-computer__signal {
   position: absolute;
-  top: 4px;
-  right: 4px;
+  inset: 4px 4px auto auto;
   width: 7px;
   height: 7px;
   border-radius: 50%;
   background: var(--dot, var(--ok));
   box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
 }
-.dm-computer[data-state="waiting"]::before {
+.dm-computer[data-state="waiting"] .dm-computer__signal {
   background: var(--warn);
 }
 

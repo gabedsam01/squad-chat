@@ -382,6 +382,9 @@ describe("models by provider and the default key", () => {
   test("availability comes from the keys (or the server's flag)", () => {
     expect(modelChoices(models, [cred], false).map(([p, c]) => [p, c.map((x) => x.available)])).toEqual([
       ["anthropic", [true]],
+    ]);
+    expect(modelChoices(models, [cred], false, "gpt-5").map(([p, c]) => [p, c.map((x) => x.available)])).toEqual([
+      ["anthropic", [true]],
       ["openai", [false]],
     ]);
     expect(
@@ -389,7 +392,7 @@ describe("models by provider and the default key", () => {
     ).toBe(true);
   });
 
-  test("Criar agente: Quem pensa by provider, OpenAI disabled without a key; key defaults to the workspace's", async () => {
+  test("Criar agente: Quem pensa by provider, OpenAI hidden without a key; key defaults to the workspace's", async () => {
     await go("agents/new");
     await startAs("QA");
     await proceed(4);
@@ -402,10 +405,8 @@ describe("models by provider and the default key", () => {
     const groups = within(list)
       .getAllByRole("group")
       .map((g) => g.getAttribute("aria-label"));
-    expect(groups.slice(0, 2)).toEqual(["Claude", "OpenAI"]);
-    const gpt = within(list).getAllByRole("option", { name: /GPT-5/ })[0] as HTMLElement;
-    expect(gpt.getAttribute("aria-disabled")).toBe("true");
-    expect(gpt.textContent).toContain("Precisa de uma chave de API OpenAI");
+    expect(groups.slice(0, 2)).toEqual(["Claude", "Plano do Claude"]);
+    expect(within(list).queryByRole("option", { name: /^GPT-5$/ })).toBeNull();
     await act(async () =>
       fireEvent.keyDown(screen().getByRole("combobox", { name: "Buscar modelos" }), { key: "Escape" }),
     );

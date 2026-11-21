@@ -880,6 +880,8 @@
       "older": "Älter"
     },
     "kind": {
+      "credential_efforts_one": "{{names}} hat die Aufwandsstufen eines Schlüssels geprüft",
+      "credential_efforts_other": "{{names}} haben die Aufwandsstufen eines Schlüssels geprüft",
       "proposal_waiting_one": "{{names}} schlägt eine Verbesserung vor",
       "proposal_waiting_other": "{{names}} schlagen Verbesserungen vor",
       "mention_one": "{{names}} hat dich erwähnt",

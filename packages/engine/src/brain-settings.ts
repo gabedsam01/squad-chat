@@ -339,7 +339,7 @@ export const CLAUDE_CODE_MODELS: readonly BrainModelOption[] = (
 export function claudeCodeModels(): BrainModelOption[] {
   const anthropic = listedModels().filter(([, m]) => m.provider === "anthropic");
   const pickAlias = (
-    alias: "opus" | "sonnet" | "haiku",
+    alias: "fable" | "opus" | "sonnet" | "haiku",
     fallbackId: string,
     recommended?: boolean,
   ): BrainModelOption => {
@@ -361,6 +361,7 @@ export function claudeCodeModels(): BrainModelOption[] {
   };
 
   return [
+    pickAlias("fable", "claude-fable-5-2"),
     pickAlias("opus", "claude-opus-5-5"),
     pickAlias("sonnet", "claude-sonnet-5-5", true),
     pickAlias("haiku", "claude-haiku-5-5"),

@@ -280,7 +280,8 @@ html:not([data-pointer]) .imp-row__open:focus-visible {
 .imp-flow > li > span {
   min-width: 0;
 }
-/* An app's ways: each line says what the way brings and needs, whole. */
+/* Choices and ways: each line says why it stays or what it brings, whole, never clamped past its row. */
+.imp-choice .imp-row__line,
 .imp-paths .imp-row__line {
   display: block;
   overflow: visible;

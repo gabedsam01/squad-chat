@@ -932,6 +932,10 @@
       "older": "Starsze"
     },
     "kind": {
+      "credential_efforts_one": "{{names}} sprawdził poziomy wysiłku klucza",
+      "credential_efforts_few": "{{names}} sprawdzili poziomy wysiłku klucza",
+      "credential_efforts_many": "{{names}} sprawdzili poziomy wysiłku klucza",
+      "credential_efforts_other": "{{names}} sprawdzili poziomy wysiłku klucza",
       "proposal_waiting_one": "{{names}} proponuje ulepszenie",
       "proposal_waiting_few": "{{names}} proponują ulepszenia",
       "proposal_waiting_many": "{{names}} proponują ulepszenia",

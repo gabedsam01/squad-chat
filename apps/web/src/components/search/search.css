@@ -177,10 +177,17 @@
   gap: 8px;
   min-width: 0;
 }
-.search-menu__chip .ac-token__label {
+/* A 22px chip inside a 32px menu row shares the 1px vertical inset `.ac-menu__hint > .ac-chip` takes. */
+.search-menu__chips > .ac-token--sm {
+  margin-block: -1px;
+}
+.search-menu__chip .ac-token__label:not(:has(> .ac-icon--inline)) {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+.search-menu__chip .ac-token__label > .ac-icon--inline {
+  margin-inline: 5px;
 }
 .search-menu__chip b {
   font-weight: 650;

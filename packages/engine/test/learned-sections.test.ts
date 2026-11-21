@@ -86,8 +86,8 @@ describe("moveLearnedSections", () => {
     ]);
 
     // The migration queues the job once per workspace with a section.
-    await f.db.execute(sql.raw(readFileSync(join(migrationsFolder, "0310_move_learned_sections.sql"), "utf8")));
-    await f.db.execute(sql.raw(readFileSync(join(migrationsFolder, "0310_move_learned_sections.sql"), "utf8")));
+    await f.db.execute(sql.raw(readFileSync(join(migrationsFolder, "0312_move_learned_sections.sql"), "utf8")));
+    await f.db.execute(sql.raw(readFileSync(join(migrationsFolder, "0312_move_learned_sections.sql"), "utf8")));
     const jobs = await f.db.select().from(outbox).where(eq(outbox.kind, MOVE_LEARNED_JOB));
     expect(jobs.map((j) => j.orgId)).toEqual([f.org.id]);
     // It waits out a deploy's overlap with the version that has no handler for it.

@@ -854,6 +854,7 @@
       "older": "更早"
     },
     "kind": {
+      "credential_efforts_other": "{{names}} 检查了一个密钥的努力级别",
       "proposal_waiting_other": "{{names}} 提议改进",
       "mention_other": "{{names}} 提及了你",
       "thread_reply_other": "{{names}} 在话题中回复了",

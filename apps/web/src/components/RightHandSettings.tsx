@@ -264,7 +264,7 @@ export function RightHandMineRow({ agent }: { agent: Agent }) {
           mark: logoId ? (
             <ProviderLogo id={logoId} size="xs" />
           ) : (
-            <Icon name="key" size={16} className="arrival-have__mark" />
+            <Icon name="key" size={20} className="arrival-have__mark" />
           ),
           usage: own ? (account?.usage ?? null) : null,
         };
@@ -495,7 +495,7 @@ function RightHandForm({ agent }: { agent: Agent }) {
     mark: key ? (
       <ProviderLogo id={key.provider} size="xs" />
     ) : (
-      <Icon name="key" size={16} className="arrival-have__mark" />
+      <Icon name="key" size={20} className="arrival-have__mark" />
     ),
     usage: null,
     isKey: true,

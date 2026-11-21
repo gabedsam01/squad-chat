@@ -906,6 +906,9 @@
       "older": "Anteriores"
     },
     "kind": {
+      "credential_efforts_one": "{{names}} comprobó los niveles de esfuerzo de una clave",
+      "credential_efforts_many": "{{names}} comprobaron los niveles de esfuerzo de una clave",
+      "credential_efforts_other": "{{names}} comprobaron los niveles de esfuerzo de una clave",
       "proposal_waiting_one": "{{names}} propone una mejora",
       "proposal_waiting_many": "{{names}} proponen mejoras",
       "proposal_waiting_other": "{{names}} proponen mejoras",

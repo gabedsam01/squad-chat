@@ -52,7 +52,7 @@ function RecentSearch({ text, directory, words }: { text: string; directory: Sea
               {(c.op === "from" || c.op === "mentions") && (
                 <ActorAvatar actor={c.actor} name={c.actor.name} size="xs" />
               )}
-              {c.op === "in" && !c.place.dm && <Icon name="channel" size={14} />}
+              {c.op === "in" && !c.place.dm && <Icon name="channel" size={14} inline />}
               {value}
             </span>
           </span>

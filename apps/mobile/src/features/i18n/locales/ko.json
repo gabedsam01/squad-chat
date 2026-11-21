@@ -854,6 +854,7 @@
       "older": "이전"
     },
     "kind": {
+      "credential_efforts_other": "{{names}}이(가) 키의 노력 수준을 확인했어요",
       "proposal_waiting_other": "{{names}}이(가) 개선을 제안해요",
       "mention_other": "{{names}}이(가) 나를 멘션했어요",
       "thread_reply_other": "{{names}}이(가) 스레드에 답장했어요",

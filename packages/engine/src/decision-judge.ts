@@ -1,4 +1,10 @@
-import { type DecisionProviderId, decide, decisionCostNanoUsd, decisionModelLabel } from "@agenteschat/providers";
+import {
+  type DecisionProviderId,
+  type DecisionQuestion,
+  decide,
+  decisionCostNanoUsd,
+  decisionModelLabel,
+} from "@agenteschat/providers";
 import type { DecisionModel } from "./decision-model";
 import type { ModelGateway } from "./gateway";
 import { type Judge, type JudgeAnswer, type JudgeRequest, judgeSeesImages } from "./judge";
@@ -33,6 +39,16 @@ function assetsOf(request: JudgeRequest) {
   );
 }
 
+/** Decision models answer `noul`, `choice` and `score`, never `box` (ADR 9006). */
+export function decisionQuestionsOf(questions: Record<string, JudgeQuestion>): Record<string, DecisionQuestion> {
+  const out: Record<string, DecisionQuestion> = {};
+  for (const [id, q] of Object.entries(questions)) {
+    if (q.type === "box") throw new Error("judge: decision model answers no box (ADR 9006)");
+    out[id] = q;
+  }
+  return out;
+}
+
 /** One question set to the configured model, its answers normalized and its usage recorded. */
 async function askModel(
   model: NonNullable<Awaited<ReturnType<DecisionModel["current"]>>>,
@@ -51,7 +67,7 @@ async function askModel(
     {
       model: model.model,
       state: request.state,
-      questions: request.questions,
+      questions: decisionQuestionsOf(request.questions),
       ...(assetsOf(request) ? { assets: assetsOf(request) } : {}),
     },
     http,
@@ -91,7 +107,10 @@ export function createDecisionJudge(options: {
     async ask(request) {
       const current = await options.model.current().catch(() => null);
       if (!current) return options.fallback.ask(request);
-      if (judgeSeesImages(request) && !current.capabilities.inputs.includes("image"))
+      if (
+        Object.values(request.questions).some((q) => q.type === "box") ||
+        (judgeSeesImages(request) && !current.capabilities.inputs.includes("image"))
+      )
         return options.fallback.ask(request);
       try {
         const answers = await askModel(current, request, options.gateway, options.http);

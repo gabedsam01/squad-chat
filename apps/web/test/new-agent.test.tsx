@@ -249,11 +249,13 @@ describe("Criar agente: steps", () => {
     const sonnet = screen().getAllByRole("option", { name: /^Claude Sonnet 5\.5/ })[0] as HTMLElement;
     expect(sonnet.getAttribute("aria-selected")).toBe("false");
     expect(rest.indexOf(sonnet)).toBeGreaterThanOrEqual(0);
-    // Claude's models by what each is for, as on the agent's page; a model without a key can't be picked.
+    // Claude's models by what each is for, as on the agent's page; models without an API key stay hidden (ADR 9005)
+    // while unconfigured plans show disabled.
     expect(sonnet.textContent).toContain("Recomendado para a maioria");
+    expect(screen().queryByRole("option", { name: /^GPT-5$/ })).toBeNull();
     const gpt = screen().getAllByRole("option", { name: /^GPT-5/ })[0] as HTMLElement;
     expect(gpt.getAttribute("aria-disabled")).toBe("true");
-    expect(gpt.textContent).toContain("Precisa de uma chave de API OpenAI");
+    expect(gpt.textContent).toContain("Precisa de uma chave OpenCode Go");
     await click(gpt);
     expect(brainBox().textContent).toStartWith("Automático");
     await press(screen().getByRole("combobox", { name: "Buscar modelos" }), "Escape");
@@ -759,9 +761,7 @@ describe("Criar agente: what gets created", () => {
     expect(title()).toBe("Modelo e orçamento");
     expect(screen().queryByText(NO_AI)).toBeNull();
     let list = await openBrain();
-    expect(within(list).getAllByRole("option", { name: /Precisa de uma chave de API Claude/ }).length).toBeGreaterThan(
-      0,
-    );
+    expect(within(list).queryByRole("option", { name: /Precisa de uma chave de API Claude/ })).toBeNull();
     await act(async () => fireEvent.keyDown(document.activeElement as HTMLElement, { key: "Escape" }));
     await settle(2);
     // An API model picked first: connecting a plan here still moves the agent onto it.

@@ -79,7 +79,7 @@ describe("who decides: one list of providers", () => {
   test("an OpenAI key is asked for before it can be turned on", async () => {
     const { state } = await open(OFF);
     await click(within(card()).getAllByRole("radio")[2] as Element);
-    const on = within(card()).getByText("Ativar") as HTMLButtonElement;
+    const on = within(card()).getByRole("button", { name: "Ativar" }) as HTMLButtonElement;
     expect(on.disabled).toBe(true);
     const key = within(card()).getByLabelText("Chave da API");
     await act(async () => fireEvent.change(key, { target: { value: "sk-test-123" } }));

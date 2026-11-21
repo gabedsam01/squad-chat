@@ -62,7 +62,7 @@ describe("Jev's spend", () => {
     expect(usage).toMatchObject([{ requestedModel: "stop_request", inputTokens: 10 }]);
   });
 
-  test("the same text-only request within minutes is answered from what Jev said; an image's never", async () => {
+  test("the same text-only request within minutes is answered from what Jev said; an image's is refused (ADR 9006)", async () => {
     enableCaches(true);
     const { judge, sent } = fakeJev();
     expect(await judge.ask(ask("agent_status"))).toEqual({ q: { noul: 0.7 } });
@@ -71,9 +71,9 @@ describe("Jev's spend", () => {
     await judge.ask(ask("agent_status", { state: { message: "outra coisa", recent: "" } }));
     expect(sent).toHaveLength(2);
     const screen = ask("screen_check", { state: { screen: "IMG" }, images: { IMG: { data: "AAAA", format: "png" } } });
-    await judge.ask(screen);
-    await judge.ask(screen);
-    expect(sent).toHaveLength(4);
+    await expect(judge.ask(screen)).rejects.toThrow("no images");
+    await expect(judge.ask(screen)).rejects.toThrow("no images");
+    expect(sent).toHaveLength(2);
   });
 
   test("a failed request is asked again next time", async () => {

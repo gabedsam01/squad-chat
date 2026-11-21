@@ -15,6 +15,7 @@ import {
   isDecisionProvider,
 } from "@agenteschat/providers";
 import type { BrowserLink, BrowserReply } from "../../src/browser/surface";
+import { decisionQuestionsOf } from "../../src/decision-judge";
 import { createJevJudge, type Judge, judgeSeesImages } from "../../src/judge";
 import type { ScreenImage } from "../../src/screen";
 
@@ -307,7 +308,12 @@ export function decisionJudge(log: JudgeLog): Judge {
               timeoutMs: Number(process.env.DECISION_TIMEOUT_MS ?? 10000),
               ...(viaOpenRouter ? { baseURL: "https://openrouter.ai/api/alpha", runtime: "custom" as const } : {}),
             },
-            { model, state: request.state, questions: request.questions, ...(images ? { assets: images } : {}) },
+            {
+              model,
+              state: request.state,
+              questions: decisionQuestionsOf(request.questions),
+              ...(images ? { assets: images } : {}),
+            },
             openRouter,
           );
         // An account's tokens a minute run out within one eval: wait as the provider says, so the wait isn't timed.

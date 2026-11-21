@@ -90,10 +90,12 @@ test("Sua IA's Mais opções reaches the effort and the context window, on the p
     "export function AgentAdvancedScreen({ agentId, scope }: { agentId: string; scope?: BrainScope })",
   );
   expect(advanced).toContain("const brain = useAgentBrain(orgId, agentId, true, false, scope);");
-  expect(advanced).toContain("{ ...(scope ? { scope } : {}), ...input }");
+  expect(advanced).toContain("const { pending, save: send } = useSaveBrain(agentId, scope);");
+  const saves = readFileSync(join(import.meta.dir, "../../src/features/ai/useSaveBrain.ts"), "utf8");
+  expect(saves).toContain("api.agents.setBrain(orgId, agentId, { ...(scope ? { scope } : {}), ...input })");
   expect(advanced).toContain('{kind && scope !== "mine" ? (');
   // The route reads it, as the model's does.
-  const route = readFileSync(join(import.meta.dir, "../../app/(app)/agent-advanced/[id].tsx"), "utf8");
+  const route = readFileSync(join(import.meta.dir, "../../app/(app)/(main)/agent-advanced/[id].tsx"), "utf8");
   expect(route).toContain('scope === "mine" || scope === "workspace"');
 });
 

@@ -880,6 +880,8 @@
       "older": "Daha eski"
     },
     "kind": {
+      "credential_efforts_one": "{{names}} bir anahtarın efor düzeylerini denetledi",
+      "credential_efforts_other": "{{names}} bir anahtarın efor düzeylerini denetledi",
       "proposal_waiting_one": "{{names}} bir iyileştirme öneriyor",
       "proposal_waiting_other": "{{names}} iyileştirme öneriyor",
       "mention_one": "{{names}} sizden bahsetti",

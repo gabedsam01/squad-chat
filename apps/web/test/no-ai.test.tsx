@@ -1170,6 +1170,10 @@ describe("Conectar uma IA for an agent with no AI: what the person already has, 
     await click(within(box).getByRole("button", { name: "Testar modelos" }));
     const models = dialog("Modelos de Gateway Sul") as HTMLElement;
     await click(within(models).getByRole("button", { name: "Salvar e testar de novo" }), 6);
+    await click(
+      within(screen().getByRole("dialog", { name: "Esforço" })).getByRole("button", { name: "Só listar os modelos" }),
+      6,
+    );
     expect(calls(state, "agents.setEndpointModels").map((c) => c.args)).toEqual([
       [ORG_ID, "cred-cc", [{ id: "deep-flash" }]],
     ]);

@@ -1234,7 +1234,7 @@ describe("custom MCP servers", () => {
     expect(auth.seen.tokenForms).toHaveLength(2);
   });
 
-  test("a name it won't take (Calendly: letters, digits, hyphens and spaces) is sent once more without the dot", async () => {
+  test("a name Calendly takes (letters, digits, hyphens and spaces) passes on the first try", async () => {
     f = await setup();
     const auth = oauthServer({
       register: (body) =>
@@ -1252,7 +1252,7 @@ describe("custom MCP servers", () => {
     const started = await connectCustomServer(deps, f.owner.id, f.org.id, { serverUrl: SERVER });
     if (started.status !== "oauth") throw new Error(`expected oauth, got ${started.status}`);
     expect(new URL(started.authorizeUrl).searchParams.get("client_id")).toBe("calendly-client");
-    expect(auth.seen.names).toEqual(["squadchat", "agentes chat"]);
+    expect(auth.seen.names).toEqual(["squadchat"]);
   });
 
   test("OAuth that only lets in apps it approved says so in its own words, not 'no OAuth' (an outage doesn't); a key still connects", async () => {

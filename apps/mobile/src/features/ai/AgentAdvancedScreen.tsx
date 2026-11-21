@@ -139,7 +139,7 @@ export function AgentAdvancedScreen({ agentId, scope }: { agentId: string; scope
         family,
       })
     : undefined;
-  const speed = useBrainChoice<BrainSpeed>(agentId, shown?.speed ?? "standard", (value) => ({ speed: value }));
+  const speed = useBrainChoice<BrainSpeed>(agentId, shown?.speed ?? "standard", (value) => ({ speed: value }), scope);
 
   /**
    * Saves at once and says what the row on "Pensa com" will say now (or `done`). The row shows its pick on the tap and

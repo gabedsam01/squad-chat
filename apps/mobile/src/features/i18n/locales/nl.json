@@ -880,6 +880,8 @@
       "older": "Ouder"
     },
     "kind": {
+      "credential_efforts_one": "{{names}} heeft de inspanningsniveaus van een sleutel gecontroleerd",
+      "credential_efforts_other": "{{names}} hebben de inspanningsniveaus van een sleutel gecontroleerd",
       "proposal_waiting_one": "{{names}} stelt een verbetering voor",
       "proposal_waiting_other": "{{names}} stellen verbeteringen voor",
       "mention_one": "{{names}} heeft je vermeld",

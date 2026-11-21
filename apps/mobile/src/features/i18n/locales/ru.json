@@ -932,6 +932,10 @@
       "older": "Раньше"
     },
     "kind": {
+      "credential_efforts_one": "{{names}} проверил уровни усилий ключа",
+      "credential_efforts_few": "{{names}} проверили уровни усилий ключа",
+      "credential_efforts_many": "{{names}} проверили уровни усилий ключа",
+      "credential_efforts_other": "{{names}} проверили уровни усилий ключа",
       "proposal_waiting_one": "{{names}} предлагает улучшение",
       "proposal_waiting_few": "{{names}} предлагают улучшения",
       "proposal_waiting_many": "{{names}} предлагают улучшения",

@@ -14484,11 +14484,20 @@ html:not([data-pointer]) .ac-typing__see:focus-visible {
     align-self: stretch;
   }
 }
-/* The decision model's provider rows carry their settings under the chosen one: the list keeps its
-   content's height, not the tab panel's. */
+/* The decision model's provider rows carry their settings under the chosen one: full width in the card, its height
+   matching its content. Nested Jev rows sit inside `.ac-optrow__more--card`, so they keep no extra side inset. */
 .decision-providers {
+  width: 100%;
+  min-width: 0;
   height: auto;
-  align-self: flex-start;
+}
+.decision-providers .jev > .ac-list__row {
+  padding-inline: 0;
+}
+@media (max-width: 640px) {
+  .decision-providers .ac-optrow__more--card {
+    padding-inline: var(--space-3);
+  }
 }
 /* Inside a chosen row the main action sits on the text's edge, as the card's own rows do. */
 .decision-providers .ac-optrow__more .ac-acts {
@@ -14531,7 +14540,8 @@ html:not([data-pointer]) .ac-typing__see:focus-visible {
   row-gap: var(--space-2);
 }
 /* Where Jev is paid, in the card's narrow body: a row's quiet tag ("Key already connected") goes under its name. */
-.jev__body .ac-optrow__title {
+.jev__body .ac-optrow__title,
+.decision-providers .ac-optrow__title {
   flex-wrap: wrap;
   row-gap: 0;
 }

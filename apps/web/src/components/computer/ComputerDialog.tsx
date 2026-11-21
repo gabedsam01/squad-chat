@@ -704,11 +704,9 @@ function WatchButton({ agent, signal }: { agent: Agent; signal: EntrySignal }) {
   const { t } = useTranslation();
   const openComputer = useOpenComputer();
   return (
-    <Button
-      variant="ghost"
-      iconOnly
-      icon="computer"
-      className="channel__icon dm-computer"
+    <button
+      type="button"
+      className="ac-btn ac-btn--ghost ac-btn--icon channel__icon dm-computer"
       aria-label={t("agentComputer.button")}
       // Its state for screen readers off the keys' focus too; the kit's tip says name and state on hover and focus.
       aria-description={signal.line}
@@ -716,7 +714,10 @@ function WatchButton({ agent, signal }: { agent: Agent; signal: EntrySignal }) {
       data-state={signal.state}
       style={signal.style}
       onClick={() => openComputer(agent.id)}
-    />
+    >
+      <Icon name="computer" />
+      {signal.state && <span className="dm-computer__signal" aria-hidden="true" />}
+    </button>
   );
 }
 

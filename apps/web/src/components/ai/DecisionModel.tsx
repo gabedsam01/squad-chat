@@ -17,6 +17,7 @@ import {
   Chip,
   type ChipTone,
   Dialog,
+  DialogBody,
   DialogFooter,
   Icon,
   type IconName,
@@ -293,62 +294,66 @@ function DecisionModelCard({
         />
         <div className="jev">
           {reflectionOff && <p className="who-line">{t("routing.reflectionOff")}</p>}
-          <List>
-            <div className="ac-list__row jev__body">
-              <OptionList
-                attached
-                className="decision-providers"
-                aria-label={t("decision.providersLabel")}
-                value={picked}
-                onValueChange={(v) => pick(v as Chosen)}
-                options={[
-                  row("jev", {
-                    title: t("jev.title"),
-                    description: t("jev.lead"),
-                    logo: "typesafe",
-                  }),
-                  row("local", {
-                    title: t("decision.providers.local"),
-                    description: t("decision.providers.localText"),
-                    icon: "agent",
-                  }),
-                  row("openai", {
-                    title: t("decision.providers.openai"),
-                    description: t("decision.providers.openaiText"),
-                    logo: "openai",
-                  }),
-                  row("gemini", {
-                    title: t("decision.providers.gemini"),
-                    description: t("decision.providers.geminiText"),
-                    logo: "gemini",
-                  }),
-                ].map((option) => ({ ...option, children: picked === option.value ? settings() : undefined }))}
-              />
-            </div>
+          <OptionList
+            attached
+            className="decision-providers"
+            aria-label={t("decision.providersLabel")}
+            value={picked}
+            onValueChange={(v) => pick(v as Chosen)}
+            options={[
+              row("jev", {
+                title: t("jev.title"),
+                description: t("jev.lead"),
+                logo: "typesafe",
+              }),
+              row("local", {
+                title: t("decision.providers.local"),
+                description: t("decision.providers.localText"),
+                icon: "agent",
+              }),
+              row("openai", {
+                title: t("decision.providers.openai"),
+                description: t("decision.providers.openaiText"),
+                logo: "openai",
+              }),
+              row("gemini", {
+                title: t("decision.providers.gemini"),
+                description: t("decision.providers.geminiText"),
+                logo: "gemini",
+              }),
+            ].map((option) => ({ ...option, children: picked === option.value ? settings() : undefined }))}
+          />
+          {(installing || model.install?.state === "failed" || error) && (
+            <List>
+              {installing && (
+                <div className="ac-list__row jev__body">
+                  <SettingNote icon="info" live>
+                    {t(`decision.install.${installState}`)}
+                  </SettingNote>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => cancel.mutate(undefined)}
+                    disabled={cancel.isPending}
+                  >
+                    {t("decision.cancel")}
+                  </Button>
+                </div>
+              )}
 
-            {installing && (
-              <div className="ac-list__row jev__body">
-                <SettingNote icon="info" live>
-                  {t(`decision.install.${installState}`)}
-                </SettingNote>
-                <Button size="sm" variant="ghost" onClick={() => cancel.mutate(undefined)} disabled={cancel.isPending}>
-                  {t("decision.cancel")}
-                </Button>
-              </div>
-            )}
+              {model.install?.state === "failed" && (
+                <div className="ac-list__row jev__body">
+                  <SettingNote icon="alert">{t("decision.failed", { error: model.install.error ?? "" })}</SettingNote>
+                </div>
+              )}
 
-            {model.install?.state === "failed" && (
-              <div className="ac-list__row jev__body">
-                <SettingNote icon="alert">{t("decision.failed", { error: model.install.error ?? "" })}</SettingNote>
-              </div>
-            )}
-
-            {error && (
-              <div className="ac-list__row jev__body">
-                <SettingNote icon="alert">{errorText(t, error)}</SettingNote>
-              </div>
-            )}
-          </List>
+              {error && (
+                <div className="ac-list__row jev__body">
+                  <SettingNote icon="alert">{errorText(t, error)}</SettingNote>
+                </div>
+              )}
+            </List>
+          )}
           <p className="jev__foot">
             <HelpLink slug="who-answers">{t("routing.how")}</HelpLink>
           </p>
@@ -362,8 +367,10 @@ function DecisionModelCard({
         closeLabel={t("common.close")}
         width={440}
       >
-        <p>{t("decision.switchCurrent")}</p>
-        <p>{t("decision.switchSlow")}</p>
+        <DialogBody>
+          <p>{t("decision.switchCurrent")}</p>
+          <p>{t("decision.switchSlow")}</p>
+        </DialogBody>
         <DialogFooter>
           <Button onClick={() => setConfirm(null)}>{t("common.cancel")}</Button>
           <Button

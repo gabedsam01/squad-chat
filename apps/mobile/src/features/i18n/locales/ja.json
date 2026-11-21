@@ -854,6 +854,7 @@
       "older": "それ以前"
     },
     "kind": {
+      "credential_efforts_other": "{{names}}がキーのエフォートレベルを確認しました",
       "proposal_waiting_other": "{{names}} が改善を提案しています",
       "mention_other": "{{names}}があなたをメンションしました",
       "thread_reply_other": "{{names}}がスレッドで返信しました",

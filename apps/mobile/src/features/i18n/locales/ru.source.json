@@ -2092,6 +2092,12 @@
   "activity.day.older": {
     "value": "Older"
   },
+  "activity.kind.credential_efforts": {
+    "value": {
+      "one": "{{names}} checked the effort levels of a key",
+      "other": "{{names}} checked the effort levels of a key"
+    }
+  },
   "activity.kind.proposal_waiting": {
     "value": {
       "one": "{{names}} proposes an improvement",

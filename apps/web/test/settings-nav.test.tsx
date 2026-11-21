@@ -138,8 +138,8 @@ describe("finding the settings", () => {
     state.instance = { version: "2026.11.06.1", sourceUrl: "https://git.example.com/fork" };
     await go("settings/about", state);
     expect(screen().getAllByRole("heading", { level: 2, name: "Sobre o squadchat" }).length).toBeGreaterThan(0);
-    const site = screen().getByRole("link", { name: "squadchat" });
-    expect(site.closest("h2")?.textContent).toBe("Baseado no squadchat da AGENTESCHAT, LLC");
+    const site = screen().getByRole("link", { name: "agentes.chat" });
+    expect(site.closest("h2")?.textContent).toBe("Baseado no agentes.chat da AGENTESCHAT, LLC");
     expect(site.getAttribute("href")).toBe("https://agentes.chat");
     expect(screen().getByText("2026.11.06.1")).toBeTruthy();
     expect(screen().getByRole("link", { name: "GNU Affero General Public License v3" }).getAttribute("href")).toBe(

@@ -854,6 +854,7 @@
       "older": "Lebih lama"
     },
     "kind": {
+      "credential_efforts_other": "{{names}} memeriksa tingkat usaha sebuah kunci",
       "proposal_waiting_other": "{{names}} mengusulkan perbaikan",
       "mention_other": "{{names}} menyebutmu",
       "thread_reply_other": "{{names}} membalas di utas",

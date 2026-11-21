@@ -396,20 +396,25 @@ export function EndpointForm({
         </Body>
       </Locked>
       {(onCancel || ready || saving) && (
-        <Foot note={saving ? t("endpoint.testing") : undefined}>
+        <Foot
+          note={
+            saving ? (
+              t("endpoint.testing")
+            ) : editing ? (
+              <Button
+                variant="link"
+                loading={effortCheck.isPending}
+                disabled={effortCheck.isPending}
+                onClick={() => credential && effortCheck.mutate(credential.id)}
+              >
+                {t("connectAi.key.testModels")}
+              </Button>
+            ) : undefined
+          }
+        >
           {onCancel && (
             <Button onClick={onCancel} disabled={saving}>
               {t("common.cancel")}
-            </Button>
-          )}
-          {editing && (
-            <Button
-              variant="link"
-              loading={effortCheck.isPending}
-              disabled={effortCheck.isPending}
-              onClick={() => credential && effortCheck.mutate(credential.id)}
-            >
-              {t("connectAi.key.testModels")}
             </Button>
           )}
           <Button variant="primary" loading={saving} disabled={!ready || saving} onClick={save}>
