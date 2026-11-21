@@ -7,18 +7,25 @@ import {
   ownSignInName,
   signInOf,
 } from "@agenteschat/client/lib/ai-accounts";
+import { managesAgent } from "@agenteschat/client/lib/audience";
 import { brainLine, thinksWith } from "@agenteschat/client/lib/brain";
 import { advancedContents, brainEffortScale, viewSpeedFits } from "@agenteschat/client/lib/brain-advanced";
 import { effortFamily } from "@agenteschat/client/lib/brain-picker";
 import { computerNameOf } from "@agenteschat/client/lib/computer";
 import { agentGrammar } from "@agenteschat/client/lib/grammar";
 import { aiChoiceOf, planOfKind } from "@agenteschat/client/lib/no-ai";
-import { can } from "@agenteschat/client/lib/permissions";
 import { modelLimitText } from "@agenteschat/client/lib/plan-usage";
-import { brainPlan, geminiPersonal, isPlanId, planFreeHint, planOf } from "@agenteschat/client/lib/plans";
+import {
+  brainMissingHint,
+  brainPlan,
+  geminiPersonal,
+  isPlanId,
+  planFreeHint,
+  planOf,
+} from "@agenteschat/client/lib/plans";
 import { apiProviderOf, isAuto, providerLabel } from "@agenteschat/client/lib/providers";
 import { isPersonal } from "@agenteschat/client/lib/workspace-mode";
-import { limitOffers, planState } from "@agenteschat/ui/plan-state";
+import { aroundOwnSignIn, limitOffers, planState } from "@agenteschat/ui/plan-state";
 import { Fragment, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
@@ -32,11 +39,13 @@ import {
   GroupedHeader,
   GroupedList,
   GroupedRow,
+  insetPastFold,
   motion,
   ProviderLogo,
   SCREEN_X,
   SkeletonList,
   Text,
+  useFoldRoom,
   useReducedMotion,
   useTheme,
 } from "@/ui";
@@ -99,8 +108,8 @@ export function AgentAiScreen({ agentId }: { agentId: string }) {
   const name = agent?.name ?? "";
   const g = agentGrammar(name);
   const ownerFirst = agent?.ownerUserId ? dir.memberById.get(agent.ownerUserId)?.name.split(" ")[0] : undefined;
-  // As on the web: its owner and admins load it, members don't.
-  const allowed = (meId !== null && agent?.ownerUserId === meId) || can(org, "manage_agents");
+  // As on the web: its owner and who manages it (the server's `canManage`) load it, members don't.
+  const allowed = (meId !== null && agent?.ownerUserId === meId) || managesAgent(agent);
   const brain = useAgentBrain(orgId, agentId, allowed);
   const { pending, save } = useSaveBrain(agentId);
   // Looking at the plan: its usage is looked up again (it comes back as `machine.updated`).
@@ -176,6 +185,21 @@ export function AgentAiScreen({ agentId }: { agentId: string }) {
             : null;
   const ownRow = view !== undefined && kind !== null && ownSignInListed(view, row, kind);
   const choices = view ? accountChoices(accounts, [view.account]) : [];
+  const [choicesBefore, choicesAfter] = aroundOwnSignIn(
+    kind ?? "",
+    choices.map((c) => ({ c, usage: c.login.usage })),
+  );
+  const choiceRow = (c: (typeof choices)[number]) => (
+    <AiRow
+      key={c.login.id}
+      row={accountRow(t, c, name, i18n.language)}
+      checked={c.login.id === account}
+      onPress={() => (c.also ? connect(c.login, true) : choose(c.login))}
+      {...(c.login.mine && view?.computer
+        ? { onRename: () => view.computer && openRenameAiAccount(view.computer.machineId, c.login.id) }
+        : {})}
+    />
+  );
   const adds = view?.canUsePlans === true && view.canManageAccounts;
   // On someone else's computer only whoever connected it adds a sign-in: with nothing of the owner's there, why, in
   // place of the list.
@@ -214,6 +238,7 @@ export function AgentAiScreen({ agentId }: { agentId: string }) {
               <>
                 <GroupedHeader>{t("agentPage.work.brain.account")}</GroupedHeader>
                 <GroupedList>
+                  {choicesBefore.map(({ c }) => choiceRow(c))}
                   {ownRow ? (
                     <GroupedRow
                       leading={<ProviderLogo id={kind} size="sm" />}
@@ -222,17 +247,7 @@ export function AgentAiScreen({ agentId }: { agentId: string }) {
                       onPress={() => choose(null)}
                     />
                   ) : null}
-                  {choices.map((c) => (
-                    <AiRow
-                      key={c.login.id}
-                      row={accountRow(t, c, name, i18n.language)}
-                      checked={c.login.id === account}
-                      onPress={() => (c.also ? connect(c.login, true) : choose(c.login))}
-                      {...(c.login.mine && view.computer
-                        ? { onRename: () => view.computer && openRenameAiAccount(view.computer.machineId, c.login.id) }
-                        : {})}
-                    />
-                  ))}
+                  {choicesAfter.map(({ c }) => choiceRow(c))}
                   {adds ? (
                     <GroupedRow
                       icon="plus"
@@ -358,7 +373,8 @@ const DOCK_OUT = 28;
 
 /**
  * The effort, floating over the model list in the thumb's reach, whatever is scrolled under it. It slides away with
- * "Automático", which picks the effort too.
+ * "Automático", which picks the effort too. Folded like a book, the ramp keeps to the half past the fold, so its thumb
+ * never slides through the curve (ADR 0212).
  */
 function EffortDock({
   agentId,
@@ -375,6 +391,7 @@ function EffortDock({
   const { colors, shadows } = useTheme();
   const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
+  const foldSide = useFoldRoom();
   const dir = useDirectory();
   const { orgId } = useOrg();
   const view = useAgentBrain(orgId, agentId, true, false, scope).data;
@@ -416,7 +433,12 @@ function EffortDock({
         height.set(e.nativeEvent.layout.height);
         onHeight(e.nativeEvent.layout.height);
       }}
-      style={[styles.dock, { bottom: insets.bottom + 8, boxShadow: shadows.e2 }, slid]}
+      style={[
+        styles.dock,
+        { bottom: insets.bottom + 8, boxShadow: shadows.e2 },
+        foldSide && insetPastFold(foldSide, SCREEN_X),
+        slid,
+      ]}
     >
       <Glass liquid intensity={70} style={[styles.dockGlass, { borderColor: colors.line2 }]}>
         {effortScale === null ? (
@@ -459,7 +481,12 @@ export function AgentModelScreen({ agentId, scope }: { agentId: string; scope?: 
   const view = brain.data;
   const plan = view ? brainPlan(view) : undefined;
   const rows = view ? modelRows(t, view, plan) : [];
-  const freeHint = planFreeHint(t, plan);
+  const freeHint =
+    planFreeHint(t, plan) ??
+    brainMissingHint(
+      t,
+      view?.options.find((o) => o.kind === view.brain && !plan),
+    );
   // A model without a maker of its own wears its plan's mark, else its brain's.
   const mark = (plan && view?.accounts.find((a) => a.id === view.account)?.provider) || (view?.brain ?? "");
   const hasModels = view !== undefined && view.brain !== "model";

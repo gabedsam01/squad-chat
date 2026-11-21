@@ -32,6 +32,7 @@ import { getChannelCached } from "./context";
 import { consolidateOrg } from "./context/consolidate";
 import { applyReactionFeedback } from "./context/feedback";
 import { LEARN_JOB, learnRun } from "./context/learn";
+import { MOVE_LEARNED_JOB, moveLearnedSections } from "./context/learned-sections";
 import { REFLECT_DEFAULTS, reflectThread } from "./context/reflect";
 import { judgeOf, summaryModelReady } from "./context/summaries";
 import { reportDroppedMentions, tellWakeSkipped } from "./continuation";
@@ -82,7 +83,12 @@ import { FILE_JOIN_REQUEST_JOB, fileJoinRequest } from "./invite-requests";
 import { announceTaskConversation } from "./issues";
 import type { JevKey, JevKeySource } from "./jev-key";
 import { DEEP_MENTION_THRESHOLD, DEEP_WAKE_HOP, MENTION_WAKE_THRESHOLD, mentionNeedsNothing } from "./judge";
-import { platformCapReached } from "./limits";
+import { platformCapReached, platformCapRouter } from "./limits";
+import type { LiveDocs } from "./live/docs";
+import { liveImageJobHandlers } from "./live/images";
+import { liveJobHandlers } from "./live/jobs";
+import { runLiveActivityJob } from "./live-activity";
+import { LIVE_ACTIVITY_JOB } from "./live-activity-queue";
 import { wakeForAccessDecision } from "./machine-access";
 import type { MachineCaller } from "./machine-hub";
 import {
@@ -94,7 +100,7 @@ import {
 } from "./machine-tasks";
 import { WAKE_OVERDUE_JOB, wakeOverdue } from "./machine-wake";
 import { isMediaAfterReply, isMediaOnly } from "./media";
-import { getMessage, referencedOf } from "./messages";
+import { getMessage, type Message, referencedOf } from "./messages";
 import { checkMissionDone } from "./mission-delivery";
 import { onMissionTaskEnded, syncMissionFiles } from "./mission-sync";
 import { afterMachineTaskEnded, afterMissionRunEnded, startQueuedMissionTasks } from "./mission-worktree";
@@ -132,6 +138,7 @@ import { activateDeliveredSecret, discardClosedSecret } from "./secrets";
 import { runSkillUpdates, SKILL_UPDATES_JOB } from "./skill-updates";
 import type { SkillDeps } from "./skills";
 import { TEAM_HELLO_JOB } from "./standing";
+import { ROUTE_RELEASED_JOB } from "./steering";
 import { purgeOrgFiles, purgeUserFiles, runMigration, type StorageDeps } from "./storage";
 import { postStretchCard, STRETCH_JOB, type StretchHold } from "./stretch";
 import { forgetReplyWords } from "./support-requests";
@@ -151,6 +158,7 @@ import {
   purgeAccount,
   purgeWorkspace,
 } from "./workspace-deletion";
+import { ORG_RESET_JOB, resetWorkspace } from "./workspace-reset";
 
 /** A thread that grew by another `everyMessages` gets reflected on (capture), within the per-thread cap. */
 async function maybeEnqueueReflection(deps: JobDeps, orgId: string, threadId: string) {
@@ -222,6 +230,8 @@ export interface JobDeps extends RunExecutorDeps {
   };
   /** Drive (routines' reports, polls). */
   artifacts?: ArtifactDeps;
+  /** Live files this process hosts (ADR 0196): the image job places pictures on canvases through them (ADR 0197). */
+  live?: LiveDocs;
   /** Agents' computers: the hub and public URL missions use. */
   sandbox?: SandboxDeps | null;
   /** The engine missions start, resume and cancel runs with (default: today's run queue). */
@@ -279,23 +289,27 @@ export function messageRouter(deps: JobDeps): RouterDeps | null {
       : []),
     ...(jev
       ? [
-          createJevRouterStrategy({
-            key: jev.key,
-            timeoutMs: jev.timeoutMs,
-            fetch: jev.fetch,
-            baseURL: jev.baseURL,
-            recordUsage: async (u) => {
-              await deps.gateway.recordExternalUsage({
-                orgId: u.orgId,
-                kind: "router",
-                provider: "typesafe",
-                model: u.model,
-                inputTokens: u.inputTokens,
-                outputTokens: u.outputTokens,
-                costNanoUsd: u.costNanoUsd,
-              });
-            },
-          }),
+          platformCapRouter(
+            deps.db,
+            createJevRouterStrategy({
+              key: jev.key,
+              timeoutMs: jev.timeoutMs,
+              fetch: jev.fetch,
+              baseURL: jev.baseURL,
+              recordUsage: async (u) => {
+                await deps.gateway.recordExternalUsage({
+                  orgId: u.orgId,
+                  kind: "router",
+                  provider: "typesafe",
+                  model: u.model,
+                  requestedModel: "route",
+                  inputTokens: u.inputTokens,
+                  outputTokens: u.outputTokens,
+                  costNanoUsd: u.costNanoUsd,
+                });
+              },
+            }),
+          ),
         ]
       : []),
     router.strategy ?? createLlmRouterStrategy({ gateway: deps.gateway, resolveModel: smallModel }),
@@ -323,7 +337,8 @@ export function messageRouter(deps: JobDeps): RouterDeps | null {
     quietMs: router.quietMs,
     quietByTyping: router.quietByTyping,
     pubsub: deps.pubsub,
-    // Jev bills the platform: past the workspace's platform AI for the month, only @mentions start agents.
+    // Jev bills the platform: past the workspace's platform AI for the month, its own small model picks, else only
+    // @mentions start agents.
     ...(jev ? { platformCapReached: (orgId: string) => platformCapReached(deps.db, orgId) } : {}),
   };
 }
@@ -583,6 +598,59 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
     missionEngine: deps.missionEngine ?? null,
   };
 
+  /**
+   * A person's message nobody mentioned, past the cases that start or join a run by themselves: the DM's agent, or the
+   * router (`routeMessage`), whose decision the receipts say (`message.routed`).
+   */
+  async function routePersonMessage(
+    message: Message,
+    where: Awaited<ReturnType<typeof getChannelCached>>,
+    released?: { except: string[] },
+  ) {
+    const input = { orgId: message.orgId, messageId: message.id };
+    const routed = (
+      strategy: "mention" | "dm" | "router" | "none",
+      seenBy: string[],
+      runs: AgentRun[],
+      reason?: string,
+      intent?: ConnectIntent,
+      decidedBy?: DecidedBy,
+    ) =>
+      publishRouted(deps.pubsub, message, {
+        strategy,
+        seenBy,
+        runs,
+        ...(reason ? { reason } : {}),
+        ...(decidedBy ? { decidedBy } : {}),
+        ...intent,
+      });
+    if (where?.kind === "dm") {
+      await dispatchDm(deps.db, message, { maxHops: deps.maxHops }); // idempotent safety net
+      return;
+    }
+    if (!routing) return routed("none", [], []);
+    // In a mission's thread only its owner and deciders make the agent work (the router included).
+    if (message.threadId && message.authorUserId) {
+      const mission = await missionOfThread(deps.db, message.orgId, message.threadId);
+      if (mission && ["proposed", "active", "paused", "awaiting_close"].includes(mission.status)) {
+        const role = await missionRole(deps.db, mission, message.authorUserId);
+        if (role !== "owner" && role !== "decide") return routed("none", [], [], "mission_read_only");
+      }
+    }
+    const res = await routeMessage(routing, input, released ? { ...released, forSomeoneElse: true } : {});
+    // Continued: the person's next message carries the decision, and its receipt.
+    if (res.skipped === "already_routed" || res.skipped === "continued") return;
+    // Nobody can think: what the person asks for may be to connect an AI (Jev reads it), for the Connect step.
+    if (res.reason === NO_AI) {
+      if (res.held) await queuePlanWaiting(deps.db, message.orgId);
+      const intent = res.held
+        ? undefined
+        : await aiConnectIntent(deps.context?.judge, { orgId: message.orgId, text: message.body });
+      return routed("none", [], [], NO_AI, intent);
+    }
+    await routed(res.seenBy ? "router" : "none", res.seenBy ?? [], res.runs, res.reason, undefined, res.decidedBy);
+  }
+
   const handlers: JobHandlers = {
     // A wake the brakes deferred (its agent at its cap of unrequested work, or its computer full) looks again.
     [LATER_JOB]: async (job) => {
@@ -610,11 +678,13 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
       if (!message) return;
       if (deps.context && message.threadId) await maybeEnqueueReflection(deps, message.orgId, message.threadId);
       // An issue's work card, its start (the run is already started) and the "took issue #N" line route to nobody.
-      // A task conversation's root (ADR 0145) stands for the task: nobody is routed either.
+      // A task conversation's root (ADR 0145) stands for the task, a file conversation's (ADR 0199) for the file:
+      // nobody is routed either.
       if (message.meta.issueWork || message.meta.issueWorkStart || message.meta.issueTaken) return;
-      if (message.meta.taskConversation) return;
+      if (message.meta.taskConversation || message.meta.fileConversation) return;
       // A fast reply while the task works (talker.ts): its task reads it; it starts nobody, not even by mention.
-      if (message.meta.talker) return;
+      // Nor does the line an agent says before slow work (`say_now`, ADR 0207): its reply comes after it.
+      if (message.meta.talker || message.meta.sayNow) return;
       // A GIF or a sticker alone (ADR 0091), an agent's silent one after its reply too: it starts nobody, routes
       // to nobody and gets no sticker after it. Its insert queues no `message.posted`; one delivered anyway does
       // nothing.
@@ -777,38 +847,25 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
       }
       // An answer to an agent's question resumes that run; nobody else is routed.
       if (typeof message.meta.answersQuestionId === "string") return;
-      // Delivered to an agent's task already in progress (steering): no second run.
+      // Delivered to an agent's task already in progress (steering): no second run. One that wasn't for that agent
+      // after all comes back to the router from the triage (`ROUTE_RELEASED_JOB`).
       if (Array.isArray(message.meta.steeredRunIds)) return;
       // A reply in an agent's background work thread: its reply turn started with the message.
       if (message.meta.forWork) return;
       // For the task's agent in its task's conversation: its run started with the message, as in a DM.
       if (message.meta.forTask) return;
-      const channel = where;
-      if (channel?.kind === "dm") {
-        await dispatchDm(deps.db, message, { maxHops: deps.maxHops }); // idempotent safety net
-        return;
-      }
-      if (!routing) return routed("none", [], []);
-      // In a mission's thread only its owner and deciders make the agent work (the router included).
-      if (message.threadId && message.authorUserId) {
-        const mission = await missionOfThread(deps.db, message.orgId, message.threadId);
-        if (mission && ["proposed", "active", "paused", "awaiting_close"].includes(mission.status)) {
-          const role = await missionRole(deps.db, mission, message.authorUserId);
-          if (role !== "owner" && role !== "decide") return routed("none", [], [], "mission_read_only");
-        }
-      }
-      const res = await routeMessage(routing, input);
-      // Continued: the person's next message carries the decision, and its receipt.
-      if (res.skipped === "already_routed" || res.skipped === "continued") return;
-      // Nobody can think: what the person asks for may be to connect an AI (Jev reads it), for the Connect step.
-      if (res.reason === NO_AI) {
-        if (res.held) await queuePlanWaiting(deps.db, message.orgId);
-        const intent = res.held
-          ? undefined
-          : await aiConnectIntent(deps.context?.judge, { orgId: message.orgId, text: message.body });
-        return routed("none", [], [], NO_AI, intent);
-      }
-      await routed(res.seenBy ? "router" : "none", res.seenBy ?? [], res.runs, res.reason, undefined, res.decidedBy);
+      await routePersonMessage(message, where);
+    },
+    // A message that went into an agent's task but was for someone else (`steerHandling` `elsewhere`, ADR 0112
+    // addendum of 2026-11-19): the router decides who answers it, maybe nobody, as for any message nobody mentioned.
+    [ROUTE_RELEASED_JOB]: async (job) => {
+      const message = await getMessage(deps.db, orgOf(job), String(job.payload.messageId));
+      if (!message || message.deletedAt || message.authorType !== "person") return;
+      // Still in another agent's task (two were at it when it came): that one has it.
+      if (Array.isArray(message.meta.steeredRunIds)) return;
+      // Never back to the agent whose task it left, and no agent by a rule: only one the router's step picks.
+      const except = typeof job.payload.agentId === "string" ? [job.payload.agentId] : [];
+      await routePersonMessage(message, await getChannelCached(deps.db, message.orgId, message.channelId), { except });
     },
     "agent_run.execute": async (job, ctx) => {
       // Counted per run (statements per stage go into the run profile).
@@ -817,12 +874,14 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
       if (typeof job.payload.line === "string")
         await publishQueueChanged(deps.pubsub, orgOf(job), job.payload.line).catch(() => {});
       const lineSince = typeof job.payload.lineSince === "number" ? job.payload.lineSince : undefined;
+      const routerMs = typeof job.payload.routerMs === "number" ? job.payload.routerMs : undefined;
       await queryTrace.run({ count: 0 }, () =>
         executeRun(deps, String(job.payload.runId), {
           ...ctx,
           jobId: job.id,
           ...(wait ? { wait } : {}),
           ...(lineSince ? { lineSince } : {}),
+          ...(routerMs !== undefined ? { routerMs } : {}),
         }),
       );
       // A mission's main-session turn that ended: write items queued behind it may start (ADR 0044).
@@ -999,6 +1058,21 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
         { finalAttempt: ctx.finalAttempt },
       );
     },
+    // An owner's reset (`resetWorkspace`): a no-op once done.
+    [ORG_RESET_JOB]: async (job) => {
+      const blobs = deps.artifacts?.blobs ?? deps.voice?.blobs;
+      await resetWorkspace(
+        {
+          db: deps.db,
+          pubsub: deps.pubsub,
+          hub: deps.sandbox?.machines?.hub ?? null,
+          mail: deps.mail,
+          artifacts: deps.artifacts,
+          ...(blobs ? { blobs } : {}),
+        },
+        String(job.payload.orgId),
+      );
+    },
     // An account whose deletion's date came (`purgeAccount`): a no-op once restored or gone.
     [ACCOUNT_DELETE_JOB]: async (job) => {
       await purgeAccount(
@@ -1160,6 +1234,10 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
     },
     // What else the right hand does by itself: each lane's own jobs (`right-hand-lane.ts`).
     ...lodiLaneHandlers(deps),
+    // Live files (ADR 0196): their changes folded into the state, and a version after a quiet spell.
+    ...liveJobHandlers({ artifacts: deps.artifacts, pubsub: deps.pubsub, log: deps.log }),
+    // Pictures asked for on a canvas (ADR 0197): made through the gateway, placed where their placeholders wait.
+    ...liveImageJobHandlers({ artifacts: deps.artifacts, live: deps.live, gateway: deps.gateway, log: deps.log }),
     // A person's monthly AI limit neared or reached (ADR 0141): the person hears 80%, who decides hears 100%.
     [PERSON_LIMIT_JOB]: async (job) => {
       await notifyPersonLimit({ db: deps.db, pubsub: deps.pubsub }, orgOf(job), {
@@ -1173,7 +1251,7 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
     [DECISION_INSTALL_JOB]: async (job) => {
       await runDecisionInstall(deps, job);
     },
-    // A workspace endpoint's effort check finished (ADR 0199): the person hears from the right hand.
+    // A workspace endpoint's effort check finished (ADR 9005): the person hears from the right hand.
     [CREDENTIAL_EFFORTS_JOB]: async (job) => {
       const orgId = orgOf(job);
       const credentialId = String(job.payload.credentialId);
@@ -1236,6 +1314,10 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
         { held: job.payload.held === true },
       );
     },
+    // The Live Activity of a person's agents at work, on their iPhones (ADR 0210): sent when what it shows changed.
+    [LIVE_ACTIVITY_JOB]: async (job) => {
+      await runLiveActivityJob({ db: deps.db, push: deps.push }, job);
+    },
     // A workspace's skills that update by themselves from their links, once a day.
     [SKILL_UPDATES_JOB]: async (job) => {
       if (!deps.skills) return;
@@ -1252,6 +1334,11 @@ export function createJobHandlers(deps: JobDeps): JobHandlers {
     [VAULT_SYNC_JOB]: async (job) => {
       if (!deps.vault) return;
       await runVaultSync(deps.vault, orgOf(job), String(job.payload.connectionId));
+    },
+    // Queued once by migration 0310: the agents' "## Learned" sections become memory; a no-op once moved.
+    [MOVE_LEARNED_JOB]: async (job) => {
+      if ((await moveLearnedSections(deps.db, orgOf(job))) > 0)
+        await publishListChanged(deps.pubsub, orgOf(job), "memory");
     },
     "context.consolidate": async (job) => {
       if (!deps.context) return;

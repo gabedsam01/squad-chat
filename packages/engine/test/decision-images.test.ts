@@ -12,7 +12,7 @@ import {
 } from "../src";
 import { type Fixture, SECRET, setup } from "./fixtures";
 
-// Images are judged only by the installation's decision model, and only when it reads them (ADR 0200).
+// Images are judged only by the installation's decision model, and only when it reads them (ADR 9006).
 const image = { shot: { data: "AAAA", format: "png" as const } };
 const request = (withImage: boolean): JudgeRequest => ({
   orgId: "o",
@@ -22,7 +22,7 @@ const request = (withImage: boolean): JudgeRequest => ({
   ...(withImage ? { images: image } : {}),
 });
 
-describe("images and the judges (ADR 0200)", () => {
+describe("images and the judges (ADR 9006)", () => {
   test("Jev refuses images before any network call", async () => {
     let calls = 0;
     const judge = createJevJudge({
@@ -104,7 +104,7 @@ describe("DecisionModel.seesImages", () => {
   });
 });
 
-describe("DecisionModel keys (ADR 0195 addendum)", () => {
+describe("DecisionModel keys (ADR 9001 addendum)", () => {
   let f: Fixture;
   afterEach(() => f?.close?.());
   test("each provider keeps its key: turning one on again takes none, and removing one keeps the others", async () => {

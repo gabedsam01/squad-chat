@@ -1,6 +1,6 @@
 import type { ScreenKind } from "@agenteschat/adapters";
 import type { Judge } from "../judge";
-import { type ConditionResult, checkCondition, findDismiss, findInPage } from "./checks";
+import { type ConditionResult, checkCondition, findDismiss, findInPage, type ScreenJudgmentShadow } from "./checks";
 import { goalValuesOf, runGoal } from "./goal";
 import {
   diffObservations,
@@ -72,7 +72,7 @@ export interface ScreenStep {
   seconds?: number;
   /** `read`: what to get from the screen ("the order total"): only the lines that answer it. */
   find?: string;
-  /** `goal` (ADR 0200): the task in words, the texts it may type or choose by name, and the most actions it takes. */
+  /** `goal` (ADR 9006): the task in words, the texts it may type or choose by name, and the most actions it takes. */
   goal?: string;
   values?: Record<string, string>;
   steps?: number;
@@ -218,6 +218,8 @@ export interface PlanDeps {
   /** How long an `expect` that isn't true yet may take to become true (default `EXPECT_GRACE_MS`). */
   expectGraceMs?: number;
   now?: () => number;
+  /** Where a `shadow` workspace's screen judgments are recorded (`setScreenJudgments`). */
+  shadow?: ScreenJudgmentShadow[];
 }
 
 export type StepStatus = "done" | "failed" | "skipped";
@@ -239,7 +241,7 @@ export interface StepReport {
   ran?: boolean;
   /** What a `type_secret` typed, by name (the site a Vault login was typed for, ADR 0144): never a value. */
   typed?: string;
-  /** `goal`: every action it took, each as a step of its own (ADR 0200). */
+  /** `goal`: every action it took, each as a step of its own (ADR 9006). */
   goal?: { actions: StepReport[] };
   /** An `open` the site sent to another page than the one asked (a deep link it doesn't take). */
   landedElsewhere?: boolean;
@@ -356,7 +358,7 @@ export async function runPlan(deps: PlanDeps, steps: ScreenStep[]): Promise<Plan
   const started = now();
   const kind = deps.surface.kind ?? "browser";
   const noun = SCREEN_NOUN[kind];
-  const ids = { judge: deps.judge, orgId: deps.orgId, agentId: deps.agentId, runId: deps.runId };
+  const ids = { judge: deps.judge, orgId: deps.orgId, agentId: deps.agentId, runId: deps.runId, shadow: deps.shadow };
   const reports: StepReport[] = steps.map((step) => ({ step, status: "skipped", ms: 0 }));
   let screen: ScreenObservation | null = deps.last ?? null;
   const before = deps.before ?? screen;
@@ -734,8 +736,9 @@ export async function runPlan(deps: PlanDeps, steps: ScreenStep[]): Promise<Plan
       report.ran = true;
       if (step.expect?.trim()) {
         const condition = step.expect.trim();
+        const focus = step.target?.trim();
         const judgeOn = (o: ScreenObservation) =>
-          checkCondition({ ...ids, condition, observation: o, changes: diffObservations(prior, o) });
+          checkCondition({ ...ids, condition, observation: o, changes: diffObservations(prior, o), focus });
         let after = screen ?? (await look());
         let check = await judgeOn(after);
         // Not true yet: the page may still be on its way (a submit that navigates later, a server's answer).

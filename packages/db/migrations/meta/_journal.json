@@ -2087,6 +2087,90 @@
       "when": 1795102303885,
       "tag": "0301_decision_model_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1795102303886,
+      "tag": "0302_live_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1795102303887,
+      "tag": "0303_drive_files_shared",
+      "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1795102303888,
+      "tag": "0304_agent_editors",
+      "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1795102303889,
+      "tag": "0305_lodi_own_sign_in",
+      "breakpoints": true
+    },
+    {
+      "idx": 304,
+      "version": "7",
+      "when": 1795102303890,
+      "tag": "0306_claude_auth_percent",
+      "breakpoints": true
+    },
+    {
+      "idx": 305,
+      "version": "7",
+      "when": 1795102303891,
+      "tag": "0307_drive_folders",
+      "breakpoints": true
+    },
+    {
+      "idx": 306,
+      "version": "7",
+      "when": 1795102303892,
+      "tag": "0308_after_message_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1795102303893,
+      "tag": "0309_workspace_reset",
+      "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1795102303894,
+      "tag": "0310_machine_disconnects",
+      "breakpoints": true
+    },
+    {
+      "idx": 309,
+      "version": "7",
+      "when": 1795215601286,
+      "tag": "0311_live_activity_devices",
+      "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1795219383867,
+      "tag": "0312_move_learned_sections",
+      "breakpoints": true
+    },
+    {
+      "idx": 311,
+      "version": "7",
+      "when": 1795280060278,
+      "tag": "0313_provider_outage_wait_index",
+      "breakpoints": true
     }
   ]
 }

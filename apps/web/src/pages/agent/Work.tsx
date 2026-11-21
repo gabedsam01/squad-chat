@@ -58,14 +58,15 @@ import { Link } from "@tanstack/react-router";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { NO_COMPUTER, useNoComputer } from "@/components/AgentComputer";
-import { usePlanHold } from "@/components/ai/ConnectAiSteps";
-import { useConnectAi } from "@/components/ConnectAi";
+import { usePlanHold } from "@/components/ai/plan-hold";
+import { useConnectAi } from "@/components/connect-ai-context";
 import { ToolOffWayOut, useToolOneClick } from "@/components/devices/ToolOneClick";
 import { CommandBlock } from "@/components/machine-bits";
 import { useOrg } from "@/components/org-context";
 import { ReconnectThisMacButton, ThisMacButton, useAgentsHere, useIsThisMac, useThisMac } from "@/components/ThisMac";
 import { useComputerEdition } from "@/components/WorkspaceComputer";
 import { useDirectory } from "@/hooks/useDirectory";
+import { ownsOrManages } from "@/lib/agent-edit";
 import { inDesktopApp } from "@/lib/desktop";
 import { planWord } from "@/lib/plan-usage";
 import { useToast } from "@/lib/toast";
@@ -240,7 +241,7 @@ export function WorkCard({
   const choice = target && !machine ? noComputer.choice(true) : null;
   // No computer yet where the workspace's own is on its way: it works there once it's ready.
   const waiting = choice === "workspace" ? noComputer.setup : null;
-  const member = viewer === "member";
+  const member = !ownsOrManages(viewer);
   const reason = work.browser.data?.reason;
   const machineRow = machine ? work.machines.data?.find((m) => m.id === machine.machineId) : undefined;
   // Only a switch that is off has a step there: `not_reported` and `not_installed` are on, `outdated` has none.

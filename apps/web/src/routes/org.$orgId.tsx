@@ -8,12 +8,13 @@ import { usePageTextSize } from "@/chat/look";
 import { useFollowPickedAgent } from "@/components/AppIconPicker";
 import { Arrival } from "@/components/arrival/Arrival";
 import { FeedbackHost } from "@/components/arrival/FeedbackDialog";
-import { ArtifactViewerProvider } from "@/components/artifacts/ArtifactViewer";
+import { ArtifactViewerProvider } from "@/components/artifacts/viewer-context";
 import { CommandMenu } from "@/components/CommandMenu";
-import { ConnectAiProvider } from "@/components/ConnectAi";
-import { ComputerDialogProvider } from "@/components/computer/ComputerDialog";
+import { ComputerDialogProvider } from "@/components/computer/provider";
+import { ConnectAiProvider } from "@/components/connect-ai-context";
+import { DesktopDragStrip } from "@/components/DesktopDragStrip";
 import { MenuBarActions } from "@/components/DesktopMenus";
-import { DesktopDragStrip, DesktopTitleBar } from "@/components/DesktopTitleBar";
+import { DesktopTitleBar } from "@/components/DesktopTitleBar";
 import { DetailsHost } from "@/components/DetailsHost";
 import { InviteDialogProvider } from "@/components/invite/InviteDialog";
 import { LeaveChannelDialog } from "@/components/LeaveChannelDialog";
@@ -23,7 +24,7 @@ import { NavDrawerProvider, NavScrim, ShellBar } from "@/components/NavDrawer";
 import { NoticeIsland } from "@/components/NoticeIsland";
 import { PushOpens } from "@/components/NotificationOpen";
 import { NotMember } from "@/components/NotMember";
-import { NewAgentProvider } from "@/components/new-agent/NewAgentDialog";
+import { NewAgentProvider } from "@/components/new-agent/new-agent-context";
 import { OrgProvider } from "@/components/org-context";
 import { RemoveMemberProvider } from "@/components/RemoveMember";
 import { Sidebar } from "@/components/Sidebar";
@@ -34,11 +35,17 @@ import { ComputerSetupNotice } from "@/components/WorkspaceComputer";
 import { HeaderSearchProvider } from "@/hooks/useWorkspaceSearch";
 import { useServerLocale } from "@/i18n";
 import { inDesktopApp } from "@/lib/desktop";
+import { preloadDialogs } from "@/lib/lazy-dialog";
 import { notePlace } from "@/lib/return-to";
 import { rememberPlace, showWorkspace } from "@/lib/start";
 import { STORAGE_KEYS, storage } from "@/lib/storage";
 import { useWorkspaceAccent } from "@/lib/theme";
 import { RealtimeProvider } from "@/realtime/context";
+
+/** A live file's own page (`org.$orgId.drive_.$fileId`): `/org/<org>/drive/<file>`. */
+const LIVE_FILE_PATH = /\/drive\/[^/]+\/?$/;
+/** That page presenting (`?present`): the slide takes the window, the sidebar steps aside (ADR 0196 §9). */
+const PRESENTING = /[?&]present=(true|1)(&|$)/;
 
 /** The workspace shell of an organization: sidebar + page, and its WebSocket. */
 export const Route = createFileRoute("/org/$orgId")({
@@ -64,7 +71,10 @@ function OrgLayout() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const href = useRouterState({ select: (s) => s.location.href });
   // "Criar agente" is a focused flow with its own rail: no sidebar while it's open (admins only; others see why not).
-  const focused = /\/agents\/new\/?$/.test(path) && can(membership, "create_agents");
+  // A live file's page is a page of the app with the sidebar (ADR 0199), but presenting takes the whole window.
+  const focused =
+    (/\/agents\/new\/?$/.test(path) && can(membership, "create_agents")) ||
+    (LIVE_FILE_PATH.test(path) && PRESENTING.test(href));
   // Notifications in this browser (ADR 0071), when already on: the server hears of them again, quietly.
   useWebPushRefresh(me.user.id);
   useServerLocale(me.user);
@@ -74,6 +84,9 @@ function OrgLayout() {
   useWorkspaceAccent(membership?.accent);
   // An agent picked as the app icon follows its name and look in its workspace (ADR 0179).
   useFollowPickedAgent(orgId);
+  // The dialogs the shell and its pages open (Connect AI, a new agent, a file, a computer, details) left the first
+  // load: their code comes in the background once this page is up, so opening one doesn't wait for it either.
+  useEffect(() => preloadDialogs(), []);
   useEffect(() => {
     if (!membership) return;
     storage.set(STORAGE_KEYS.lastOrg, membership.id);
@@ -95,6 +108,11 @@ function OrgLayout() {
   useEffect(() => {
     if (gone) void navigate({ to: "/", replace: true });
   }, [gone, navigate]);
+  // A workspace its owner reset (`org.reset` reads `GET /me` again) is theirs to set up again, as opening it would be.
+  const restart = Boolean(membership && settingUp(membership)) && path !== `/org/${orgId}/onboarding`;
+  useEffect(() => {
+    if (restart) void navigate({ to: "/onboarding", replace: true });
+  }, [restart, navigate]);
   // Outside the shell the app's window has no title bar: the page's top drags it.
   const strip = inDesktopApp() && <DesktopDragStrip />;
 

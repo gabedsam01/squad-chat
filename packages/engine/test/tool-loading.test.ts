@@ -8,7 +8,11 @@ import {
   describeCapabilities,
   drainOutbox,
   grantScopes,
+  JevOffError,
   type Judge,
+  KEEP_LOADED_MS,
+  noteConfidentialRun,
+  PLATFORM_CAP,
   postPersonMessage,
   presentTools,
   type ToolContext,
@@ -196,14 +200,20 @@ test("chooseToolGroups: one calibrated question per group, the threshold, and th
   expect(judge.calls[0]).toMatchObject({ kind: "tool_groups", calibrated: true });
 
   const slow: Judge = { name: "slow", ask: () => new Promise(() => {}) };
-  expect(await chooseToolGroups(slow, { ...input, timeoutMs: 5 })).toEqual({
-    groups: [],
-    scores: {},
+  // No answer in time: never the core tools alone, or the agent says it can't do what it can. The groups the
+  // previous run here listed, else every group.
+  const late = await chooseToolGroups(slow, { ...input, timeoutMs: 5 });
+  expect(late).toMatchObject({ scores: {}, source: "timeout", kept: [] });
+  expect([...late.groups].sort()).toEqual(["browser", "issues", "sentry", "wiki"]);
+  expect(await chooseToolGroups(slow, { ...input, previous: ["issues", "gone"], timeoutMs: 5 })).toMatchObject({
+    groups: ["issues"],
     source: "timeout",
-    kept: [],
   });
+  expect((await chooseToolGroups(slow, { ...input, previous: ["*"], timeoutMs: 5 })).groups).toHaveLength(4);
   // In a thread the list only grows: the previous run's groups stay without asking, even when the judge fails.
-  expect(await chooseToolGroups(slow, { ...input, keep: ["browser", "gone"], timeoutMs: 5 })).toMatchObject({
+  expect(
+    await chooseToolGroups(slow, { ...input, keep: ["browser", "gone"], previous: ["browser"], timeoutMs: 5 }),
+  ).toMatchObject({
     groups: ["browser"],
     kept: ["browser"],
   });
@@ -216,7 +226,29 @@ test("chooseToolGroups: one calibrated question per group, the threshold, and th
       throw new Error("down");
     },
   };
-  expect(await chooseToolGroups(broken, input)).toEqual({ groups: [], scores: {}, source: "error", kept: [] });
+  // Refused or down (a workspace past its platform AI for the month): every group the agent is granted, and why.
+  const all = await chooseToolGroups(broken, { ...input, keep: ["wiki"] });
+  expect(all).toMatchObject({ source: "error", kept: ["wiki"], reason: "down", scores: {} });
+  expect(all.groups[0]).toBe("wiki");
+  expect([...all.groups].sort()).toEqual(["browser", "issues", "sentry", "wiki"]);
+  const capped: Judge = { name: "jev", ask: () => Promise.reject(new Error(PLATFORM_CAP)) };
+  expect(await chooseToolGroups(capped, input)).toMatchObject({ source: "error", reason: PLATFORM_CAP });
+  // A server with no Jev key never judges a run: the kept groups and find_tools, as without an answer.
+  const jevOff: Judge = { name: "jev", ask: () => Promise.reject(new JevOffError()) };
+  expect(await chooseToolGroups(jevOff, { ...input, keep: ["wiki"] })).toEqual({
+    groups: ["wiki"],
+    scores: {},
+    source: "error",
+    kept: ["wiki"],
+  });
+  // Nor is a confidential thread's run: the judge's refusal there keeps the kept groups too.
+  noteConfidentialRun("run-sealed");
+  expect(await chooseToolGroups(broken, { ...input, runId: "run-sealed", keep: ["wiki"] })).toEqual({
+    groups: ["wiki"],
+    scores: {},
+    source: "error",
+    kept: ["wiki"],
+  });
 });
 
 test("a run lists what the judge expects it to need, keeps it for the whole run, and reaches the rest on demand", async () => {
@@ -271,11 +303,51 @@ test("a run lists what the judge expects it to need, keeps it for the whole run,
     kept: ["issues"],
   });
 
-  // That run used no issue tool: the one after it goes without them (a greeting doesn't carry what was used before).
+  // That run used no issue tool, but listed them a moment ago: the next one lists them too, so the tools, the system
+  // prompt and the history before it read from the prompt cache instead of being written again.
   await postPersonMessage({ db: f.db, pubsub: f.pubsub }, f.owner.id, f.org.id, f.general.id, { body: "@dev valeu" });
+  await drainOutbox(f.db, f.handlers);
+  const thanks = f.provider.calls.at(-1)?.request.tools ?? [];
+  expect(thanks.map((t) => t.name)).toContain("list_issues");
+  expect(JSON.stringify(thanks)).toBe(JSON.stringify(f.provider.calls.at(-2)?.request.tools));
+
+  // An hour later the cache is cold: a run that only listed them doesn't pass them on (a greeting doesn't carry
+  // what was used before).
+  const hourAgo = new Date(Date.now() - KEEP_LOADED_MS - 60_000);
+  await f.db
+    .update(schema.agentRuns)
+    .set({ finishedAt: hourAgo, updatedAt: hourAgo })
+    .where(eq(schema.agentRuns.agentId, f.agent.id));
+  await postPersonMessage({ db: f.db, pubsub: f.pubsub }, f.owner.id, f.org.id, f.general.id, { body: "@dev bom dia" });
   await drainOutbox(f.db, f.handlers);
   expect((f.provider.calls.at(-1)?.request.tools ?? []).map((t) => t.name)).not.toContain("list_issues");
 });
+
+test("a judge that doesn't answer in time: the run lists what the previous run here did, and its profile says so", async () => {
+  f = await setup({
+    toolsOnDemand: true,
+    issueTools: true,
+    contextTools: true,
+    judge: (kind, _id, _state, q) =>
+      kind === "tool_groups" && JSON.stringify(q.instructions).includes("issues") ? 0.9 : undefined,
+    reply: () => ({ chunks: ["Ok."] }),
+  });
+  await grantScopes(f.db, f.org.id, f.agent.id, [{ connectionId: null, scope: "issues:read" }]);
+  const ask = async (body: string) => {
+    await postPersonMessage({ db: f.db, pubsub: f.pubsub }, f.owner.id, f.org.id, f.general.id, { body });
+    await drainOutbox(f.db, f.handlers);
+    return (f.provider.calls.at(-1)?.request.tools ?? []).map((t) => t.name);
+  };
+  expect(await ask("@dev quais issues estão abertas?")).toContain("list_issues");
+  const judge = f.context.judge as Judge;
+  const real = judge.ask.bind(judge);
+  judge.ask = (request) => (request.kind === "tool_groups" ? new Promise(() => {}) : real(request));
+  // It called no issue tool, so nothing is kept without asking: the groups it listed come back on the timeout.
+  expect(await ask("@dev e as fechadas?")).toContain("list_issues");
+  const runs = await f.db.select().from(schema.agentRuns).orderBy(asc(schema.agentRuns.createdAt));
+  expect((runs.at(-1)?.transcript as { toolGroups?: string[] } | null)?.toolGroups).toEqual(["issues"]);
+  expect(JSON.stringify(runs.at(-1)?.profiles)).toContain("judging_timeout");
+}, 15_000);
 
 test("a reply counts its tools without the lookups: lookups alone leave no tools under it", async () => {
   let step = 0;

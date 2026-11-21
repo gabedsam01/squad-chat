@@ -1,7 +1,9 @@
 import type { BrainEffort } from "@agenteschat/adapters";
 import {
+  agentOutputTokens,
   type ModelMessage,
   type ModelRequest,
+  modelInfo,
   modelProvider,
   type SystemBlock,
   type ToolSpec,
@@ -31,7 +33,8 @@ export interface ModelBrainOptions {
   gateway: ModelGateway;
   /** The agent row (saves the gateway a lookup). */
   agent: Agent;
-  maxOutputTokens: number;
+  /** The server's cap (`AGENT_MAX_OUTPUT_TOKENS`); absent: the model's own room for the effort (`agentOutputTokens`). */
+  maxOutputTokens?: number;
   /** Read at the start of every turn (the engine appends to the same transcript between turns). */
   conversation(): ModelConversation;
   /** The agent's conversation, the same on each of its calls (`StreamOptions.session`). */
@@ -74,6 +77,7 @@ export class ModelBrain implements Brain {
     const conversation = this.options.conversation();
     const { system, notesAt } = conversation;
     const messages = cutOldToolSteps(conversation.messages, turn.tools);
+    const effort = turnEffort(agent.model, turn.effort);
     const laid = turnNotes(system, notesAt, messages);
     const specs: ToolSpec[] = turn.tools.map((t) => ({
       name: t.name,
@@ -91,8 +95,7 @@ export class ModelBrain implements Brain {
       messages: laid.messages ?? messages,
       ...(laid.notes ? { notes: laid.notes } : {}),
       tools: specs.length > 0 ? specs : undefined,
-      // The agent's effort, or "Automático"'s; the API takes low, medium and high.
-      ...(turn.effort ? { effort: apiEffort(turn.effort) } : {}),
+      ...(effort ? { effort } : {}),
       // The prompt up to the conversation stays cached for an hour: a message after a pause reads it.
       cacheTtl: "1h" as const,
       ...(this.options.session ? { session: this.options.session } : {}),
@@ -109,13 +112,14 @@ export class ModelBrain implements Brain {
   }
 
   private async *turn(turn: BrainTurn, io: BrainIO): AsyncGenerator<BrainEvent> {
-    const { gateway, maxOutputTokens } = this.options;
+    const { gateway, maxOutputTokens, agent } = this.options;
     this.last = null;
     const deltas = eventQueue<BrainEvent>();
+    const request = this.request(turn);
     const call = gateway
       .stream({
-        ...this.request(turn),
-        maxTokens: maxOutputTokens,
+        ...request,
+        maxTokens: maxOutputTokens ?? agentOutputTokens(agent.model, request.effort),
         onDelta: (text) => deltas.push({ type: "text_delta", text }),
         signal: io.signal,
       })
@@ -150,6 +154,18 @@ export class ModelBrain implements Brain {
 
 /** A brain effort as the providers take it (`ModelRequest.effort`): the gateway takes it to the nearest it takes. */
 export const apiEffort = (effort: BrainEffort): NonNullable<ModelRequest["effort"]> => effort;
+
+/**
+ * The effort a turn is sent: the agent's, or "Automático"'s, as set (the provider adapter sends `xhigh` and `max` as
+ * `high` to a model without them). None set: `high` on a model that takes an effort, since some APIs default lower
+ * (Claude Opus 5.5 at medium) and an agent's work is long tool loops; only where the row knows its output limit,
+ * since the call gets 16K otherwise (`agentOutputTokens`) and high thinking inside 16K cuts replies.
+ */
+export function turnEffort(model: string, effort: BrainTurn["effort"]): ModelRequest["effort"] {
+  if (effort) return effort;
+  const info = modelInfo(model);
+  return info?.maxOutputTokens && (info.efforts || info.reasoning) ? "high" : undefined;
+}
 
 /**
  * Callback → async iterator bridge: pushed items are yielded in order; after

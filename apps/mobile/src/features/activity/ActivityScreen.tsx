@@ -11,17 +11,23 @@ import {
 } from "@agenteschat/client";
 import { approvalDetail, approvalSummary, approvalTitle } from "@agenteschat/client/lib/approval-words";
 import { errorText, restrictionLine } from "@agenteschat/client/lib/errors";
-import { timeLeft, upperFirst } from "@agenteschat/client/lib/format";
+import { dateFormat, timeLeft, upperFirst } from "@agenteschat/client/lib/format";
 import { mediaWord } from "@agenteschat/client/lib/media";
 import { latestText } from "@agenteschat/client/lib/message-body";
 import { canClearAll, teamWatchOf } from "@agenteschat/client/lib/notifications";
 import { usageLimitLine } from "@agenteschat/client/lib/person-usage";
 import { useLocalSearchParams } from "expo-router";
 import type { TFunction } from "i18next";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StyleSheet, View } from "react-native";
-import Animated, { FadeIn, FadeOut, LayoutAnimationConfig, LinearTransition } from "react-native-reanimated";
+import Animated, {
+  type EntryExitAnimationFunction,
+  FadeIn,
+  LayoutAnimationConfig,
+  LinearTransition,
+  withTiming,
+} from "react-native-reanimated";
 import { useOrg } from "@/providers/org";
 import {
   Button,
@@ -34,6 +40,7 @@ import {
   LIST_AVATAR,
   LIST_INSET,
   ListRow,
+  motion,
   PersonAvatar,
   SectionHeader,
   SkeletonList,
@@ -51,7 +58,7 @@ import { ASK_ICON, AskButtons } from "../chat/asks";
 import { dashboardWaitingCard } from "../dashboards/logic";
 import { deviceNoticeOf, isDeviceNotice } from "../devices/logic";
 import { DeviceNoticeActions, DeviceNoticeCard } from "../devices/notices";
-import { notificationHref, notificationWebPath, routineHref } from "../links/logic";
+import { type AppHref, notificationHref, notificationWebPath, routineHref } from "../links/logic";
 import { openWebPath } from "../links/open-web";
 import { ChangeRequestCard } from "../right-hand/SettingsCard";
 import { AdminAskAdd } from "../shared/AdminAsk";
@@ -87,6 +94,8 @@ import { useNoticeTitle } from "./noticeTitle";
  * run); then the rest by day as loose rows. How many wait is said once, on the section (the pills carry no counts).
  * Swipe a row right to mark read or unread, left for "Feito" (a toast offers Desfazer). Tapping opens where it
  * happened. Loading: rows of the list's own shape; a load that failed is one gray line over what was kept.
+ * A card decided or a row marked done leaves (fading, a little smaller) and what is under it moves up to its place;
+ * the last thing waiting cleared brings the team in cheering.
  */
 export function ActivityScreen() {
   const { t } = useTranslation();
@@ -105,11 +114,31 @@ export function ActivityScreen() {
   const waitingCount = Math.max(waiting.length, counts?.waiting ?? waiting.length);
   const pull = usePullRefresh(list.refetch);
   const tabHeader = useTabHeader();
-  const clearAll = useClearAll(filter, counts, items);
+  // What every row reads alike, read once here and handed down as plain values: a row's read, done and their undo
+  // (one function), whether "Clear all" or its undo is under way, and the AIs a "computer ready" row opens by.
+  const { mutate: act } = useNotificationAction(orgId);
+  const busy = useNotificationBulkPending(orgId);
+  const ai = useAiStatus(
+    orgId,
+    items.some((n) => n.kind === "computer_ready"),
+  ).data;
+  const clearAll = useClearAll(filter, counts, items, busy);
   const header = clearAll ? { ...tabHeader, actions: [clearAll, ...tabHeader.actions] } : tabHeader;
   const reduced = useReducedMotion();
-  // A card decided while the page shows fades out and the rest close up; a new one fades in.
-  const cardMotion = reduced ? {} : { entering: CARD_IN, exiting: CARD_OUT, layout: LinearTransition };
+  // A card decided while the page shows leaves and the rest close up; a new one fades in. Rows and the days under
+  // them likewise, so nothing on the page jumps.
+  const cardMotion = reduced ? {} : { entering: CARD_IN, exiting: LEAVE, layout: MOVE };
+  const rowMotion = reduced ? {} : { exiting: LEAVE, layout: MOVE };
+  // The clear page cheers only when the person saw something waiting here and it is gone now, not when the tab
+  // opens with nothing waiting.
+  const clear =
+    waiting.length === 0 && !list.isLoading && !(list.isError && !list.data) && filter !== "done" && !reduced;
+  const hadWaiting = useRef(false);
+  if (waiting.length > 0) hadWaiting.current = true;
+  const cheer = clear && hadWaiting.current;
+  useEffect(() => {
+    if (clear) hadWaiting.current = false;
+  }, [clear]);
   return (
     <LargeTitleScreen title={t("mobile.activity.title")} {...header} pull={pull}>
       <Filters
@@ -150,24 +179,29 @@ export function ActivityScreen() {
         // Nothing kept to read: the list's error, with the way to ask again.
         <LoadFailed onRetry={() => void list.refetch()} />
       ) : filter !== "done" ? (
-        <AllClear />
+        <AllClear cheer={cheer} />
       ) : days.length === 0 ? (
         <EmptyState size="inline" title={t("mobile.activity.noneDone")} />
       ) : null}
       {/* Kept rows under a load that failed: the line says so, what loaded stays readable. */}
       {list.isError && list.data && !list.isLoading ? <RetryLine onRetry={() => void list.refetch()} /> : null}
-      {days.map(([group, groupItems]) => (
-        <View key={group}>
-          <SectionHeader title={t(`mobile.activity.day.${group satisfies DayGroup}`)} />
-          {/* Loose rows on the page, as Conversas' (no card around them). */}
-          {groupItems.map((n, i) => (
-            <ActivityRow key={n.id} item={n} divider={i > 0} />
-          ))}
-        </View>
-      ))}
+      {/* Another filter is another list: it comes whole, with no row of the last one leaving through it. */}
+      <LayoutAnimationConfig key={filter} skipEntering skipExiting>
+        {days.map(([group, groupItems]) => (
+          <Animated.View key={group} {...rowMotion}>
+            <SectionHeader title={t(`mobile.activity.day.${group satisfies DayGroup}`)} />
+            {/* Loose rows on the page, as Conversas' (no card around them). */}
+            {groupItems.map((n, i) => (
+              <Animated.View key={n.id} {...rowMotion}>
+                <ActivityRow item={n} divider={i > 0} href={notificationHref(n, ai)} busy={busy} act={act} />
+              </Animated.View>
+            ))}
+          </Animated.View>
+        ))}
+      </LayoutAnimationConfig>
       {/* The next page, as Drive's "Mostrar mais": the kit's button, centered, its wheel while the page comes. */}
       {list.hasNextPage ? (
-        <View style={styles.more}>
+        <Animated.View layout={reduced ? undefined : MOVE} style={styles.more}>
           <Button
             variant="secondary"
             size="sm"
@@ -177,7 +211,7 @@ export function ActivityScreen() {
               if (!list.isFetchingNextPage) void list.fetchNextPage();
             }}
           />
-        </View>
+        </Animated.View>
       ) : null}
     </LargeTitleScreen>
   );
@@ -369,9 +403,10 @@ function ApprovalSource({ approval: a }: { approval: Approval }) {
 /**
  * Nothing waits on you, right on the page: the sky with the team on its horizon, "Nada esperando você" and one calm
  * line (no card, no button), then the next real event as one line (a routine's next run: its agent, its name and
- * when), which opens the routine; the history follows within the first thumb.
+ * when), which opens the routine; the history follows within the first thumb. `cheer`: the person just cleared the
+ * last thing waiting, and the team comes in happy (`TeamSkyEmpty`).
  */
-function AllClear() {
+function AllClear({ cheer }: { cheer: boolean }) {
   const { t } = useTranslation();
   const orgId = useOrgId();
   const deleting = Boolean(useOrg().org?.deletion);
@@ -386,7 +421,11 @@ function AllClear() {
   // The last card decided: the clear page fades in where the cards were.
   return (
     <Animated.View entering={reduced ? undefined : FadeIn.duration(160)}>
-      <TeamSkyEmpty title={t("mobile.activityNow.clear.title")} text={t("mobile.activityNow.clear.text")} />
+      <TeamSkyEmpty
+        title={t("mobile.activityNow.clear.title")}
+        text={t("mobile.activityNow.clear.text")}
+        celebrate={cheer}
+      />
       {/* The next run as a row of the list below it: who, the routine's name on one line, and when. */}
       {next ? (
         <>
@@ -427,7 +466,7 @@ function nextRunWords(t: TFunction, when: ReturnType<typeof useWhen>, iso: strin
       : day === "tomorrow"
         ? t("mobile.activityNow.next.tomorrow", { time })
         : t("mobile.activityNow.next.later", {
-            day: new Intl.DateTimeFormat(when.locale, { weekday: "short", day: "numeric", month: "short" })
+            day: dateFormat(when.locale, { weekday: "short", day: "numeric", month: "short" })
               .format(new Date(iso))
               .replace(/\./g, ""),
             time,
@@ -443,11 +482,12 @@ function useClearAll(
   filter: ActivityFilter,
   counts: NotificationCounts | undefined,
   items: AppNotification[],
+  busy: boolean,
 ): HeaderAction | null {
   const { t } = useTranslation();
   const orgId = useOrgId();
+  // Its own: the toast's undo follows this call's answer, which a row's action (the rows share one) would replace.
   const act = useNotificationAction(orgId);
-  const busy = useNotificationBulkPending(orgId);
   const toast = useToast();
   if (!canClearAll(filter, counts, items)) return null;
   const run = () =>
@@ -479,17 +519,30 @@ function useClearAll(
  * and when, the snippet and where; a red dot on the right while unread. Swipe right to mark read or unread,
  * left for "Feito"; tapping opens where it happened.
  */
-const ActivityRow = memo(function ActivityRow({ item: n, divider }: { item: AppNotification; divider: boolean }) {
+const ActivityRow = memo(function ActivityRow({
+  item: n,
+  divider,
+  href,
+  busy,
+  act,
+}: {
+  item: AppNotification;
+  divider: boolean;
+  /**
+   * Where a tap opens (`notificationHref`): a routine's trouble opens the routine; the computer being ready, Connect an
+   * AI while no agent has one.
+   */
+  href: AppHref | null;
+  /** "Clear all" or its undo is under way: the row doesn't swipe. */
+  busy: boolean;
+  /** The screen's read and done (`useNotificationAction`). */
+  act: NotificationAct;
+}) {
   const { t, i18n } = useTranslation();
   const orgId = useOrgId();
   const c = useColors();
   const when = useWhen();
   const toast = useToast();
-  const act = useNotificationAction(orgId);
-  const busy = useNotificationBulkPending(orgId);
-  // A routine's trouble opens the routine; the computer being ready, Connect an AI while no agent has one.
-  const ai = useAiStatus(orgId, n.kind === "computer_ready").data;
-  const href = notificationHref(n, ai);
   // No screen of its own in the app (the workspace's billing hold): its page on the web, so a tap is never a dead end.
   const web = href ? null : notificationWebPath(n, orgId);
   const unread = n.readAt === null;
@@ -517,8 +570,9 @@ const ActivityRow = memo(function ActivityRow({ item: n, divider }: { item: AppN
         ? ""
         : failed
           ? failed.sub
-          : // A widget's or routine's name is often its line too: said once ("Assinaturas hoje", not twice).
-            [emojisOf(n).join(" "), [...new Set([line, placeOf(n)].filter(Boolean))].join(" · ")]
+          : // Where first, then the words, as the web inbox ("#canal · snippet"). A widget's or routine's name is
+            // often its line too: said once ("Assinaturas hoje", not twice).
+            [emojisOf(n).join(" "), [...new Set([placeOf(n), line].filter(Boolean))].join(" · ")]
               .filter(Boolean)
               .join(" ");
   const time = when.short(n.updatedAt);
@@ -531,23 +585,23 @@ const ActivityRow = memo(function ActivityRow({ item: n, divider }: { item: AppN
 
   // The swipe taps on its own (SwipeRow); VoiceOver's actions call these too.
   const toggleRead = () => {
-    if (!busy) act.mutate({ type: "read", item: n, read: unread });
+    if (!busy) act({ type: "read", item: n, read: unread });
   };
   // In "Feitas" the same swipe moves it back to the inbox. Marked done, a toast offers the way back for a moment.
   const isDone = Boolean(n.doneAt);
   const done = () => {
     if (busy) return;
-    act.mutate({ type: "done", item: n, done: !isDone });
+    act({ type: "done", item: n, done: !isDone });
     if (!isDone)
       toast({
         title: t("mobile.activity.doneToast"),
         subtitle: title,
-        action: { label: t("mobile.activity.undo"), onPress: () => act.mutate({ type: "done", item: n, done: false }) },
+        action: { label: t("mobile.activity.undo"), onPress: () => act({ type: "done", item: n, done: false }) },
       });
   };
   const doneLabel = isDone ? t("mobile.activity.restore") : t("mobile.activity.done");
   const open = () => {
-    if (unread) act.mutate({ type: "read", item: n, read: true });
+    if (unread) act({ type: "read", item: n, read: true });
     if (href) router.push(href);
     else if (web) openWebPath(web);
   };
@@ -645,6 +699,9 @@ const ActivityRow = memo(function ActivityRow({ item: n, divider }: { item: AppN
   );
 });
 
+/** A notification's read, done and their undo, as the screen hands it to its rows. */
+type NotificationAct = ReturnType<typeof useNotificationAction>["mutate"];
+
 /** Whether a phone notice still has its Stop under the row (`DeviceNoticeActions` draws it only then). */
 function deviceStoppable(n: AppNotification): boolean {
   if (!isDeviceNotice(n.kind) || n.doneAt) return false;
@@ -674,4 +731,16 @@ const styles = StyleSheet.create({
 });
 
 const CARD_IN = FadeIn.duration(160);
-const CARD_OUT = FadeOut.duration(120);
+/** What was decided or done leaves: fading, a little smaller, never to nothing. */
+const LEAVE: EntryExitAnimationFunction = () => {
+  "worklet";
+  return {
+    initialValues: { opacity: 1, transform: [{ scale: 1 }] },
+    animations: {
+      opacity: withTiming(0, { duration: 240, easing: motion.easeOut }),
+      transform: [{ scale: withTiming(0.94, { duration: 240, easing: motion.easeOut }) }],
+    },
+  };
+};
+/** What stays moves to its new place on the `nav` spring: no overshoot. */
+const MOVE = LinearTransition.springify().damping(motion.nav.damping).stiffness(motion.nav.stiffness);

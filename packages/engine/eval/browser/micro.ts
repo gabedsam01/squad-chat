@@ -1,14 +1,14 @@
 /**
  * Browser microbenchmarks (ADR 0054) against a real Chrome: what one action costs on the runner
  * (action, settling, look), targets in words (time and whether the right element was found),
- * finding a control on a screenshot by choice over marks or tiles (ADR 0200), checks, `find`, and
+ * finding a control on a screenshot by choice over marks or tiles (ADR 9006), checks, `find`, and
  * a whole sign-in plan on protocol 12 against 17.
  *
  *   bun run eval:browser:micro
  *
  * Needs `agent-browser` with its Chrome (`AGENT_BROWSER_BIN`), TYPESAFE_API_KEY for the text
  * questions (Jev) and DECISION_PROVIDER (`openai` | `gemini`) + DECISION_API_KEY (optional
- * DECISION_MODEL) for the ones with images: Jev never reads images (ADR 0200).
+ * DECISION_MODEL) for the ones with images: Jev never reads images (ADR 9006).
  */
 import { browserSurface, LOOK, observationOf } from "../../src/browser/surface";
 import {

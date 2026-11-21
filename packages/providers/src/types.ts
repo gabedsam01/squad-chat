@@ -1,3 +1,5 @@
+import type { ImageCallOptions, ImageRequest, ImageResult } from "./images";
+
 /**
  * Provider-neutral model interface. Only the Model Gateway
  * (`@agenteschat/engine`, `createModelGateway`) calls it: no other code talks
@@ -123,11 +125,12 @@ export interface ModelRequest {
   outputSchema?: Record<string, unknown>;
   /**
    * How much reasoning to spend. Providers without the notion ignore it. Default: the provider's.
-   * `none`: the least the model allows (its catalog `leastThinking`), else `low`.
+   * `none`: the least the model allows (its catalog `leastThinking`), else `low`. `xhigh` and `max`: where the model
+   * takes them (its catalog `efforts`), else `high` (`effortWithin`).
    */
-  /** How hard it thinks: any level a model is sold at; the gateway takes it to the nearest one it takes. */
+  /** How hard it thinks: any level a model is sold at; the gateway takes it to the nearest one it takes (`effortWithin`). */
   effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
-  /** A probe (ADR 0199): send that effort exactly, never the nearest one the model takes. */
+  /** A probe (ADR 9005): send that effort exactly, never the nearest one the model takes. */
   exactEffort?: boolean;
   /**
    * `1h`: the breakpoints of the stable prefix (stable tools, system blocks marked `cache`) last an hour where the
@@ -228,6 +231,11 @@ export interface ModelProvider {
     request: ModelRequest,
     options: { apiKey: string; workspaceId?: string; organization?: string; project?: string },
   ): Promise<number>;
+  /**
+   * Pictures from a prompt (ADR 0197), where the provider has an image API: the request's `model` is the provider's
+   * own id. Optional: a provider without one makes none.
+   */
+  generateImage?(request: ImageRequest, options: ImageCallOptions): Promise<ImageResult>;
 }
 
 /** What the provider had already reported or sent when a stream failed. */

@@ -49,6 +49,7 @@ import {
   createPermissionToolSource,
   createReactToolSource,
   createSandboxToolSource,
+  createSayNowToolSource,
   createScheduleToolSource,
   createSkillToolSource,
   createToolGateway,
@@ -177,6 +178,8 @@ export async function setup(
   options: {
     reply?: Parameters<typeof createFakeProvider>[0];
     budgetNanoUsd?: number | null;
+    /** The server's output cap of an agent's call (`AGENT_MAX_OUTPUT_TOKENS`); null: unset. Default 1000. */
+    maxOutputTokens?: number | null;
     platform?: PlatformCredentials;
     /** Tool sources for the Tool Gateway (none = agents only chat). */
     toolSources?: ToolSource[];
@@ -190,6 +193,11 @@ export async function setup(
     askAgent?: boolean;
     /** Add the built-in `react` tool. */
     react?: boolean;
+    /**
+     * Add the built-in `say_now` tool (ADR 0207): one short line before slow work. Off by default, so the prompts and
+     * tool lists other tests pin stay as they are.
+     */
+    sayNow?: boolean;
     /**
      * Add the built-in `send_gif` and `send_sticker` tools (ADR 0091), with `gifs` as the server's GIF search (also
      * `post_message`'s `gif`).
@@ -362,6 +370,7 @@ export async function setup(
         ]
       : []),
     ...(options.react ? [createReactToolSource({ pubsub })] : []),
+    ...(options.sayNow ? [createSayNowToolSource({ pubsub })] : []),
     ...(options.mediaTools ? [createMediaToolSource({ pubsub, gifs: options.gifs ?? null })] : []),
     ...(options.followUps ? [createFollowUpToolSource({ pubsub })] : []),
     ...(options.workTools ? [createWorkToolSource({ pubsub })] : []),
@@ -415,7 +424,7 @@ export async function setup(
     db,
     gateway,
     pubsub,
-    maxOutputTokens: 1000,
+    ...(options.maxOutputTokens === null ? {} : { maxOutputTokens: options.maxOutputTokens ?? 1000 }),
     contextMessages: 30,
     workspaceComputer: options.workspaceComputer,
     maxHops: 100,

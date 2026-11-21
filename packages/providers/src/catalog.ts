@@ -1,4 +1,4 @@
-import type { ModelUsage } from "./types";
+import type { ModelRequest, ModelUsage } from "./types";
 
 /**
  * Prices in nano-USD per token (1e-9 USD), i.e. USD per million tokens × 1000,
@@ -115,7 +115,10 @@ export interface ModelInfo {
   contextWindow?: number;
   /** The most output tokens one call may ask for; the gateway caps each call at it. */
   maxOutputTokens?: number;
-  /** The reasoning efforts it takes, highest first: a request's effort goes as the nearest. Absent: any. */
+  /**
+   * The reasoning efforts it takes, highest first: a request's effort goes as the nearest. Absent: any up to `high`
+   * (`effortWithin`); on OpenRouter's list, any.
+   */
   efforts?: readonly string[];
   /** It can't follow an `outputSchema`: never a pick for routing, the judge or summaries. */
   structuredOutput?: false;
@@ -145,6 +148,32 @@ export const MODEL_TIERS: readonly ModelTier[] = ["small", "medium", "large"];
 export const AUTO_MODEL = "auto";
 export const isAutoModel = (model: string | null | undefined) => model === AUTO_MODEL;
 
+type Effort = NonNullable<ModelRequest["effort"]>;
+
+/** The effort a model is sent: `xhigh` and `max` go as `high` unless its row lists them (`efforts`). */
+export function effortWithin<E extends Effort>(effort: E | undefined): Exclude<E, "xhigh" | "max"> | "high" | undefined;
+export function effortWithin<E extends Effort>(
+  effort: E | undefined,
+  info: ModelInfo | undefined,
+): E | "high" | undefined;
+export function effortWithin(effort: Effort | undefined, info?: ModelInfo): Effort | undefined {
+  return (effort === "xhigh" || effort === "max") && !info?.efforts?.includes(effort) ? "high" : effort;
+}
+
+/**
+ * An agent call's output cap when the server sets none (`AGENT_MAX_OUTPUT_TOKENS`). Thinking counts against it, so
+ * 16K cut long answers and big tool inputs at high effort: 64K where the model's row says how much it may write
+ * (up to 128K at `max`), else 16K, since sending more than a model takes is refused. At most a quarter of the
+ * window (16K at least): the cap is held back from the input budget, and a listed row's limit is often its window.
+ */
+export function agentOutputTokens(model: string, effort?: ModelRequest["effort"]): number {
+  const info = modelInfo(model);
+  const most = info?.maxOutputTokens;
+  if (!most) return 16_000;
+  const target = effortWithin(effort, info) === "max" ? 128_000 : 64_000;
+  return Math.min(most, target, Math.max(16_000, Math.floor(contextWindowOf(model) / 4)));
+}
+
 /** Context window assumed for a model without one in the catalog: the smallest current one, so runs stay inside it. */
 export const DEFAULT_CONTEXT_WINDOW = 200_000;
 
@@ -154,6 +183,9 @@ const DEEPSEEK_PEAK = [
   [6, 10],
 ] as const;
 
+// Claude 5.x on its own API: every effort, and up to 128K output tokens (platform.claude.com, 2026-11-21).
+const CLAUDE_EFFORTS = ["max", "xhigh", "high", "medium", "low"] as const;
+
 export const MODEL_CATALOG: Record<string, ModelInfo> = {
   // Claude Fable 5.2, Fable 5.1's successor at a lower price: $8 / $0.20 / $10 / $40 across its whole 1M-token
   // window (2026-11-17). Like 5.1, no tier and no pick for routing or system tasks: people choose it.
@@ -162,6 +194,8 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     label: "Claude Fable 5.2",
     prices: { input: 8000, output: 40000, cacheRead: 200, cacheWrite: 10000 },
     contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    efforts: CLAUDE_EFFORTS,
     serverSideFallback: true,
   },
   // Its 1M-token window from platform.claude.com/docs/en/about-claude/models/overview, all of it at these prices
@@ -171,18 +205,20 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     label: "Claude Fable 5.1",
     prices: { input: 10000, output: 50000, cacheRead: 250, cacheWrite: 12500 },
     contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    efforts: CLAUDE_EFFORTS,
     serverSideFallback: true,
     reasoning: true,
-    efforts: ["low", "medium", "high", "xhigh", "max"],
   },
   "claude-opus-5-5": {
     provider: "anthropic",
     label: "Claude Opus 5.5",
     prices: { input: 4000, output: 20000, cacheRead: 200, cacheWrite: 5000 },
     contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    efforts: CLAUDE_EFFORTS,
     serverSideFallback: true,
     reasoning: true,
-    efforts: ["low", "medium", "high", "xhigh", "max"],
     tier: "large",
   },
   "claude-sonnet-5-5": {
@@ -190,9 +226,10 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     label: "Claude Sonnet 5.5",
     prices: { input: 2000, output: 10000, cacheRead: 100, cacheWrite: 2500 },
     contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    efforts: CLAUDE_EFFORTS,
     serverSideFallback: true,
     reasoning: true,
-    efforts: ["low", "medium", "high", "xhigh", "max"],
     recommended: true,
     tier: "medium",
   },
@@ -202,9 +239,10 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     prices: { input: 100, output: 500, cacheRead: 10, cacheWrite: 125 },
     longContext: { aboveInputTokens: 100_000, prices: { input: 500, output: 2500, cacheRead: 50, cacheWrite: 625 } },
     contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    efforts: CLAUDE_EFFORTS,
     serverSideFallback: false,
     reasoning: true,
-    efforts: ["low", "medium", "high", "xhigh", "max"],
     cheap: true,
     router: true,
     leastThinking: "off",
@@ -314,8 +352,9 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     tier: "small",
   },
   // Gemini (Interactions API), Standard tier, from ai.google.dev/gemini-api/docs/pricing (2026-10-27; Gemini 4 Carbon
-  // and Hydrogen 2026-11-17). Thinking is billed as output. Caching is implicit, with no write charge, so a cache
-  // write costs the input rate (none is ever reported). Carbon, Argon and 3.8 Flash cost half until the day in `intro`.
+  // and Hydrogen 2026-11-17; Neon 2026-11-20, where the page now lives at aistudio.google.com/docs/pricing). Thinking
+  // is billed as output. Caching is implicit, with no write charge, so a cache write costs the input rate (none is
+  // ever reported). Carbon, Argon and 3.8 Flash cost half until the day in `intro`.
   // Gemini 4 Carbon, Google's strongest reasoning model, thinks more per turn than Argon at Argon's prices: no tier
   // and no pick for routing or system tasks, so Automatic never chooses it (Argon stays the large one), people do.
   "gemini-4-carbon": {
@@ -323,6 +362,15 @@ export const MODEL_CATALOG: Record<string, ModelInfo> = {
     label: "Gemini 4 Carbon",
     prices: { input: 4000, output: 20000, cacheRead: 200, cacheWrite: 4000 },
     intro: { until: "2026-12-01", prices: { input: 2000, output: 10000, cacheRead: 100, cacheWrite: 2000 } },
+    contextWindow: 1_048_576,
+    serverSideFallback: false,
+  },
+  // Gemini 4 Neon (2026-11-18), Google's fast reasoning model, close to Carbon for less, one price across its whole
+  // window: like Carbon, no tier and no pick for system tasks, so Automatic never chooses it, people do.
+  "gemini-4-neon": {
+    provider: "gemini",
+    label: "Gemini 4 Neon",
+    prices: { input: 3000, output: 15000, cacheRead: 150, cacheWrite: 3000 },
     contextWindow: 1_048_576,
     serverSideFallback: false,
   },
@@ -929,9 +977,22 @@ export const contextWindowOf = (model: string) => modelInfo(model)?.contextWindo
 
 export const isKnownModel = (model: string) => modelInfo(model) !== undefined;
 
+/**
+ * `name` without a closing `[…]` (`claude-opus-5-5[1m]` → `claude-opus-5-5`), as `/\[[^\]]*\]$/` would cut it: from
+ * the first `[` after the last `]` before the final one. By index, since the name may come from a computer and that
+ * pattern backtracks on a long run of `[`.
+ */
+function withoutBracketSuffix(name: string): string {
+  if (!name.endsWith("]")) return name;
+  const end = name.length - 1;
+  const lastClose = end > 0 ? name.lastIndexOf("]", end - 1) : -1;
+  const open = name.indexOf("[", lastClose + 1);
+  return open >= 0 && open < end ? name.slice(0, open) : name;
+}
+
 /** The catalog id of a model a CLI named (`claude-opus-5-5[1m]`, a dated `…-20261001`); null when it has no price. */
 export function catalogModelOf(model: string | null | undefined): string | null {
-  const base = model?.replace(/\[[^\]]*\]$/, "").replace(/-\d{8}$/, "");
+  const base = model ? withoutBracketSuffix(model).replace(/-\d{8}$/, "") : model;
   return base && isKnownModel(base) ? base : null;
 }
 

@@ -38,6 +38,7 @@ import {
   createChatToolSource,
   createClaudeCodeBrain,
   createCoAuthorToolSource,
+  createCommentToolSource,
   createConnectorToolSource,
   createContextToolSource,
   createDashboardToolSource,
@@ -58,6 +59,9 @@ import {
   createJevJudge,
   createJevKey,
   createJobHandlers,
+  createLiveDocs,
+  createLiveFileToolSource,
+  createLiveImages,
   createLlmJudge,
   createMachineHub,
   createMailToolSource,
@@ -71,6 +75,7 @@ import {
   createReactToolSource,
   createReleaseAsksToolSource,
   createSandboxToolSource,
+  createSayNowToolSource,
   createScheduleToolSource,
   createSessionScreening,
   createSetStatusToolSource,
@@ -102,12 +107,14 @@ import {
   isRightHand,
   type JobDeps,
   type Judge,
+  type LiveDeps,
   type MailDeps,
   type McpConnect,
   messageRouter,
   missionTurnPermissions,
   notifyOwnerOnBudget,
   OpencodeBrain,
+  officeLiveExporter,
   platformCapJudge,
   prepareAgentCode,
   publishUserEvent,
@@ -125,6 +132,7 @@ import {
   type ScheduleReader,
   type SkillDeps,
   type StorageDeps,
+  setLiveExporter,
   setWorkOrgCap,
   shareSavedFile,
   smallModelFor,
@@ -143,6 +151,7 @@ import { createOpenAIEmbeddings, createVoyageEmbeddings, type ModelProvider } fr
 import { type AppleTokenRevoker, appleTokenRevoker } from "./auth";
 import { hookConfig } from "./routes/app/context";
 import { version } from "./version";
+import { WAKE_TOPIC } from "./workers";
 
 /** Why `/api/terminal` closes (with 4404) where sessions are screened (ADR 0076 §7). */
 export const NO_TERMINAL = "no_terminal";
@@ -192,6 +201,7 @@ export interface EngineOptions {
   log?: {
     info(message: string, data?: Record<string, unknown>): void;
     warn(message: string, data?: Record<string, unknown>): void;
+    error?(message: string, data?: Record<string, unknown>): void;
   };
   /** Error reports (ADR 0104) for failures nothing logs: learning's (`reportLearnFailure`). */
   errors?: ErrorReporter;
@@ -262,7 +272,7 @@ export function buildEngine(o: EngineOptions) {
     envKey: config.TYPESAFE_API_KEY,
     fetch: o.jevFetch,
   });
-  // The installation's optional decision model (ADR 0195): off until its owner turns it on in Settings.
+  // The installation's optional decision model (ADR 9001): off until its owner turns it on in Settings.
   const decisionModel = createDecisionModel({
     db,
     keyWrapper: adapters.keyWrapper,
@@ -293,7 +303,7 @@ export function buildEngine(o: EngineOptions) {
       llmJudge,
       () => jevKey.usable(),
     );
-    // The switch's model answers first; the Jev chain answers text it fails on, and refuses pictures (ADR 0200).
+    // The switch's model answers first; the Jev chain answers text it fails on, and refuses pictures (ADR 9006).
     context.judge = createDecisionJudge({
       model: decisionModel,
       fallback: jevChain,
@@ -301,7 +311,7 @@ export function buildEngine(o: EngineOptions) {
       http: o.decisionFetch,
     });
   }
-  // Screenshots go only to the decision model, and only when it reads images (ADR 0200): with a fake judge (tests) nothing looks at them.
+  // Screenshots go only to the decision model, and only when it reads images (ADR 9006): with a fake judge (tests) nothing looks at them.
   const vision = o.judge ? undefined : () => decisionModel.seesImages();
   // Nothing is judged for a workspace on hold or suspended: Jev bills the server, not the workspace.
   context.judge = standingJudge(db, context.judge);
@@ -341,6 +351,31 @@ export function buildEngine(o: EngineOptions) {
     replicaId: o.replicaId,
     readyEmail: adapters.email.delivers ? { publicUrl: config.PUBLIC_URL, gateway } : null,
     errors: o.errors,
+  });
+  // Live files (ADR 0196): the documents this process hosts, for people's sockets and for agents' tools, which may run
+  // in any process. A change crosses processes through the database and pub/sub, so it names this one (`replicaId`).
+  const liveDeps: LiveDeps = {
+    ...artifacts,
+    pubsub: adapters.pubsub,
+    replicaId: machineHub.replicaId,
+    // To the server's log (nowhere in tests), errors as errors where that log has them.
+    log: {
+      info: (message: string, data?: Record<string, unknown>) => o.log?.info(message, data),
+      warn: (message: string, data?: Record<string, unknown>) => o.log?.warn(message, data),
+      error: (message: string, data?: Record<string, unknown>) => (o.log?.error ?? o.log?.warn)?.(message, data),
+    },
+  };
+  const live = createLiveDocs(liveDeps);
+  // Live files' downloads as Excel, PowerPoint, CSV and PDF, versions included (ADR 0198).
+  setLiveExporter(officeLiveExporter);
+  // Pictures on canvases (ADR 0197): asked by people's routes and agents' tools, made by the `live.image` job, whose
+  // workers in any process are woken as soon as one is asked.
+  const images = createLiveImages({
+    artifacts,
+    live,
+    gateway,
+    wake: () => void adapters.pubsub.publish(WAKE_TOPIC, { type: "wake" }).catch(() => {}),
+    log: o.log,
   });
   const workspaceComputer =
     config.MACHINE_PROVISIONING === "external" ? { billing: Boolean(config.BILLING_URL) } : undefined;
@@ -439,7 +474,7 @@ export function buildEngine(o: EngineOptions) {
         judge: context.judge,
       }),
       createFindAgentToolSource({ machines: machineHub }),
-      createUsageToolSource(),
+      createUsageToolSource({ pubsub: adapters.pubsub }),
       // What people saved for the agent in the Vault, found before it asks them (ADR 0144).
       createVaultToolSource(vault),
       // What the agent says it is doing, next to its name (ADR 0084).
@@ -456,6 +491,7 @@ export function buildEngine(o: EngineOptions) {
         rateLimiter: adapters.rateLimiter,
       }),
       createReactToolSource({ pubsub: adapters.pubsub }),
+      createSayNowToolSource({ pubsub: adapters.pubsub }),
       // A GIF or the agent's sticker when asked (ADR 0091): listed by the workspace's switches and the agent's.
       createMediaToolSource({ pubsub: adapters.pubsub, gifs: adapters.gifs ?? null }),
       // Long work goes to the background and reports back by itself, on every brain (ADR 0121).
@@ -474,6 +510,11 @@ export function buildEngine(o: EngineOptions) {
       // Runs nobody called by name may stay quiet (reply-policy.ts): listed only for them.
       createPassToolSource(),
       createArtifactToolSource(artifacts),
+      // Spreadsheets, presentations and canvases agents edit with people, and images onto a canvas (ADR 0196, 0197);
+      // pictures from the web are downloaded through the public-address guard (ADR 0196 §8).
+      createLiveFileToolSource({ artifacts, live, images, web: { resolveHost: o.resolveHost } }),
+      // Comments on a picture, a video or a PDF, seen, made and resolved by the agent there (ADR 0208).
+      createCommentToolSource({ artifacts, pubsub: adapters.pubsub, judge: context.judge }),
       // Live blocks and votes in the agent's own conversation (ADR 0113).
       createBlockToolSource(artifacts),
       createChatToolSource({ pubsub: adapters.pubsub, artifacts, gif: createAgentGifPoster(adapters.gifs) }),
@@ -544,6 +585,7 @@ export function buildEngine(o: EngineOptions) {
         pubsub: adapters.pubsub,
         artifacts,
         publicUrl: config.PUBLIC_URL,
+        rateLimiter: adapters.rateLimiter,
       }),
       browserTools,
       // Reading the web, for every agent and run (ADR 0109): a search service when configured, else the agent's
@@ -815,6 +857,8 @@ export function buildEngine(o: EngineOptions) {
     pushServer: new URL(config.PUBLIC_URL).origin,
     storage,
     artifacts,
+    // The image job places pictures on canvases through the documents this process hosts (ADR 0197).
+    live,
     sandbox,
     skills: skillDeps,
     // A workspace's deletion revokes its grants at GitHub and Composio, and leaves a line in the log.
@@ -827,6 +871,7 @@ export function buildEngine(o: EngineOptions) {
     gifs: adapters.gifs ?? null,
     log: o.log,
     maxToolTurns: config.AGENT_MAX_TOOL_TURNS,
+    signInConcurrency: config.CLAUDE_PLAN_CONCURRENCY,
     // A run started on a person's message reads what they add in the next seconds with it (ADR 0112).
     quietMs: o.routerQuietMs ?? ROUTER_QUIET_MS,
     // It ends early when the person isn't typing, and Claude's API reads the prompt into its cache meanwhile.
@@ -908,6 +953,12 @@ export function buildEngine(o: EngineOptions) {
     machineHub,
     browserLive,
     streams,
+    /** Live files (ADR 0196): the documents this process hosts (its sockets, agents' tools, the routes). */
+    live,
+    /** What live files' engine functions take (making one, its pictures, office files). */
+    liveDeps,
+    /** Pictures on canvases (ADR 0197): the image routes and the agents' `generate_image`. */
+    images,
     /** Screened sessions (ADR 0076), for the operator API's review door; null where nothing is screened. */
     sessions,
     desktops,
@@ -915,7 +966,7 @@ export function buildEngine(o: EngineOptions) {
     talker,
     /** Awaited before the server serves (`ready()`), and the owner's routes read and change it. */
     jevKey,
-    /** The installation's optional decision model (ADR 0195). */
+    /** The installation's optional decision model (ADR 9001). */
     decisionModel,
     /** Likewise: the server's GitHub App (ADR 0156). */
     githubApp,

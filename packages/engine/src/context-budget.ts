@@ -432,7 +432,7 @@ export async function fitContextWindow(
     model: string;
     /** Overrides the catalog's window (tests). */
     windowTokens?: number;
-    /** The agent's limit (`agents.context_tokens`): the window when smaller, and no `MAX_CONTEXT_TOKENS` cap. */
+    /** The agent's limit (`agents.context_tokens`): the most input it reads, in place of `MAX_CONTEXT_TOKENS`. */
     limitTokens?: number | null;
     maxOutputTokens: number;
     system: SystemBlock[];
@@ -443,11 +443,13 @@ export async function fitContextWindow(
     timeoutMs?: number;
   },
 ): Promise<{ messages: ModelMessage[]; removed: Set<string>; report: ContextBudgetReport } | null> {
-  const windowTokens = contextWindowWithin(input.windowTokens ?? contextWindowOf(input.model), input.limitTokens);
+  const modelWindow = input.windowTokens ?? contextWindowOf(input.model);
+  const windowTokens = contextWindowWithin(modelWindow, input.limitTokens);
+  // The agent's limit caps what it reads; the output is held back from the model's window, not from that limit.
   const budgetTokens = contextBudgetTokens(
-    windowTokens,
+    modelWindow,
     input.maxOutputTokens,
-    input.limitTokens ? Number.POSITIVE_INFINITY : MAX_CONTEXT_TOKENS,
+    input.limitTokens && input.limitTokens > 0 ? input.limitTokens : MAX_CONTEXT_TOKENS,
   );
   const estimatedTokens = estimateRequestTokens(input);
   if (estimatedTokens <= budgetTokens) return null;

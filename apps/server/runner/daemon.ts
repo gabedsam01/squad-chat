@@ -23,6 +23,7 @@ import {
   type MachineOs,
   type MachineReplies,
   type MachineRequest,
+  type MachineSize,
   OWN_USAGE_ID,
   type RunnerAccess,
   type RunnerFrame,
@@ -30,6 +31,7 @@ import {
   type RunnerPause,
   type RunnerToolchains,
   type RunnerTools,
+  TASK_LIMIT_BOUNDS,
 } from "@agenteschat/adapters/machine-protocol";
 import { redactCommon } from "@agenteschat/adapters/redact";
 import {
@@ -81,7 +83,8 @@ import {
   systemLauncher,
   trustedNetworkLauncher,
 } from "./agent-users";
-import { BrainManager } from "./brain";
+import { AgyCopy, type AgyCopyOptions } from "./agy-copy";
+import { BrainManager, readyRoom } from "./brain";
 import { CodexAppServers } from "./brain-codex-app";
 import { BrowserManager } from "./browser";
 import { ensureBrowserBindPolicy, prepareAgents } from "./browser-bind-policy";
@@ -111,7 +114,7 @@ import { EgressObservation, probeEgress } from "./egress";
 import { NetworkChangingError, RUNNER_VERSION, RunnerError } from "./errors";
 import { cachedExecutors, EXECUTORS_TTL_MS, type ExecutorRun } from "./executors";
 import { systemGitCache } from "./git";
-import type { HandlerContext, RequestObserver, RequestOutcome } from "./handlers";
+import { closeIdleUnderPressure, type HandlerContext, type RequestObserver, type RequestOutcome } from "./handlers";
 import { Holds } from "./holds";
 import { IphoneSetup, type IphoneSetupOptions } from "./iphone-setup";
 import { currentProcess, isCompiled, selfCommand } from "./launch";
@@ -149,7 +152,7 @@ import {
   systemShared,
   withShared,
 } from "./shared-folder";
-import { ackStandby, readStandby, STANDBY_POLL_MS, standbyOn } from "./standby";
+import { ackStandby, readStandby, STANDBY_POLL_MS, standbyOn, watchStandby } from "./standby";
 import { prepareSystemStartPage } from "./start-page";
 import { DataSockets, RELAYED_FILE, RelayCount } from "./streams";
 import {
@@ -182,22 +185,45 @@ import { XcodeFixer, type XcodeFixOptions } from "./xcode-fix";
  */
 
 /**
- * Where the runner reads free memory (Linux), an idle CLI closes whenever a turn needs its room (`reclaim`), so keeping
- * it warm costs no admission: follow-ups minutes apart skip a cold start and keep the prompt cache. Elsewhere a count
- * of turns decides room, so idle CLIs close soon.
+ * Where the runner reads free memory (Linux), an idle Claude Code closes when memory runs short (a turn that needs its
+ * room, `reclaim`, or `closeIdleUnderPressure`), so keeping it warm costs no admission: follow-ups skip a cold start
+ * and keep the prompt cache. The idle limit there is only a backstop, as long as a session is picked up again
+ * (`SESSION_IDLE_MS` on the server). Elsewhere a count of turns decides room, so idle CLIs close soon.
  */
 const MEMORY_READ = process.platform === "linux";
 
+/**
+ * Background tasks at once, sized to the computer: one per 2 CPUs and per 2 GiB of memory left after 4 GiB for the
+ * system and the person's own apps (a task is a coding CLI with its tools, about that much), at least 3 (the fixed
+ * default before: it fits a small laptop) and at most the bound. A container's or slice's limit counts, not the host's.
+ */
+export function sizedTaskLimit(size: Pick<MachineSize, "cpus" | "memoryGb" | "limit">): number {
+  const { cpus, memoryGb } = size.limit ?? size;
+  const fits = Math.min(Math.floor(cpus / 2), Math.floor((memoryGb - 4) / 2));
+  return Math.min(TASK_LIMIT_BOUNDS[1], Math.max(3, fits));
+}
+
 export const DEFAULT_LIMITS = {
-  maxConcurrentTasks: 3,
+  maxConcurrentTasks: sizedTaskLimit(machineSize(os.homedir())),
   taskMaxSeconds: 4 * 3600,
+  brainIdleMinutes: MEMORY_READ ? 60 : 3,
+  brainMaxProcesses: MEMORY_READ ? 8 : 1,
+} as const;
+
+/** Codex app-servers aren't closed for memory (`reclaimIdle` is Claude Code's): they keep the shorter limits. */
+const CODEX_DEFAULT_LIMITS = {
   brainIdleMinutes: MEMORY_READ ? 20 : 3,
   brainMaxProcesses: MEMORY_READ ? 2 : 1,
 } as const;
 
+const codexLimits = (c: Pick<StoredConfig, "brainIdleMinutes" | "brainMaxProcesses"> | null | undefined) => ({
+  idleMs: (c?.brainIdleMinutes ?? CODEX_DEFAULT_LIMITS.brainIdleMinutes) * 60_000,
+  maxProcesses: c?.brainMaxProcesses ?? CODEX_DEFAULT_LIMITS.brainMaxProcesses,
+});
+
 /** Bounds for `config.set` (the app's Preferences). */
 const LIMIT_BOUNDS: Record<keyof typeof DEFAULT_LIMITS, [number, number]> = {
-  maxConcurrentTasks: [1, 20],
+  maxConcurrentTasks: [...TASK_LIMIT_BOUNDS],
   taskMaxSeconds: [60, 24 * 3600],
   brainIdleMinutes: [1, 24 * 60],
   brainMaxProcesses: [1, 10],
@@ -405,6 +431,11 @@ export interface DaemonOptions {
   xcodeFix?: Partial<XcodeFixOptions>;
   /** Tests: how `cli.install` installs. */
   cliInstall?: Partial<CliInstallerOptions>;
+  /**
+   * The runner brings its own Antigravity CLI where the person's is older than `AGY_PIN` (`AgyCopy`, ADR 0143): on for
+   * the runner people run (`main.ts`), off in tests unless they ask.
+   */
+  agyCopy?: boolean | Partial<AgyCopyOptions>;
 }
 
 /** What a task is in its activity words: a shell task's command, or the CLI that works it (the app names it). */
@@ -442,6 +473,7 @@ export class RunnerDaemon implements RequestObserver {
   private readonly requests: AccessRequests;
   private pairing: AbortController | null = null;
   private stopWatch: (() => void) | null = null;
+  private stopStandbyWatch: (() => void) | null = null;
   private readonly timers: ReturnType<typeof setInterval>[] = [];
   /** Protocol 22: how busy this computer got over the last day (rides on `pong`). */
   private readonly load = new LoadWindow();
@@ -510,6 +542,8 @@ export class RunnerDaemon implements RequestObserver {
   private fixer: XcodeFixer | null = null;
   /** An install of a coding CLI (`cli.install`), made on its first request. */
   private installer: CliInstaller | null = null;
+  /** The Antigravity CLI the runner brings, outside system mode on macOS and Linux; null elsewhere. */
+  private readonly agy: AgyCopy | null;
   /**
    * The PATH read again (app mode's `refreshPath`). On Windows before every look too: an app keeps the PATH it started
    * with, so a CLI installed since is found only through the registry.
@@ -535,10 +569,10 @@ export class RunnerDaemon implements RequestObserver {
           ? { before: () => this.refreshPath?.(), gitMissing: () => gitBashPath() === null }
           : {}),
       });
-    // Grok Build's and the Antigravity CLI's models as an account signed in here lists them: the computer's own
-    // `grok models` and `agy models` are signed out.
+    // Grok Build's, Antigravity's and Codex's models as the accounts signed in here list them: the computer's own
+    // `grok models`, `agy models` and `codex app-server` are signed out.
     this.executors = () => {
-      const found = { ...(exec() ?? {}) };
+      const found: NonNullable<RunnerInfo["executors"]> = { ...exec() };
       for (const kind of ["codex", "grok", "antigravity"] as const) {
         const entry = found[kind];
         const models = this.accounts?.listedModels(kind);
@@ -563,10 +597,27 @@ export class RunnerDaemon implements RequestObserver {
           authEgress: () => authEgressPrefix(),
         })
       : null;
+    // Outside system mode, where the person's own CLI runs: the root's are the computer's setup's (the Cloud's image).
+    this.agy =
+      opts.agyCopy && !system && (process.platform === "darwin" || process.platform === "linux")
+        ? new AgyCopy({
+            home: opts.home,
+            log: opts.log,
+            inUse: () => this.accounts.snapshot()?.some((a) => a.kind === "antigravity") ?? false,
+            onChange: () => {
+              void this.clisLook().then(() => this.accounts.refresh(true).catch(() => undefined));
+            },
+            ...(typeof opts.agyCopy === "object" ? opts.agyCopy : {}),
+          })
+        : null;
     const accountUsers = system ? (opts.accountUsers ?? new AccountUsers({ home: opts.home, log: opts.log })) : null;
     this.accountUsers = accountUsers;
     this.accounts = new AccountManager({
       root: lent?.root ?? path.join(opts.home, "accounts"),
+      // A Gemini sign-in on a computer with no Antigravity CLI new enough: the runner brings its own first.
+      prepare: async (kind) => {
+        if (kind === "antigravity") await this.agy?.ensure();
+      },
       ...(lent ? { lending: { chown: lent.chown } } : {}),
       ...(lent?.grokRoot ? { grokRoot: lent.grokRoot } : {}),
       ...(lent && !opts.systemAccounts && process.platform === "linux"
@@ -787,8 +838,13 @@ export class RunnerDaemon implements RequestObserver {
     const browsers = setInterval(() => this.browsersChanged(), BROWSER_STATE_POLL_MS);
     browsers.unref?.();
     this.timers.push(browsers);
-    // A CLI installed while the runner stays up: with no app asking for the status, nothing else looks again.
-    const clis = setInterval(() => this.executors(), EXECUTORS_TTL_MS);
+    // A CLI installed while the runner stays up: with no app asking for the status, nothing else looks again. The
+    // runner's own Antigravity CLI is checked as often (a download is due only when Gemini thinks here).
+    void this.agy?.check();
+    const clis = setInterval(() => {
+      this.executors();
+      void this.agy?.check();
+    }, EXECUTORS_TTL_MS);
     clis.unref?.();
     this.timers.push(clis);
     const sample = () => {
@@ -826,6 +882,7 @@ export class RunnerDaemon implements RequestObserver {
     this.timers.push(sizes);
     // System mode: for an operator's network guard, at most once a minute.
     this.checkStandby();
+    if (this.opts.watch !== false) this.stopStandbyWatch = watchStandby(this.opts.home, () => this.checkStandby());
     const standby = setInterval(() => {
       this.checkStandby();
       this.checkPark();
@@ -842,7 +899,16 @@ export class RunnerDaemon implements RequestObserver {
     }, 60_000);
     relayed.unref?.();
     this.timers.push(relayed);
+    if (MEMORY_READ) this.timers.push(closeIdleUnderPressure(() => this.reclaimIdleBrains()));
     this.expireRequests();
+  }
+
+  /** One idle Claude Code closes, the least recently used on this computer (any agent's in system mode). */
+  private reclaimIdleBrains(): Promise<boolean> {
+    const s = this.session;
+    if (!s) return Promise.resolve(false);
+    if (s.supervisor) return s.accountBrains?.reclaim("") ?? s.supervisor.reclaimBrains();
+    return s.brains.reclaimIdle();
   }
 
   /**
@@ -864,6 +930,7 @@ export class RunnerDaemon implements RequestObserver {
     if (this.stopped) return;
     this.stopped = true;
     this.stopWatch?.();
+    this.stopStandbyWatch?.();
     for (const t of this.timers) clearInterval(t);
     if (this.sharedLoginRetry) clearTimeout(this.sharedLoginRetry);
     this.desktops.close();
@@ -966,6 +1033,10 @@ export class RunnerDaemon implements RequestObserver {
         result: "ok",
       });
     }
+    // Changed on the computer (its app, config.json) or from the apps (`limits.set`): the server shows the new one.
+    if (!initial && this.taskLimit(prev) !== this.taskLimit(next)) {
+      this.send({ type: "runner.state", paused: nextPause, maxTasks: this.taskLimit(next) });
+    }
     this.armResume();
     // The switch goes with its route, so a CLI left running would go out directly.
     if (!initial && prev?.claudeSharedLogin && !next?.claudeSharedLogin) {
@@ -1005,7 +1076,7 @@ export class RunnerDaemon implements RequestObserver {
 
     if (this.session && paired) {
       this.session.tasks.setLimits({
-        maxConcurrent: paired.maxConcurrentTasks ?? DEFAULT_LIMITS.maxConcurrentTasks,
+        maxConcurrent: this.taskLimit(paired),
         defaultMaxSeconds: paired.taskMaxSeconds ?? DEFAULT_LIMITS.taskMaxSeconds,
       });
       const brainLimits = {
@@ -1014,7 +1085,7 @@ export class RunnerDaemon implements RequestObserver {
       };
       this.session.brains.setLimits(brainLimits);
       this.session.accountBrains?.brains.setLimits(brainLimits);
-      this.session.codexApp.setLimits(brainLimits);
+      this.session.codexApp.setLimits(codexLimits(paired));
       this.session.supervisor?.stateChanged();
     }
     this.queueStatus();
@@ -1025,6 +1096,10 @@ export class RunnerDaemon implements RequestObserver {
   private stopHosted(why: string) {
     this.session?.accountBrains?.dropTurns(new RunnerError("dropped", why));
     for (const u of readAgentUsers(this.opts.home)) this.accountUsers?.stopScopes(u.uid);
+  }
+
+  private taskLimit(c: Pick<StoredConfig, "maxConcurrentTasks"> | null | undefined) {
+    return c?.maxConcurrentTasks ?? DEFAULT_LIMITS.maxConcurrentTasks;
   }
 
   /** System mode: what each agent's worker must know about this computer. */
@@ -1038,10 +1113,12 @@ export class RunnerDaemon implements RequestObserver {
       ),
       ...(c ? { commitHost: new URL(c.server).hostname } : {}),
       limits: {
-        maxConcurrentTasks: c?.maxConcurrentTasks ?? DEFAULT_LIMITS.maxConcurrentTasks,
+        maxConcurrentTasks: this.taskLimit(c),
         taskMaxSeconds: c?.taskMaxSeconds ?? DEFAULT_LIMITS.taskMaxSeconds,
         brainIdleMinutes: c?.brainIdleMinutes ?? DEFAULT_LIMITS.brainIdleMinutes,
         brainMaxProcesses: c?.brainMaxProcesses ?? DEFAULT_LIMITS.brainMaxProcesses,
+        codexIdleMinutes: c?.brainIdleMinutes ?? CODEX_DEFAULT_LIMITS.brainIdleMinutes,
+        codexMaxProcesses: c?.brainMaxProcesses ?? CODEX_DEFAULT_LIMITS.brainMaxProcesses,
       },
     };
   }
@@ -1205,7 +1282,7 @@ export class RunnerDaemon implements RequestObserver {
       mcp: mcpCommand,
       root: path.join(home, "tasks"),
       workspaceReal,
-      maxConcurrent: config.maxConcurrentTasks ?? DEFAULT_LIMITS.maxConcurrentTasks,
+      maxConcurrent: this.taskLimit(config),
       defaultMaxSeconds: config.taskMaxSeconds ?? DEFAULT_LIMITS.taskMaxSeconds,
       log,
       agentFolder: (agent) => agentWorkspace(workspaceReal, agent),
@@ -1224,14 +1301,14 @@ export class RunnerDaemon implements RequestObserver {
       idleMs: (config.brainIdleMinutes ?? DEFAULT_LIMITS.brainIdleMinutes) * 60_000,
       maxProcesses: config.brainMaxProcesses ?? DEFAULT_LIMITS.brainMaxProcesses,
       accounts: this.accounts,
+      readyRoom,
       log,
     });
     const codexRuns = new Map<string, McpTaskInfo>();
     // Codex turns on long-lived app-servers (live steering); `codex exec` where they can't run.
     const codexApp = new CodexAppServers({
       runs: codexRuns,
-      idleMs: (config.brainIdleMinutes ?? DEFAULT_LIMITS.brainIdleMinutes) * 60_000,
-      maxProcesses: config.brainMaxProcesses ?? DEFAULT_LIMITS.brainMaxProcesses,
+      ...codexLimits(config),
       onRateLimits: (account, rateLimits) =>
         this.accounts.noteCodexRateLimits(account ?? OWN_USAGE_ID.codex, rateLimits),
       log,
@@ -1239,6 +1316,7 @@ export class RunnerDaemon implements RequestObserver {
     const mcp = new McpBridge({
       socketPath,
       task: (taskId) => tasks.mcpTask(taskId) ?? brains.mcpTask(taskId) ?? codexRuns.get(taskId) ?? null,
+      onCall: (taskId, delta) => brains.bridgeCall(taskId, delta),
       log,
     });
     await mcp
@@ -1519,6 +1597,7 @@ export class RunnerDaemon implements RequestObserver {
       codex: { runnerHome: home, mcp: mcpCommand, runs: codexRuns, app: codexApp },
       paused: () => this.stopping || this.pauseState().paused,
       setPause: (paused, until, by) => (paused ? this.pause(until, by) : this.resume()),
+      setTaskLimit: (maxTasks) => this.configSet({ maxConcurrentTasks: maxTasks }).maxConcurrentTasks,
       // A config written later without the mode never turns a system session back into one that does agents' work.
       systemMode: () => config.mode === "system" || this.stored?.mode === "system",
       ...(supervisor ? { workers: supervisor } : {}),
@@ -1973,7 +2052,7 @@ export class RunnerDaemon implements RequestObserver {
       exec: access.tools.commands,
       paused: this.pauseState(),
       access,
-      size: machineSize(workspaceReal),
+      size: { ...machineSize(workspaceReal), maxTasks: this.taskLimit(this.stored) },
       claudeLoginMethods: this.accounts.claudeLoginMethods(),
       ...(this.sharedLoginBlocked && this.stored?.claudeSharedLogin
         ? { claudeLoginBlocked: this.sharedLoginBlocked }
@@ -2297,6 +2376,12 @@ export class RunnerDaemon implements RequestObserver {
     return { looking: (await this.phones?.look()) ?? false };
   }
 
+  /** The desktop app's iPhone setup repairing an iPhone's test helper (`phone.repair`). */
+  async iphoneRepair(serial: string): Promise<{ repairing: boolean }> {
+    if (!this.phones) throw new RunnerError("phone_missing", "This computer doesn't reach phones.");
+    return this.phones.repair({ serial });
+  }
+
   /** The desktop app's iPhone setup: what the Mac has, a download of the iOS platform, Xcode opened. */
   iphoneSetup(): IphoneSetup {
     this.iphone ??= new IphoneSetup({ log: this.opts.log, fixer: () => this.xcodeFixer(), ...this.opts.iphone });
@@ -2383,11 +2468,12 @@ export class RunnerDaemon implements RequestObserver {
     const c = this.requirePaired();
     return {
       name: c.name,
-      maxConcurrentTasks: c.maxConcurrentTasks ?? DEFAULT_LIMITS.maxConcurrentTasks,
+      maxConcurrentTasks: this.taskLimit(c),
       taskMaxSeconds: c.taskMaxSeconds ?? DEFAULT_LIMITS.taskMaxSeconds,
       brainIdleMinutes: c.brainIdleMinutes ?? DEFAULT_LIMITS.brainIdleMinutes,
       brainMaxProcesses: c.brainMaxProcesses ?? DEFAULT_LIMITS.brainMaxProcesses,
       workspace: this.session?.workspaceReal ?? c.workspace,
+      defaultMaxConcurrentTasks: DEFAULT_LIMITS.maxConcurrentTasks,
       ...(c.managedBy === "desktop" ? { managedBy: c.managedBy } : {}),
     };
   }

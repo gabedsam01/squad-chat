@@ -9,7 +9,7 @@ import {
 } from "./types";
 
 /**
- * OpenAI's Decisions API (ADR 0195): POST /v1/decisions with gpt-6-luna. Its own field names: predicate instead of
+ * OpenAI's Decisions API (ADR 9001): POST /v1/decisions with gpt-6-luna. Its own field names: predicate instead of
  * noul, choices and levels as arrays, and an answers array keyed by name. Text, pictures and JSON go in the input;
  * files, audio and video are not taken here.
  * https://developers.openai.com/api/docs/guides/decisions
@@ -42,7 +42,7 @@ function questionOf(id: string, q: DecisionQuestion): Record<string, unknown> {
 
 /**
  * The pictures a call carries as data URLs, each after a line with its name: the state names a picture by its key,
- * and several in one call (ADR 0200) are told apart by it. Audio, video and documents are refused by this API.
+ * and several in one call (ADR 9006) are told apart by it. Audio, video and documents are refused by this API.
  */
 function contentOf(call: DecisionCall) {
   const content: Record<string, unknown>[] = [

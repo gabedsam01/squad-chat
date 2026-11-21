@@ -10,7 +10,7 @@ import type { PlanDeps, ScreenAction, ScreenStep, StepReport } from "./plan";
 import { CONTROLS, COSTLY, costlyOf, fits, MAX_OPTIONS, PICK_AT } from "./targets";
 
 /**
- * A goal (ADR 0200): a short task on one screen done in a loop of small decisions, so the agent's own model
+ * A goal (ADR 9006): a short task on one screen done in a loop of small decisions, so the agent's own model
  * isn't asked at every click. Each round is one judge request over the screen's elements: the operation, the
  * target for each operation that could apply, which of the agent's `values` to use and whether the goal is
  * reached. Text typed comes only from `values`; no model writes any. The loop stops at anything it isn't sure

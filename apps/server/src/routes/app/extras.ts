@@ -8,6 +8,9 @@ import type {
   GitHubAppSettings,
   GitProxyDeps,
   JevKey,
+  LiveDeps,
+  LiveDocs,
+  LiveImages,
   McpConnect,
   ModelGateway,
   ResolveHost,
@@ -60,7 +63,7 @@ export interface AppExtras {
   pushRelaySender?: PushSender | null;
   /** The installation's Jev key, for its owner's routes (ADR 0073); absent = those routes answer 404. */
   jevKey?: JevKey;
-  /** The installation's optional decision model, for its owner's routes (ADR 0195); absent = 404. */
+  /** The installation's optional decision model, for its owner's routes (ADR 9001); absent = 404. */
   decisionModel?: DecisionModel;
   /**
    * The installation's GIPHY key, for its owner's routes (ADR 0091, amended 2026-10-31); absent (squadchat's own
@@ -72,4 +75,10 @@ export interface AppExtras {
   /** Speech engines and what voice messages need (ADR 0100); absent: no voice messages. */
   speech?: SpeechSettings;
   voice?: VoiceDeps;
+  /** Live files (ADR 0196): the documents this process hosts; absent: their routes answer 500. */
+  live?: LiveDocs;
+  /** What the live files' engine functions take (creating one, its pictures, office files, ADR 0198). */
+  liveDeps?: LiveDeps;
+  /** Pictures on canvases (ADR 0197); absent: made from `artifacts`, `live` and the context's gateway. */
+  images?: LiveImages;
 }

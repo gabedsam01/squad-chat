@@ -311,6 +311,13 @@ export const words: EmailWords = {
   deletionCode: {
     subjectWorkspace: (code) => `${code} is je code om een werkruimte te verwijderen`,
     subjectAccount: (code) => `${code} is je code om je hele account te verwijderen`,
+    subjectReset: (code) => `${code} is je code om een werkruimte te resetten`,
+    reset: (org) => [
+      "Typ deze code om de werkruimte ",
+      { b: org },
+      " te resetten. Agents, gesprekken, bestanden en geheugen worden meteen en definitief gewist, en hij begint opnieuw als een nieuwe werkruimte.",
+    ],
+    whyReset: (org) => `Je krijgt deze e-mail omdat vanuit je account is gevraagd om ${org} op squadchat te resetten.`,
     preheader: "Typ hem in squadchat om te bevestigen. Hij werkt 10 minuten.",
     headline: "Je code",
     workspace: (org) => [

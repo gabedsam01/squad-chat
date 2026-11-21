@@ -183,7 +183,7 @@ export function formatPlanReport(r: PlanReport): FormattedReport {
       out.push(`${i + 1}. ${stepLine(s, kind)}`);
     });
   }
-  // What a goal did on its way, also when it stopped short (ADR 0200).
+  // What a goal did on its way, also when it stopped short (ADR 9006).
   const goalActions = r.steps.flatMap((s) => s.goal?.actions ?? []);
   if (goalActions.length > 0) {
     out.push(`Actions of the goal: ${goalActions.length}.`);

@@ -1,14 +1,14 @@
 /**
  * Desktop computer use (ADR 0062) on scenes recorded from an agent's desktop (XFCE at 1280×800; the helper's own
  * screenshots, JPEG q70, and the runner's looks with their marks). Locating a control on the screenshot is by
- * choice over marks or tiles, never a box (ADR 0200), first pass and with the close-up of small targets; also
+ * choice over marks or tiles, never a box (ADR 9006), first pass and with the close-up of small targets; also
  * targets that aren't there, the judge's choice over the accessibility tree, and checks on the text and with the
  * image. Prints each against its bar and exits 1 when one is below it: run it before changing the decision model.
  *
  *   bun run eval:desktop:micro
  *
  * Needs TYPESAFE_API_KEY for the text cases (Jev) and DECISION_PROVIDER (`openai` | `gemini`) + DECISION_API_KEY
- * (optional DECISION_MODEL) for the image cases: Jev never reads images (ADR 0200). The close-ups are cut from the
+ * (optional DECISION_MODEL) for the image cases: Jev never reads images (ADR 9006). The close-ups are cut from the
  * recorded screenshots with `sips` (macOS) or ImageMagick, at the runner's quality; without either, the close-up
  * pass is skipped and said so. EVAL_DESKTOP_TRIALS (default 2) repeats each image case.
  */

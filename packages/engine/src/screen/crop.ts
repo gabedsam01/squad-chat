@@ -1,7 +1,7 @@
 import { deflateSync, inflateSync } from "node:zlib";
 
 /**
- * Cropping an image (ADR 0200). Bun.Image resizes and re-encodes but has no crop, so the image
+ * Cropping an image (ADR 9006). Bun.Image resizes and re-encodes but has no crop, so the image
  * is read as PNG pixels, a region is copied out into a PNG of its own, and Bun.Image draws that
  * at the size asked.
  */

@@ -65,11 +65,11 @@ import { AudienceChoice } from "@/components/AgentAudience";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { LookRows, modelOptions } from "@/components/AgentFields";
 import { RightHandApprovalsCard } from "@/components/ApprovalCover";
-import { PlanHold, usePlanHold } from "@/components/ai/ConnectAiSteps";
+import { PlanHold, usePlanHold } from "@/components/ai/plan-hold";
 import { type HaveItem, renameOf } from "@/components/arrival/ConnectHave";
-import { useConnectAi } from "@/components/ConnectAi";
 import { useAgentComputer } from "@/components/computer/facts";
 import { useOpenComputer } from "@/components/computer/open";
+import { useConnectAi } from "@/components/connect-ai-context";
 import { HelpLink } from "@/components/HelpLink";
 import { LoadingLine } from "@/components/Loading";
 import { PrefRow } from "@/components/NoticePrefs";
@@ -320,35 +320,18 @@ export function RightHandMineRow({ agent }: { agent: Agent }) {
  */
 function RightHandComputerRow({ agent }: { agent: Agent }) {
   const { t } = useTranslation();
-  const { org } = useOrg();
   const view = useAgentComputer(agent);
   const openComputer = useOpenComputer();
-  const auth = useAuthConfig();
+  const none = useRightHandNoComputer(view.desktop?.reason);
   if (!view.ready || view.forbidden || !view.facts) return null;
-  const none = rightHandNoComputer(view.desktop?.reason, selfHosted(auth.data));
   if (none)
     return (
       <PrefRow
         id="rh-computer"
         icon="computer"
         label={t("agentComputer.button")}
-        status={
-          none === "rightHand.computerNoHomeServer" ? (
-            <Trans i18nKey={none} components={{ guide: <HelpLink slug="install-on-a-server" section="computers" /> }} />
-          ) : (
-            t(none)
-          )
-        }
-        control={
-          none === "rightHand.computerNoHome" &&
-          can(org, "pair_computers") && (
-            <Button asChild size="sm" icon="plus">
-              <Link to="/org/$orgId/settings/$section" params={{ orgId: org.id, section: "devices" }} search={{}}>
-                {t("rightHand.addComputer")}
-              </Link>
-            </Button>
-          )
-        }
+        status={none.line}
+        control={none.action}
       />
     );
   return (
@@ -360,6 +343,33 @@ function RightHandComputerRow({ agent }: { agent: Agent }) {
       onOpen={() => openComputer(agent.id)}
     />
   );
+}
+
+/**
+ * Why the right hand has no computer for anyone (the workspace has none of its own, or one that can't keep people
+ * apart), as a line and the way out: its row on its page and its DM's sidebar alike. Null while it has one.
+ */
+export function useRightHandNoComputer(reason: string | null | undefined) {
+  const { t } = useTranslation();
+  const { org } = useOrg();
+  const auth = useAuthConfig();
+  const none = rightHandNoComputer(reason, selfHosted(auth.data));
+  if (!none) return null;
+  return {
+    line:
+      none === "rightHand.computerNoHomeServer" ? (
+        <Trans i18nKey={none} components={{ guide: <HelpLink slug="install-on-a-server" section="computers" /> }} />
+      ) : (
+        t(none)
+      ),
+    action: none === "rightHand.computerNoHome" && can(org, "pair_computers") && (
+      <Button asChild size="sm" icon="plus">
+        <Link to="/org/$orgId/settings/$section" params={{ orgId: org.id, section: "devices" }} search={{}}>
+          {t("rightHand.addComputer")}
+        </Link>
+      </Button>
+    ),
+  };
 }
 
 /** "Poderes do workspace": one row that opens what only the right hand does, in words (`RIGHT_HAND_POWERS`). */

@@ -14,6 +14,7 @@ export * from "./hosts";
 export * from "./imports";
 export * from "./instance-decision-model";
 export * from "./instance-secrets";
+export * from "./live";
 export * from "./machines";
 export * from "./mail";
 export * from "./missions";

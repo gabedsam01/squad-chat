@@ -23,6 +23,7 @@ import {
   applyConversationEvent,
   applyDashboardEvent,
   applyIssueEvent,
+  applyLiveEvent,
   applyMachineEvent,
   applyMembershipEvent,
   applyNotificationEvent,
@@ -49,6 +50,7 @@ import {
   cacheMessageWork,
   cachePinned,
   cacheReceipts,
+  cacheResolved,
   cacheTask,
   cacheTeamCard,
   catchUpChannel,
@@ -805,6 +807,8 @@ export function useChannelRealtime(orgId: string, channelId: string, enabled: bo
       }
       // A file's cards and viewer, an agent's memory list.
       applyConversationEvent(qc, orgId, event);
+      // Who is in one of the conversation's live files changed (ADR 0196 §5): its cards ask again.
+      applyLiveEvent(qc, orgId, event);
       if (event.type === "poll.updated") qc.setQueryData(keys.poll(orgId, event.poll.id), event.poll);
       if (event.type === "block.state") {
         const { block } = event;
@@ -854,6 +858,10 @@ export function useChannelRealtime(orgId: string, channelId: string, enabled: bo
       if (event.type === "message.pinned" || event.type === "message.unpinned") {
         cachePinned(qc, orgId, channelId, event.messageId, event.type === "message.pinned");
         void qc.invalidateQueries({ queryKey: keys.pins(orgId, channelId) });
+      }
+      // A comment on a picture, a video or a PDF was resolved or opened again (ADR 0208): its pin and line follow.
+      if (event.type === "message.resolved") {
+        cacheResolved(qc, orgId, event.channelId, event.messageId, event.resolved);
       }
       // Act with undo: an agent message's receipts changed (made, undone, redone): replace the list.
       // A long work moved, updated or ended (ADR 0121): its anchor's line redraws; its card on the board too.

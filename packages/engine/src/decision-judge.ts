@@ -16,8 +16,8 @@ import {
 } from "./router";
 
 /**
- * The installation's optional decision model, in front of Jev (ADR 0195). It answers the same typed questions; when
- * it can't read pictures, the Jev chain answers the text questions as before and refuses a request with images (ADR 0200). Any failure is reported on the model's state and the
+ * The installation's optional decision model, in front of Jev (ADR 9001). It answers the same typed questions; when
+ * it can't read pictures, the Jev chain answers the text questions as before and refuses a request with images (ADR 9006). Any failure is reported on the model's state and the
  * Jev chain takes over, so a provider that is down never leaves a message unanswered.
  */
 
@@ -74,7 +74,7 @@ async function askModel(
 
 /**
  * The configured model, then the Jev chain. Images go straight to the chain when the model can't read
- * pictures (the chain refuses them, ADR 0200); a calibrated request the model fails goes to the chain, which either has Jev or
+ * pictures (the chain refuses them, ADR 9006); a calibrated request the model fails goes to the chain, which either has Jev or
  * refuses it as today.
  */
 export function createDecisionJudge(options: {

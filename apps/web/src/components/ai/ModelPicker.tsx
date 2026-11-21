@@ -9,6 +9,7 @@ import {
   usePlatformKey,
   useUpdateAgent,
 } from "@agenteschat/client";
+import { managesAgent } from "@agenteschat/client/lib/audience";
 import {
   brainEffortScale,
   type EffortLevel,
@@ -29,7 +30,7 @@ import {
 } from "@agenteschat/client/lib/brain-picker";
 import { can } from "@agenteschat/client/lib/permissions";
 import { modelStandInKey, planMeterText } from "@agenteschat/client/lib/plan-usage";
-import { effortPick, levelOfModel, planOf } from "@agenteschat/client/lib/plans";
+import { brainMissingHint, effortPick, levelOfModel, planOf } from "@agenteschat/client/lib/plans";
 import { modelChoices } from "@agenteschat/client/lib/providers";
 import { isRightHand } from "@agenteschat/client/lib/right-hand";
 import {
@@ -50,7 +51,7 @@ import { type CSSProperties, type ReactElement, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentPanel } from "@/components/agent-panel-context";
 import { TeamScene } from "@/components/arrival/TeamScene";
-import { useConnectAi } from "@/components/ConnectAi";
+import { useConnectAi } from "@/components/connect-ai-context";
 import { useOrg } from "@/components/org-context";
 import { useAgentThinks } from "@/hooks/useAgentThinks";
 import { fullLook, lookOf } from "@/lib/look";
@@ -76,12 +77,12 @@ export function ModelPickerButton({
   className?: string;
 }) {
   const { t } = useTranslation();
-  const { org, me } = useOrg();
+  const { me } = useOrg();
   const thinks = useAgentThinks(agent);
   if (!thinks?.text) return null;
   const mark = thinks.mark ? <ProviderLogo id={thinks.mark} size="xs" /> : <BrainIcon kind={thinks.kind} size={14} />;
   // The team's right hand thinks with each person's own AI ("Sua IA"), set where that is: never picked here.
-  if (!mayPickModel(agent, me.user.id, can(org, "manage_agents")))
+  if (!mayPickModel(agent, me.user.id, managesAgent(agent)))
     return (
       <span
         className={cx("mp-label", className)}
@@ -147,7 +148,7 @@ export function ModelStandInLine({
 }) {
   const { t } = useTranslation();
   const { org, me } = useOrg();
-  const may = mayPickModel(agent, me.user.id, can(org, "manage_agents"));
+  const may = mayPickModel(agent, me.user.id, managesAgent(agent));
   const key = may ? modelStandInKey(meta) : null;
   const ai = useAiAccounts(org.id, Boolean(key));
   const account = key
@@ -205,12 +206,23 @@ function PickerBody({ agent, view, onClose }: { agent: Agent; view: AgentBrain; 
   const platform = usePlatformKey(org.id);
   const all = models.data?.models ?? [];
   const choices = modelChoices(all, credentials.data ?? view.keys ?? [], platform.data ?? false, agent.model);
-  const tiles = modelPickerTiles(t, view, agent.ownerUserId, choices, agent.model, all);
+  // The computer's own sign-ins as its runner reported them: a plan's tile offers one only where it is signed in.
+  const aiAccounts = useAiAccounts(org.id);
+  const computerRow = aiAccounts.data?.computers.find((c) => c.machineId === view.computer?.machineId);
+  const tiles = modelPickerTiles(t, view, agent.ownerUserId, choices, agent.model, all, computerRow);
   const [tileKey, setTileKey] = useState(() => (tiles.find((x) => x.current) ?? tiles[0])?.key);
   const tile = tiles.find((x) => x.key === tileKey) ?? tiles[0];
   const [accountId, setAccountId] = useState<string | null | undefined>(undefined);
   const account = tile?.accounts.find((a) => a.id === accountId) ?? tile?.accounts[0];
   const rows = tile ? modelPickerModels(t, i18n.language, view, tile, account, choices, agent.model) : [];
+  // Gemini's newest model missing from the computer's list: why, under the list.
+  const missing =
+    tile && tile.kind !== "model" && !planOf(account?.provider)
+      ? brainMissingHint(
+          t,
+          view.options.find((o) => o.kind === tile.kind),
+        )
+      : undefined;
   const [q, setQ] = useState("");
   const shown = q.trim() ? rows.filter((r) => r.label.toLowerCase().includes(q.trim().toLowerCase())) : rows;
   const [busy, setBusy] = useState(false);
@@ -404,6 +416,7 @@ function PickerBody({ agent, view, onClose }: { agent: Agent; view: AgentBrain; 
           </button>
         ))}
       </div>
+      {missing && <p className="mp__missing">{missing}</p>}
       {effortOn && tile && (
         <div className="mp__effort">
           <EffortPixels

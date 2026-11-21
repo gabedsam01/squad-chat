@@ -19,7 +19,7 @@ import {
 } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { type Agent, listAgents } from "../agents";
-import { audienceError, canTalkTo, speakerOf } from "../audience";
+import { audienceError, canTalkTo, listsAgentTo, speakerOf } from "../audience";
 import { recordAudit } from "../audit";
 import { listChannels, requireChannelAccess } from "../channels";
 import { stubOf, threadIsConfidential } from "../confidential";
@@ -37,6 +37,7 @@ import { listWorkingRuns } from "../working";
 import type { AppPrincipal } from "./grants";
 import { type APP_MANAGE_TOOL_NAMES, registerManageTools } from "./manage-tools";
 import { type AppScope, appsUrls } from "./urls";
+import { type APP_WIKI_TOOL_NAMES, registerWikiTools } from "./wiki-tools";
 
 const { agentRuns, appSends, approvals, messages, users, agents, channels } = schema;
 
@@ -141,7 +142,8 @@ const toolError = (text: string, extra: Record<string, unknown> = {}): CallToolR
   content: [{ type: "text", text: Object.keys(extra).length ? `${text} ${JSON.stringify(extra)}` : text }],
 });
 
-class AppToolError extends Error {
+/** An error the app can act on, with facts beside its words (`extra`, as JSON after them). */
+export class AppToolError extends Error {
   constructor(
     message: string,
     readonly extra: Record<string, unknown> = {},
@@ -498,7 +500,10 @@ export type ToolConfig<S extends z.ZodObject> = {
   openWorld: boolean;
 };
 
-type AppToolName = (typeof APP_TOOL_NAMES)[number] | (typeof APP_MANAGE_TOOL_NAMES)[number];
+type AppToolName =
+  | (typeof APP_TOOL_NAMES)[number]
+  | (typeof APP_MANAGE_TOOL_NAMES)[number]
+  | (typeof APP_WIKI_TOOL_NAMES)[number];
 
 /** Registers a tool on this request's server when the connection holds its scope. */
 export type RegisterTool = <S extends z.ZodObject>(
@@ -751,8 +756,8 @@ export function buildAppsMcpServer(deps: AppsToolDeps, p: AppPrincipal, version:
     async (args) => {
       const membership = await getMembership(deps.db, p.userId, p.orgId);
       const talks = speakerOf(membership);
-      const all = (await listAgents(deps.db, p.userId, p.orgId)).filter((a) =>
-        matches(args.query, a.name, a.handle, a.role),
+      const all = (await listAgents(deps.db, p.userId, p.orgId)).filter(
+        (a) => listsAgentTo(a, p.userId, membership) && matches(args.query, a.name, a.handle, a.role),
       );
       const { slice, next_cursor } = page(all, args.cursor, args.limit, `agents:${args.query ?? ""}`);
       return {
@@ -953,6 +958,7 @@ export function buildAppsMcpServer(deps: AppsToolDeps, p: AppPrincipal, version:
   );
 
   registerManageTools(deps, p, tool);
+  registerWikiTools(deps, p, tool);
   return server;
 }
 

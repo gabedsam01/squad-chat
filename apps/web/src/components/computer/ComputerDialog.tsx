@@ -16,26 +16,18 @@ import {
   liveSubLine,
   surfaceOf,
 } from "@agenteschat/client/lib/agent-computer";
+import { managesAgent } from "@agenteschat/client/lib/audience";
 import { computerName, READY_FLASH_MS, WORKSPACE_COMPUTER_KIND } from "@agenteschat/client/lib/computer";
 import { clockAt } from "@agenteschat/client/lib/format";
 import { agentGrammar } from "@agenteschat/client/lib/grammar";
 import { computerKind, isPaused } from "@agenteschat/client/lib/machines";
 import { can } from "@agenteschat/client/lib/permissions";
-import { type Seat, screenId } from "@agenteschat/client/lib/seat";
-import { SeatContext, useSeat } from "@agenteschat/client/lib/seat-context";
+import { isRightHand } from "@agenteschat/client/lib/right-hand";
+import { useSeat } from "@agenteschat/client/lib/seat-context";
 import { isPersonal } from "@agenteschat/client/lib/workspace-mode";
 import { Button, ComputerPortrait, cx, Dialog, gradientOf, Icon, SkyStrip } from "@agenteschat/ui";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  type CSSProperties,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { type EntrySignal, QueueButton, useAgentMachineId } from "@/components/ComputerQueue";
@@ -55,7 +47,7 @@ import { CantShowCover, ScreenNotice, Stage } from "./covers";
 import { type AgentComputerView, useAgentComputer } from "./facts";
 import { DialogHead, DialogHeadContext, type DialogHeadSlots, type KeptPicture } from "./head";
 import { KeptRunningButton } from "./KeptRunning";
-import { type OpenComputer, OpenComputerContext, OpenedComputerContext, useOpenComputer } from "./open";
+import { useOpenComputer } from "./open";
 import "./computer.css";
 
 /**
@@ -308,7 +300,7 @@ function ComputerStage({
   const dir = useDirectory(org.id);
   const actions = useBrowserHandoffMutations(org.id);
   const navigate = useNavigate();
-  const outages = useMachineOutages(org.id, can(org, "manage_agents"));
+  const outages = useMachineOutages(org.id, managesAgent(agent));
   const [switching, setSwitching] = useState(false);
   // The screen's own held cover says it all: no pause line over it.
   const [screenHeld, setScreenHeld] = useState(false);
@@ -323,7 +315,7 @@ function ComputerStage({
   const oneClick = useToolOneClick(machine);
   const browserOneClick = Boolean(machine && oneClick && oneClick.kind !== "outdated");
   const computer = computerName(t, org.name, machine, isPersonal(org));
-  const manages = can(org, "manage_agents") || agent.ownerUserId === me.user.id;
+  const manages = managesAgent(agent) || agent.ownerUserId === me.user.id;
   // Whose role gives no browser here gets Fechar, never "Assumir o navegador" (ADR 0085 §12).
   const mayBrowser = can(org, agent.ownerUserId === me.user.id ? "own_browsers" : "control_browsers");
   const person = (id: string | null) => (id ? dir.memberById.get(id)?.name : undefined) ?? t("channel.unknownPerson");
@@ -555,7 +547,9 @@ function ComputerStage({
             icon="computer"
             text={t("agentComputer.state.noComputer", g)}
             action={
-              manages && (
+              // The right hand's computer is the workspace's own, never chosen (the server refuses it).
+              manages &&
+              !isRightHand(agent) && (
                 <Button size="sm" variant="primary" onClick={choose}>
                   {t("agentComputer.choose")}
                 </Button>
@@ -726,31 +720,4 @@ function WatchButton({ agent, signal }: { agent: Agent; signal: EntrySignal }) {
   );
 }
 
-/**
- * One computer dialog for the workspace: its agent page's entry, the DM's button, a computer's page and the
- * chat's cards open an agent's computer here, in place.
- */
-export function ComputerDialogProvider({ children }: { children: ReactNode }) {
-  const { org } = useOrg();
-  const dir = useDirectory(org.id);
-  const [opened, setOpened] = useState<{ agentId: string; seat?: Seat } | null>(null);
-  const agent = opened ? dir.agentById.get(opened.agentId) : undefined;
-  const open = useCallback<OpenComputer>((agentId, seat) => setOpened({ agentId, ...(seat ? { seat } : {}) }), []);
-  const close = useCallback(() => setOpened(null), []);
-  const seatOf = useMemo(
-    () => (opened?.seat ? { agentId: opened.agentId, seat: opened.seat } : undefined),
-    [opened?.agentId, opened?.seat],
-  );
-  return (
-    <OpenComputerContext.Provider value={open}>
-      <OpenedComputerContext.Provider value={agent ? agent.id : null}>{children}</OpenedComputerContext.Provider>
-      {agent && (
-        // The right hand's shared place is another screen than the viewer's own: everything the dialog reads and does
-        // goes to the one it was opened for.
-        <SeatContext.Provider value={seatOf}>
-          <ComputerDialog key={screenId(agent.id, opened?.seat)} agent={agent} open onClose={close} />
-        </SeatContext.Provider>
-      )}
-    </OpenComputerContext.Provider>
-  );
-}
+export { ComputerDialogProvider } from "./provider";

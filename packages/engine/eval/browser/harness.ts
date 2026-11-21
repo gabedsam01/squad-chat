@@ -260,7 +260,7 @@ export function jevJudge(log: JudgeLog): Judge {
 }
 
 /**
- * The installation's decision model (ADR 0200): the only judge that reads images. `DECISION_PROVIDER`
+ * The installation's decision model (ADR 9006): the only judge that reads images. `DECISION_PROVIDER`
  * (`openai` | `gemini` | `openrouter`), `DECISION_API_KEY`, optional `DECISION_MODEL` (the provider's first listed
  * model; required on OpenRouter).
  */
@@ -272,7 +272,7 @@ export function decisionJudge(log: JudgeLog): Judge {
   const provider = viaOpenRouter ? "local" : named;
   if (!isDecisionProvider(provider) || (provider === "local" && !viaOpenRouter))
     throw new Error(
-      "DECISION_PROVIDER must be `openai`, `gemini` or `openrouter` (images go to the decision model, ADR 0200).",
+      "DECISION_PROVIDER must be `openai`, `gemini` or `openrouter` (images go to the decision model, ADR 9006).",
     );
   const openRouter: typeof fetch | undefined = viaOpenRouter
     ? Object.assign(
@@ -358,7 +358,7 @@ function openRouterBody(raw: string): string {
   return JSON.stringify({ ...rest, state: parts });
 }
 
-/** Text questions to Jev, requests with images to the decision model (ADR 0200). */
+/** Text questions to Jev, requests with images to the decision model (ADR 9006). */
 export function imageJudge(log: JudgeLog): Judge {
   const jev = jevJudge(log);
   const decision = decisionJudge(log);

@@ -54,8 +54,10 @@ import {
   resolveTarget,
   runPlan,
   type ScreenImage,
+  type ScreenJudgmentShadow,
   type ScreenStep,
   type ScreenVerb,
+  screenJudgmentsData,
   screenRef,
   screenStepOf,
   type TargetCache,
@@ -620,7 +622,7 @@ const TRAIL_TOOL: Record<ScreenVerb, BrowserToolName> = {
 };
 
 function trailOf(report: PlanReport) {
-  // A goal's own actions are the steps that went to the page (ADR 0200).
+  // A goal's own actions are the steps that went to the page (ADR 9006).
   return report.steps
     .flatMap((s) => s.goal?.actions ?? [s])
     .filter((s) => s.status !== "skipped")
@@ -1213,6 +1215,7 @@ export function createBrowserToolSource(deps: BrowserToolDeps): ToolSource & { r
     // A take over that begins and ends within one step leaves no open handoff to see: it is checked too.
     const started = new Date();
     let handedBack = false;
+    const shadow: ScreenJudgmentShadow[] = [];
     const report = await runPlan(
       {
         judge,
@@ -1245,6 +1248,7 @@ export function createBrowserToolSource(deps: BrowserToolDeps): ToolSource & { r
         before: seen.within(key, KNOWN_LOOK_MS),
         vision: deps.vision?.() === true && linked.status.protocol >= BROWSER_FAST_PROTOCOL,
         now,
+        shadow,
       },
       steps,
     );
@@ -1269,6 +1273,7 @@ export function createBrowserToolSource(deps: BrowserToolDeps): ToolSource & { r
       ...(options.trail ? { browserTrail: trailOf(report) } : {}),
       ...profileData(linked.profile),
       timing,
+      ...screenJudgmentsData(shadow),
     };
     const waiting = paused as ToolOutput | null;
     if (waiting) {
@@ -1651,6 +1656,7 @@ export function createBrowserToolSource(deps: BrowserToolDeps): ToolSource & { r
         const sized = emulatedLine(linked.emulated()).slice(1);
         const head = `${url ? `Page: ${neutralizeUntrusted(url)}\n` : ""}${sized ? `${sized}\n` : ""}`;
         if (question && page && deps.judge) {
+          const shadow: ScreenJudgmentShadow[] = [];
           const found = await findInPage({
             judge,
             orgId: ctx.orgId,
@@ -1658,6 +1664,7 @@ export function createBrowserToolSource(deps: BrowserToolDeps): ToolSource & { r
             runId: ctx.runId,
             question,
             observation: page,
+            shadow,
           }).catch(() => null);
           const part = found?.searched
             ? ` (searched ${found.searched.lines} of the page's ${found.searched.of} lines)`
@@ -1666,13 +1673,13 @@ export function createBrowserToolSource(deps: BrowserToolDeps): ToolSource & { r
             const partly = found.answered === "partly" ? " (it may only partly answer it)" : "";
             return {
               content: `${head}Where the page answers "${question}"${partly}${part}:\n${wrapPage(found.text)}`,
-              data: { ...(url ? { url } : {}), ...profileData(linked.profile) },
+              data: { ...(url ? { url } : {}), ...profileData(linked.profile), ...screenJudgmentsData(shadow) },
             };
           }
           if (found) {
             return {
               content: `${head}Nothing on the page answers "${question}"${part}. Read the whole page (no \`find\`) to look yourself, or go where it would be.`,
-              data: { ...(url ? { url } : {}), ...profileData(linked.profile) },
+              data: { ...(url ? { url } : {}), ...profileData(linked.profile), ...screenJudgmentsData(shadow) },
             };
           }
         }

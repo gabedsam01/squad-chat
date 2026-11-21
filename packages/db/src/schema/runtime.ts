@@ -139,6 +139,11 @@ export const agentRuns = pgTable(
      */
     pendingMessageIds: uuid().array().notNull().default(sql`'{}'::uuid[]`),
     /**
+     * A separate request sent while the run worked (ADR 0112 addendum, `steerHandling` `queue`): out of what its steps
+     * read, left for after its task. Every ending hands them on with its unread messages: a run of their own.
+     */
+    afterMessageIds: uuid().array().notNull().default(sql`'{}'::uuid[]`),
+    /**
      * The issue this run works on: set when someone asks the agent to
      * implement it, or when the run uses an issue tool on it. The issue shows
      * "working now" from a live run, and "stalled" when none is alive.
@@ -343,6 +348,13 @@ export const agentRunSteps = pgTable(
     unique().on(t.runId, t.seq),
     // The operator's work analytics look up a run's waits for room among all its steps.
     index().on(t.runId).where(sql`${t.kind} = 'error' and ${t.data}->>'reason' = 'brain_unavailable'`),
+    // The same lookup for a run's waits on its provider. An index of its own: the planner reads rows through a partial
+    // index only for a condition it can prove from the index's, and one reason by equality is all it proves here.
+    // Built concurrently, as the next one is.
+    index("agent_run_steps_provider_outage_idx")
+      .on(t.runId)
+      .where(sql`${t.kind} = 'error' and ${t.data}->>'reason' = 'provider_outage'`)
+      .concurrently(),
     // A workspace's tool calls in a range of dates, for the operator API (only those steps are indexed). Built
     // concurrently: every step of every run is a row here, and a plain build keeps them all waiting until it ends.
     index("agent_run_steps_tool_calls_idx").on(t.orgId, t.createdAt).where(sql`${t.kind} = 'tool_call'`).concurrently(),
@@ -351,7 +363,8 @@ export const agentRunSteps = pgTable(
   ],
 );
 
-export const usageKindEnum = pgEnum("usage_kind", ["agent", "router", "embedding", "summary"]);
+/** `image`: pictures made through the gateway (ADR 0197), billed like an agent's own calls when an agent asked. */
+export const usageKindEnum = pgEnum("usage_kind", ["agent", "router", "embedding", "summary", "image"]);
 
 /**
  * One row per model call, written by the Model Gateway only. Same numbers in

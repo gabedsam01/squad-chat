@@ -60,6 +60,7 @@ import {
   AGY_SIGN_IN_FILE,
   type AgySignIn,
   agyAuthOf,
+  agyKeychain,
   agyRuntimeDir,
   agySignInFrom,
   agySignInOf,
@@ -90,6 +91,7 @@ import {
   checkClaudeToken,
   codexUsage,
   fetchPlanKeyUsage,
+  oldestRead,
   probeClaudeUsage,
   probeCodexUsage,
   usageCrossed,
@@ -307,6 +309,7 @@ export function accountEnv(kind: AccountKind, dir: string, base: NodeJS.ProcessE
     delete env.DISPLAY;
     delete env.SSH_AUTH_SOCK;
     Object.assign(env, AGY_QUIET_ENV);
+    if (process.platform === "darwin") agyKeychain(dir);
   }
   return env;
 }
@@ -507,6 +510,12 @@ export function codexAuthOf(text: unknown): CodexAuth | null {
   };
 }
 
+/** Root's copy of a ChatGPT sign-in is safe to read limits with: Codex won't refresh it within the next hour. */
+export function codexProbeSafe(dir: string, now: number) {
+  const auth = readCodexAuth(dir);
+  return auth !== null && now - auth.refreshedAt < CODEX_REFRESH_AFTER_MS - 3600_000;
+}
+
 /** A folder's Codex sign-in; null when it has none. Never through a link or a pipe. */
 export function readCodexAuth(dir: string): CodexAuth | null {
   const o = readSmallJson(path.join(dir, CODEX_AUTH_FILE), MAX_CODEX_AUTH_CHARS);
@@ -549,15 +558,27 @@ export function watchCodexAuth(home: string, granted: string, send: (auth: strin
 }
 
 /**
- * Beside the account folders: the models a CLI lists to a signed-in account (`AccountManager.listedModels`), for the
- * CLIs whose own listing on the computer is signed out: Grok Build and the Antigravity CLI.
+ * The CLIs whose models are what an account signed in here lists (`AccountManager.listedModels`): the computer's own
+ * `grok models`, `agy models` and `codex app-server` `model/list` are signed out, so its look finds none.
  */
-const LISTED_MODELS = {
-  codex: { file: "codex-models.json", parse: (): CursorModelInfo[] => [] },
-  grok: { file: "grok-models.json", parse: parseGrokModels },
-  antigravity: { file: "antigravity-models.json", parse: parseAgyModels },
-} as const;
-export type ListedModelsKind = keyof typeof LISTED_MODELS;
+export type ListingKind = "codex" | "grok" | "antigravity";
+
+/** Beside the account folders: what each account signed in here listed, by its id (`AccountManager.listedModels`). */
+const LISTED_MODELS_FILE: Record<ListingKind, string> = {
+  codex: "codex-models.json",
+  grok: "grok-models.json",
+  antigravity: "agy-models.json",
+};
+
+/** A status look's output read as the models the CLI lists to that account. */
+const LISTED_BY: Partial<Record<ListingKind, (stdout: string) => CursorModelInfo[]>> = {
+  grok: parseGrokModels,
+  antigravity: parseAgyModels,
+};
+
+/** Only what reads as models: anything else a file holds is skipped. */
+const modelsIn = (v: unknown): CursorModelInfo[] =>
+  Array.isArray(v) ? v.filter((m): m is CursorModelInfo => typeof m?.id === "string") : [];
 
 /**
  * Grok Build keeps its sign-in in `GROK_HOME/auth.json`, an entry per issuer: the grok.com one under
@@ -1365,6 +1386,11 @@ function runCli(command: string[], args: string[], env: NodeJS.ProcessEnv, timeo
 export interface AccountManagerOptions {
   /** `<runner home>/accounts`. */
   root: string;
+  /**
+   * Before a CLI's sign-in starts: the runner's own Antigravity CLI made ready where the computer has none new enough
+   * (`AgyCopy.ensure`, ADR 0143); its failure is the sign-in's.
+   */
+  prepare?: (kind: AccountKind) => Promise<void>;
   /** Tests: the clock. */
   now?: () => number;
   /** The organization this machine is paired with (a sealed code's AAD names it); unknown before pairing. */
@@ -1396,7 +1422,7 @@ export interface AccountManagerOptions {
   grokRoot?: string;
   /** System mode: whether Grok Build's sandbox starts for an agent's user above a folder (`grokSandboxFails`). */
   grokSandbox?: (dir: string) => string | null;
-  /** Tests: the platform (the Antigravity CLI signs in only on Linux here). */
+  /** Tests: the platform (the Antigravity CLI signs in on Linux and macOS here). */
   platform?: NodeJS.Platform;
   /**
    * System mode: what goes before each Claude CLI root runs on an account folder (`authEgressPrefix`), asked once;
@@ -1761,10 +1787,10 @@ export class AccountManager {
     if (kind === "opencode" && !cliKey) {
       throw new RunnerError("bad_request", "OpenCode signs in with its API key");
     }
-    // ADR 0143: elsewhere the CLI keeps every sign-in in the one keychain of the computer's user, so two accounts
+    // ADR 0143: Windows keeps every sign-in in the one Credential Manager of the computer's user, so two accounts
     // would be one.
-    if (kind === "antigravity" && (this.opts.platform ?? process.platform) !== "linux") {
-      throw new RunnerError("bad_request", "Gemini accounts sign in on Linux computers only, for now.");
+    if (kind === "antigravity" && (this.opts.platform ?? process.platform) === "win32") {
+      throw new RunnerError("bad_request", "Gemini accounts don't sign in on Windows computers yet.");
     }
     if (this.logins.get(loginId)?.state === "waiting") {
       throw new RunnerError("bad_request", "This sign-in already exists");
@@ -1806,6 +1832,8 @@ export class AccountManager {
         throw new RunnerError("bad_request", "This computer already has too many accounts. Remove one first.");
       }
     }
+    // The CLI it signs in with, before anything is written: the runner may bring the Antigravity CLI itself.
+    if (kind === "antigravity") await this.opts.prepare?.(kind);
     // Claude Code and the Antigravity CLI: the key the browser seals the pasted code (or a plan's key) to; the private
     // half stays in memory.
     const pair = kind === "claude_code" || kind === "antigravity" || cliKey ? await generateSecretKeyPair() : undefined;
@@ -2547,44 +2575,79 @@ export class AccountManager {
             : kind === "antigravity"
               ? parseAgyStatus(r.status, `${r.stdout}\n${r.stderr}`, agyAuthOf(dir))
               : parseCodexStatus(r.status, `${r.stdout}\n${r.stderr}`);
-    if ((kind === "grok" || kind === "antigravity") && status.loggedIn)
-      this.keepListedModels(kind, LISTED_MODELS[kind].parse(r.stdout));
+    if ((kind === "grok" || kind === "antigravity") && status.loggedIn) {
+      const parse = LISTED_BY[kind];
+      if (parse) this.keepListed(kind, id, parse(r.stdout));
+    }
     if (kind === "codex" && status.loggedIn && !this.opts.commands?.codex) {
       const models = await probeCodexModels(this.command("codex"), this.env("codex", dir)).catch(
         () => [] as CursorModelInfo[],
       );
-      this.keepListedModels("codex", models);
+      this.keepListed("codex", id, models);
     }
     // Timed out, or didn't start.
     const unknown = r.status === null ? { statusUnknown: true as const } : {};
     return { id, kind, ...status, ...unknown, ...shared };
   }
 
-  private listed = new Map<ListedModelsKind, CursorModelInfo[] | undefined>();
+  /** Per CLI, what each account signed in here last listed, by its id (`""`: an older runner's single list). */
+  private readonly listed: Partial<Record<ListingKind, Map<string, CursorModelInfo[]>>> = {};
 
-  /**
-   * The models a CLI last listed for an account signed in here (its status look runs `grok models` or `agy models` in
-   * that account's folder), kept across restarts: a folder lent to an agent is never looked at again. Undefined
-   * before one.
-   */
-  listedModels(kind: ListedModelsKind): CursorModelInfo[] | undefined {
-    if (!this.listed.has(kind)) {
-      const kept = readSmallJson(path.join(this.opts.root, LISTED_MODELS[kind].file), 64 * 1024);
-      const list = Array.isArray(kept) ? kept.filter((m): m is CursorModelInfo => typeof m?.id === "string") : [];
-      this.listed.set(kind, list.length > 0 ? list : undefined);
+  private listedBy(kind: ListingKind): Map<string, CursorModelInfo[]> {
+    let by = this.listed[kind];
+    if (!by) {
+      const kept = readSmallJson(path.join(this.opts.root, LISTED_MODELS_FILE[kind]), 64 * 1024);
+      const entries: [string, unknown][] = Array.isArray(kept)
+        ? [["", kept]]
+        : kept && typeof kept === "object"
+          ? Object.entries(kept)
+          : [];
+      by = new Map(
+        entries
+          .filter(([id]) => id === "" || isAccountId(id))
+          .map(([id, v]) => [id, modelsIn(v)] as const)
+          .filter(([, list]) => list.length > 0),
+      );
+      this.listed[kind] = by;
     }
-    return this.listed.get(kind);
+    return by;
   }
 
-  private keepListedModels(kind: ListedModelsKind, list: CursorModelInfo[]) {
-    if (list.length === 0 || JSON.stringify(list) === JSON.stringify(this.listedModels(kind))) return;
-    this.listed.set(kind, list);
+  /**
+   * The models a CLI listed to the accounts signed in here (each one's status look runs `<cli> models` in its
+   * folder), kept across restarts: a folder lent to an agent is never looked at again. Every account's once, the one
+   * listing the most first: accounts of one CLI can be on different plans (a free Google account lists no Gemini 4
+   * model), and the models offered are the computer's. A removed account's go with its folder. Undefined before any.
+   */
+  listedModels(kind: ListingKind): CursorModelInfo[] | undefined {
+    const lists = [...this.listedBy(kind)]
+      .filter(([id]) => id === "" || existsSync(this.dirOf(kind, id)))
+      .map(([, list]) => list)
+      .sort((a, b) => b.length - a.length);
+    const all = new Map<string, CursorModelInfo>();
+    for (const m of lists.flat()) if (!all.has(m.id)) all.set(m.id, m);
+    return all.size > 0 ? [...all.values()] : undefined;
+  }
+
+  /** An account's list from its look: kept (the older runner's single list goes), and the server told if it changed. */
+  private keepListed(kind: ListingKind, id: string, list: CursorModelInfo[]) {
+    if (list.length === 0) return;
+    const before = this.listedBy(kind);
+    const next = new Map<string, CursorModelInfo[]>();
+    for (const [other, was] of before) {
+      if (other === id) next.set(id, list);
+      else if (other !== "" && existsSync(this.dirOf(kind, other))) next.set(other, was);
+    }
+    if (!next.has(id)) next.set(id, list);
+    if (JSON.stringify([...next]) === JSON.stringify([...before])) return;
+    const shown = JSON.stringify(this.listedModels(kind));
+    this.listed[kind] = next;
     try {
-      writeJson(path.join(this.opts.root, LISTED_MODELS[kind].file), list);
+      writeJson(path.join(this.opts.root, LISTED_MODELS_FILE[kind]), Object.fromEntries(next));
     } catch {
       // kept in memory until the next look
     }
-    this.changed();
+    if (JSON.stringify(this.listedModels(kind)) !== shown) this.changed();
   }
 
   private async lookAll(): Promise<RunnerAccountInfo[]> {
@@ -2986,7 +3049,7 @@ export class AccountManager {
       const token = recheck.includes(id);
       // A token's check goes by its own clock: a plain look at it (which reads nothing) doesn't put it off.
       const asked = (token ? this.tokenChecked : this.probed).get(id) ?? 0;
-      const known = Math.max(Date.parse(this.usage.get(id)?.at ?? "") || 0, asked);
+      const known = Math.max(oldestRead(this.usage.get(id)), asked);
       const ttl = token ? (this.opts.tokenCheckTtlMs ?? TOKEN_RECHECK_MS) : (this.opts.usageTtlMs ?? USAGE_TTL_MS);
       if (now - known < ttl) continue;
       if (token) {
@@ -3032,7 +3095,9 @@ export class AccountManager {
     if (!target) return null;
     const limits = timeoutMs ? { timeoutMs } : {};
     if (!own && this.isCliShared(target.kind, id)) {
-      return this.opts.sharedLogin?.ready() ? probeClaudeUsage({ ...this.sharedCli(id), ...limits }) : null;
+      return this.opts.sharedLogin?.ready()
+        ? this.answered(target.kind, id, await probeClaudeUsage({ ...this.sharedCli(id), ...limits }))
+        : null;
     }
     const plan = own || target.kind !== "claude_code" ? null : await planKeyOf(target.cwd);
     if (plan) {
@@ -3059,7 +3124,12 @@ export class AccountManager {
         this.usage.get(id),
       );
     }
-    if (!own && (this.lentTo(target.kind, id) !== null || shared)) return null;
+    // A ChatGPT sign-in for all agents is root's own copy: Codex reads its limits there as long as it won't refresh it
+    // (a refresh rotates the token every agent's copy holds). Without this its numbers only came from turns, so with
+    // all long work paused nothing read them again.
+    const codexReadable =
+      shared && target.kind === "codex" && codexProbeSafe(target.cwd, (this.opts.now ?? Date.now)());
+    if (!own && (this.lentTo(target.kind, id) !== null || (shared && !codexReadable))) return null;
     const probe = { command: this.command(target.kind, Boolean(own)), cwd: target.cwd, env: target.env, ...limits };
     // Cursor's CLI reports no plan usage: its turns' `usage` is all there is.
     // Nor does OpenCode's: its key's usage is on OpenCode's console. Grok Build shows its plan's only in its TUI.
@@ -3070,7 +3140,24 @@ export class AccountManager {
       const r = await runCli(probe.command, ["-p", "/usage"], probe.env, timeoutMs ?? STATUS_TIMEOUT_MS);
       return r.status === 0 ? antigravityUsage(r.stdout, "probe") : null;
     }
-    return target.kind === "codex" ? probeCodexUsage(probe) : probeClaudeUsage(probe);
+    const found = await (target.kind === "codex" ? probeCodexUsage(probe) : probeClaudeUsage(probe));
+    return own ? found : this.answered(target.kind, id, found);
+  }
+
+  /**
+   * A CLI login that refreshes itself answered its provider's usage call: the provider takes its sign-in, so a turn's
+   * refusal (`refused`) was passing (a refresh another process of the same login had just rotated, or a 401 the CLI
+   * then recovered from) and the account reads as signed in again. A sign-in another login really ended fails this
+   * call too and stays signed out. Never for a token or a key, whose readings don't prove the sign-in.
+   */
+  private async answered(kind: AccountKind, id: string, found: PlanUsage | null) {
+    if (found && existsSync(this.marker(kind, id, "invalid"))) {
+      await rm(this.marker(kind, id, "invalid"), { force: true }).catch(() => undefined);
+      this.knownLoggedIn.delete(id);
+      this.invalidate();
+      void this.refresh(true).catch(() => undefined);
+    }
+    return found;
   }
 
   /** The runner is exiting: sign-ins in progress stop and their folders go. */

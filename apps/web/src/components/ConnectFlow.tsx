@@ -29,6 +29,7 @@ import {
   saveLevels,
   sharedLevel,
 } from "@agenteschat/client/lib/access-levels";
+import { canEditAudience, managesAgent } from "@agenteschat/client/lib/audience";
 import { composioConnectText } from "@agenteschat/client/lib/composio";
 import {
   accountUnchecked,
@@ -89,7 +90,7 @@ import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
 import { AgentAvatar } from "@/components/AgentAvatar";
-import { ConnectorIcon } from "@/components/ConnectorCatalog";
+import { ConnectorIcon } from "@/components/ConnectorIcon";
 import { FlowTitle } from "@/components/FlowTitle";
 import { LoadingList, useStepText } from "@/components/Loading";
 import { ForWhom, type OwnerTab } from "@/components/OwnerScope";
@@ -1153,9 +1154,10 @@ function WhoStep({ item, onBack, onClose }: { item: ConnectedItem; onBack: () =>
   const qc = useQueryClient();
   const toast = useToast();
   const agents = useAgents(org.id);
-  // A personal connection goes on for the agents its person may change: all of them for who manages agents.
-  const list = (agents.data ?? []).filter(
-    (a) => !item.ownerUserId || can(org, "manage_agents") || a.ownerUserId === me.user.id,
+  // A personal connection goes on for the agents its person may change (their own, and the ones they manage); a team
+  // one for the agents the person manages (ADR 0085 addendum of 2026-11-17): the server refuses the rest.
+  const list = (agents.data ?? []).filter((a) =>
+    item.ownerUserId ? canEditAudience(org, a, me.user.id) : managesAgent(a),
   );
   const access = useAgentsAccess(list);
   const resourceId = `connector:${item.id}`;

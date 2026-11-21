@@ -1,23 +1,36 @@
 import type { Artifact, ArtifactContent, ArtifactFileContent, ArtifactRef } from "@agenteschat/client";
-import { useArtifact } from "@agenteschat/client";
+import { isLiveFileKind, useArtifact } from "@agenteschat/client";
 import { documentStart, KIND_ICON, parseDelimited, patchCounts } from "@agenteschat/client/lib/artifacts";
-import { fileIcon, formatBytes, pictureRatio, previewKind, previewKindOfName } from "@agenteschat/client/lib/files";
+import {
+  extensionOf,
+  fileIcon,
+  formatBytes,
+  isCodeName,
+  pictureRatio,
+  previewKind,
+  previewKindOfName,
+} from "@agenteschat/client/lib/files";
 import { Button, Icon, type IconName, Menu, Tip } from "@agenteschat/ui";
+import { useNavigate } from "@tanstack/react-router";
 import type { TFunction } from "i18next";
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useApi } from "@/api/context";
+import { useArtifactViewer } from "@/components/artifacts/viewer-context";
 import { ChoicesCard } from "@/components/blocks/ChoicesCard";
 import { LiveBlockCard } from "@/components/blocks/LiveBlock";
 import { PollCard } from "@/components/blocks/PollCard";
 import { MenuEntries } from "@/components/DesktopMenus";
+import { LiveCover } from "@/components/live/LiveCover";
+import { openLivePage } from "@/components/live/open";
 import { useOrg } from "@/components/org-context";
 import { contextMenuHandler, type MenuEntry } from "@/lib/context-menu";
 import { Markdown } from "@/lib/markdown";
 import { useArtifactDownload, useDeleteArtifact } from "./ArtifactActions";
-import { useArtifactViewer } from "./ArtifactViewer";
 import { FileVideo, MAX_THUMB_BYTES, usePreviewUrl } from "./FileView";
 import { HtmlFrame } from "./HtmlFrame";
 import { MermaidDiagram } from "./Mermaid";
+import { PdfCover } from "./PdfCover";
 import { useFileShare } from "./ShareDialog";
 
 /** What a cover shows of a table, a code change or a text file: the rest is in the viewer. */
@@ -30,22 +43,27 @@ const COVER_CHARS = 1200;
 
 /**
  * An attachment on a message as a tile of one size, so several sit side by side: what it holds drawn small on top
- * (its cover: the start of a document, a table's first rows, a change's files, a diagram, a page) and its name with
- * its kind and size under it. A click opens the viewer; Download and More show over the cover on hover, and the
- * desktop app's right click has the same actions. A picture is only the picture, as is a video its player: their name
- * and size are in their tip and in the viewer's header. A picture alone on its message shows whole inside its tile
+ * (its cover: the start of a document, a table's first rows, a change's files, a diagram, a page, a PDF's first
+ * page) and its name with its kind and size under it. A click opens the viewer; Download and More show over the cover
+ * on hover, and the desktop app's right click has the same actions. A picture is only the picture, as is a video its
+ * player: their name and size are in their tip and in the viewer's header. A picture alone on its message shows whole inside its tile
  * (CSS: `.artifact-cards > :only-child`), in its own proportions when its size is known (`pictureRatio`). Every tile
  * has its size before what it holds loads (`LoadingTile`).
  */
 export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
   const { t, i18n } = useTranslation();
   const { org } = useOrg();
+  const api = useApi();
   const viewer = useArtifactViewer();
   const download = useArtifactDownload();
   const share = useFileShare();
   const remove = useDeleteArtifact();
   const query = useArtifact(org.id, ref.deleted ? null : ref.id, ref.version);
   const a = query.data;
+  const navigate = useNavigate();
+  // A live file is the file as it is now (ADR 0196 §7), whichever version the message named: its head's preview.
+  const live = Boolean(a && isLiveFileKind(a.kind));
+  const head = useArtifact(org.id, live && ref.version ? ref.id : null).data;
   // Deleted (to the trash): a quiet placeholder, never a broken card.
   if (ref.deleted) {
     return (
@@ -67,8 +85,13 @@ export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
   if (a.kind === "block") return <LiveBlockCard id={a.id} version={a.shownVersion} />;
   if (a.kind === "poll") return <PollCard id={a.id} version={a.shownVersion} />;
   if (a.kind === "choices") return <ChoicesCard id={a.id} version={a.shownVersion} />;
-  const open = () => viewer.open(a.id, a.shownVersion < a.version ? a.shownVersion : undefined);
-  const save = () => void download.save(a, undefined, a.shownVersion, a.content);
+  // A live file opens on its own page, as it is now (ADR 0196 §9); the rest in the viewer, at the version they name.
+  const open = () => {
+    if (live) openLivePage(navigate, org.id, a.id);
+    else viewer.open(a.id, a.shownVersion < a.version ? a.shownVersion : undefined);
+  };
+  // A live file downloads as it is now (its versions are checkpoints behind it, ADR 0196 §7).
+  const save = () => void download.save(a, undefined, live ? undefined : a.shownVersion, a.content);
   // Open, download, Compartilhar, its link (through the share dialog while only its conversation sees it), and the
   // trash for who may delete it: the right click and the More menu.
   const actions = (): MenuEntry[] => [
@@ -107,7 +130,18 @@ export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
       {share.dialog}
     </>
   );
-  const content = a.content;
+  const content = live ? (head?.content ?? a.content) : a.content;
+  if (
+    content.kind === "document" ||
+    content.kind === "spreadsheet" ||
+    content.kind === "slides" ||
+    content.kind === "canvas"
+  )
+    return tile({
+      icon: KIND_ICON[a.kind],
+      meta: metaOf(t, content, a.shownVersion),
+      cover: <LiveCover content={content} fileId={a.id} size="tile" />,
+    });
   if (content.kind !== "file")
     return tile({
       icon: KIND_ICON[a.kind],
@@ -152,6 +186,18 @@ export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
       meta,
       cover: <PictureCover content={content} artifactId={a.id} version={a.shownVersion} title={a.title} />,
     });
+  if (kind === "pdf")
+    return tile({
+      icon,
+      meta,
+      cover: (
+        <PdfCover
+          src={api.artifacts.fileUrl(org.id, a.id, { version: a.shownVersion })}
+          label={t("files.pdfFrame", { title: a.title })}
+          fallback={<TypeCover content={content} />}
+        />
+      ),
+    });
   return tile({ icon, meta, cover: <FileCover content={content} /> });
 }
 
@@ -195,11 +241,9 @@ function LoadingTile({ title = "", ratio }: { title?: string; ratio?: number }) 
 const ratioProps = (ratio: number | undefined) =>
   ratio ? { "data-ratio": true, style: { "--ratio": String(ratio) } as CSSProperties } : {};
 
-const extOf = (name: string) => /\.([a-z0-9]{1,8})$/i.exec(name.trim())?.[1]?.toLowerCase() ?? "";
-
 /** "PDF · 1,2 MB": the file's extension stands for its kind (no word to translate), then its size. */
 function fileMeta(content: ArtifactFileContent, size: string) {
-  const ext = extOf(content.name).toUpperCase();
+  const ext = extensionOf(content.name).toUpperCase();
   return ext ? `${ext} · ${size}` : size;
 }
 
@@ -218,6 +262,17 @@ function metaOf(t: TFunction, content: ArtifactContent, version: number) {
       }
       return `${t("artifacts.files", { count: content.files.length })} · ${t("artifacts.counts", total)}`;
     }
+    // Live files (ADR 0196): how many sheets or slides; a canvas by its kind alone.
+    case "spreadsheet":
+      return content.preview.sheets > 1
+        ? `${kind} · ${t("live.kinds.sheetCount", { count: content.preview.sheets })}`
+        : kind;
+    case "slides":
+      return `${kind} · ${t("live.kinds.slideCount", { count: content.preview.count })}`;
+    case "canvas":
+    // A document is a live file (ADR 0200): no versions to count on its card.
+    case "document":
+      return kind;
     default:
       return `${kind} · ${t("artifacts.version", { version })}`;
   }
@@ -326,17 +381,6 @@ function TileActions({
 function Cover({ content, title }: { content: ArtifactContent; title: string }) {
   const { t } = useTranslation();
   switch (content.kind) {
-    case "document":
-      // Its own headings, paragraphs and lists, smaller, fading at the foot; a first heading equal to the title isn't
-      // drawn again.
-      return (
-        <Markdown
-          source={documentStart(content.markdown, COVER_CHARS)}
-          title={title}
-          excerpt
-          className="artifact-tile__doc"
-        />
-      );
     case "table":
       return <CoverTable columns={content.columns} rows={content.rows} />;
     case "diff":
@@ -442,16 +486,9 @@ function PictureCover({
   );
 }
 
-/** Code files read in the code font; any other text in the app's. */
-const CODE_EXT = new Set(
-  "ts tsx js jsx mjs cjs json py rb go rs java kt swift c h cc cpp hpp cs php sh bash zsh yml yaml toml sql css scss html xml vue svelte lua dart".split(
-    " ",
-  ),
-);
-
 /** An uploaded file's cover: a CSV as its table, a small text file as its first lines, anything else its type. */
 function FileCover({ content }: { content: ArtifactFileContent }) {
-  const ext = extOf(content.name);
+  const ext = extensionOf(content.name);
   const text = content.text;
   if (text === undefined || !text.trim()) return <TypeCover content={content} />;
   if (ext === "csv" || ext === "tsv") {
@@ -461,7 +498,7 @@ function FileCover({ content }: { content: ArtifactFileContent }) {
   if (ext === "md" || ext === "markdown")
     return <Markdown source={documentStart(text, COVER_CHARS)} excerpt className="artifact-tile__doc" />;
   const lines = text.split("\n").slice(0, COVER_LINES).join("\n");
-  return CODE_EXT.has(ext) ? (
+  return isCodeName(content.name) ? (
     <pre className="artifact-tile__code">
       <code>{lines}</code>
     </pre>
@@ -472,7 +509,7 @@ function FileCover({ content }: { content: ArtifactFileContent }) {
 
 /** No preview: the type's icon and its extension, quiet in the middle. */
 function TypeCover({ content }: { content: ArtifactFileContent }) {
-  const ext = extOf(content.name).toUpperCase();
+  const ext = extensionOf(content.name).toUpperCase();
   return (
     <span className="artifact-tile__type">
       <Icon name={fileIcon(content.name, content.contentType)} size={20} />

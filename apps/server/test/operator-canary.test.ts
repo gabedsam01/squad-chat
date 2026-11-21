@@ -770,6 +770,29 @@ beforeAll(async () => {
     authorType: "person",
     authorId: ownerId,
   });
+  // A live file's document and a picture in it (ADR 0196): its meters read their sizes, never what they hold.
+  await db.insert(schema.liveDocs).values({
+    orgId,
+    artifactId: file?.id ?? "",
+    kind: "document",
+    state: "canary-live-state",
+    stateBytes: 17,
+    editedByType: "person",
+    editedById: ownerId,
+  });
+  await db.insert(schema.liveAssets).values({
+    id: crypto.randomUUID(),
+    orgId,
+    artifactId: file?.id ?? "",
+    blobKey: "canary-live-blob",
+    contentType: "image/png",
+    size: 12,
+    sha256: "canary-live-digest",
+    source: "upload",
+    origin: { url: "https://example.com/canary-live-picture.png", credit: "canary credit" },
+    createdByType: "person",
+    createdById: ownerId,
+  });
   await db.insert(schema.skillFiles).values({
     orgId,
     skillId: skill?.id ?? "",
@@ -899,6 +922,7 @@ beforeAll(async () => {
   ]);
   const today = new Date().toISOString().slice(0, 10);
   const days = `from=${today}&to=${today}`;
+  const hours = `from=${new Date(Date.now() - 3600_000).toISOString()}&to=${new Date(Date.now() + 3600_000).toISOString()}`;
   const ref = (text: string, inOrg = true) =>
     `/resolve?ref=${encodeURIComponent(text)}${inOrg ? `&orgId=${orgId}` : ""}`;
   const review = "reason=a%20report&operator=someone";
@@ -917,6 +941,9 @@ beforeAll(async () => {
     `/analytics/connectors/github?${days}`,
     `/analytics/connectors/gmail?${days}`,
     `/analytics/work?${days}`,
+    ...["brain", "model"].map((by) => `/analytics/run-timings?${hours}&by=${by}`),
+    `/analytics/run-timings?${hours}&orgId=${orgId}&agentId=${agentId}`,
+    ...["hour", "day"].map((bucket) => `/analytics/reply-times?${hours}&bucket=${bucket}`),
     `/analytics/ai-accounts?${days}`,
     "/ai-accounts?limit=200",
     "/claude-auth",
@@ -1026,6 +1053,8 @@ beforeAll(async () => {
     ["/jobs?stuck=maybe", 400],
     ["/events?after=nope", 400],
     ["/analytics", 400],
+    [`/analytics/run-timings?${days}`, 400],
+    [`/analytics/reply-times?${days}`, 400],
     ["/nope", 404],
   ];
 });

@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 /**
- * Gemini's Decisions API (ADR 0195): POST /v1beta/decisions with gemini-decision-1. Shared input is multimodal (text,
+ * Gemini's Decisions API (ADR 9001): POST /v1beta/decisions with gemini-decision-1. Shared input is multimodal (text,
  * pictures, audio, video and PDF), questions are a map by id and answers come back in a map. Its noul criteria name
  * the two sides true_description and false_description.
  * https://ai.google.dev/api/decisions
@@ -33,7 +33,7 @@ function questionOf(q: DecisionQuestion): Record<string, unknown> {
 
 /**
  * The shared input: the state as JSON text, then each asset in the block its media type takes, after a line with its
- * name: the state names an asset by its key, and several pictures in one call (ADR 0200) are told apart by it.
+ * name: the state names an asset by its key, and several pictures in one call (ADR 9006) are told apart by it.
  */
 function inputOf(call: DecisionCall): Record<string, unknown>[] {
   const blocks: Record<string, unknown>[] = [

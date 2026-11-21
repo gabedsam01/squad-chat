@@ -19,6 +19,7 @@ import {
   Card,
   CardHeader,
   type ChipTone,
+  codeAndBold,
   Dialog,
   DialogFooter,
   Icon,
@@ -527,7 +528,7 @@ export function JevSettings({
                     </Fragment>
                   ))}
                 </span>
-                {note && <SettingNote icon={view.state === "ok" ? "info" : "alert"}>{note}</SettingNote>}
+                {note && <SettingNote icon={view.state === "ok" ? "info" : "alert"}>{codeAndBold(note)}</SettingNote>}
               </span>
               {actions && <span className="ac-acts ac-captail">{actions}</span>}
             </div>

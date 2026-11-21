@@ -193,6 +193,13 @@ export const planFreeHint = (t: TFunction, plan: CodingPlan | undefined) =>
   plan?.name === CODING_PLANS.opencode.name ? t("brain.opencodeFreeHint") : undefined;
 
 /**
+ * Under the Gemini plan's models (web and phone): why the newest Gemini isn't there (`BrainOption.missing`), the
+ * computer's CLI too old for it or no account there with a plan that has it.
+ */
+export const brainMissingHint = (t: TFunction, option: Pick<BrainOption, "missing"> | undefined) =>
+  option?.missing ? t(`brain.missingModel.${option.missing.why}`, { model: option.missing.label }) : undefined;
+
+/**
  * The choice a stored model shows as: on a plan, the model it runs there (an alias the plan leaves out or another
  * plan's model: `sonnet`'s); on Claude, another plan's model as Sonnet; `auto` and Codex's as stored.
  */

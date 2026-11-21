@@ -393,7 +393,7 @@ const ON_IMAGE: Record<ScreenKind, { what: string; present: string; absent: stri
 /** The judge must say it's there at least this sure, in every round. */
 const PRESENT_AT = 0.6;
 /**
- * The decision model answers a choice over images but draws no box (ADR 0200), so a spot is found by
+ * The decision model answers a choice over images but draws no box (ADR 9006), so a spot is found by
  * narrowing: a 3x3 grid of cells that overlap, so a control on a border is whole in one cell.
  */
 const GRID = 3;
@@ -467,7 +467,7 @@ export function narrowCells(region: ScreenRegion): ScreenRegion[] {
 }
 
 /**
- * Looks for the target on an image of the screen, with `choice` questions only (ADR 0200).
+ * Looks for the target on an image of the screen, with `choice` questions only (ADR 9006).
  * With marks (an annotated screenshot) one question picks a marked element, so the action stays as
  * exact as a ref. Else, or when no mark fits, the screen is narrowed cell by cell (see `GRID`): each
  * round cuts the region into its 9 cells and asks of each, in its own request and all at once, whether

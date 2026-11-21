@@ -4,6 +4,7 @@ import {
   adjustTeamAgent,
   agentBrainLines,
   agentBudgetsThisMonth,
+  agentRights,
   agentStatuses,
   agentView,
   allowsPrivateEndpoints,
@@ -33,6 +34,8 @@ import {
   denyAgentProposal,
   denyTeam,
   type EndpointNet,
+  editAgent,
+  editorsOf,
   endpointOrgsOf,
   enqueueCredentialEfforts,
   getAgent,
@@ -46,6 +49,7 @@ import {
   listCredentials,
   listEndpoint,
   listFormerAgents,
+  listsAgentTo,
   listTeamTemplates,
   type Membership,
   moveAgentToGroup,
@@ -67,8 +71,6 @@ import {
   rightHandWidgetsReady,
   SETUP_AGENTS_MAX,
   seesAgentDetails,
-  setAgentAppearance,
-  setAgentAudience,
   setAgentBrain,
   setReportsTo,
   speakerOf,
@@ -76,7 +78,6 @@ import {
   TEAM_TEMPLATES,
   unarchiveAgent,
   undoTeam,
-  updateAgent,
   updateAgentGroup,
   updateEndpointModels,
   updateOpenRouterModels,
@@ -107,6 +108,7 @@ import {
   AgentAudience,
   AgentBrain,
   AgentBrakes,
+  AgentEditors,
   AgentSetup,
   AgentSetupResult,
   ApprovalsLevel,
@@ -172,6 +174,9 @@ const toAgent = (
     audience: audienceOf(a),
     audienceMode: a.audienceMode,
     canTalk: canTalkTo(a, viewerId, speakerOf(viewer)),
+    ...agentRights(a, viewerId, viewer),
+    editors: seesDetails ? editorsOf(a) : { userIds: [], roleIds: [] },
+    listed: listsAgentTo(a, viewerId, viewer),
   };
 };
 
@@ -195,6 +200,10 @@ const AgentFields = z.object({
   }),
   audience: AgentAudience.optional().openapi({
     description: "Who can talk to it. The agent's owner or admins can change it.",
+  }),
+  editors: AgentEditors.optional().openapi({
+    description:
+      '"Quem pode editar": who edits its instructions, role, skills and routines besides its owner and who manages it. The agent\'s owner or who manages it can change it. Audited as `agent.editors_changed`.',
   }),
   appearance: AgentAppearance.nullable().optional().openapi({
     description: "Its look (fixed allow-list). The agent's owner or admins can change it; null = the default.",
@@ -500,10 +509,10 @@ export function agentRoutes(deps: AppDeps) {
               .object({ models: z.array(z.string().min(1).max(200)).min(1).max(100) })
               .optional()
               .openapi({
-                description: "`openrouter` only: the models this workspace chooses to use with the key (ADR 0199).",
+                description: "`openrouter` only: the models this workspace chooses to use with the key (ADR 9005).",
               }),
             syncEfforts: z.boolean().optional().openapi({
-              description: "`custom` only: check each model's effort levels in the background (ADR 0199).",
+              description: "`custom` only: check each model's effort levels in the background (ADR 9005).",
             }),
           }),
         ),
@@ -578,7 +587,7 @@ export function agentRoutes(deps: AppDeps) {
       path: "/organizations/{orgId}/credentials/openrouter-models",
       tags,
       security,
-      summary: "OpenRouter's models, to choose which ones a key uses (admins, ADR 0199)",
+      summary: "OpenRouter's models, to choose which ones a key uses (admins, ADR 9005)",
       description:
         "Reads OpenRouter's public list with no model call; with a key, it is checked first (`provider_key_invalid`, `provider_key_management`). Batch variants (`:batch`) never appear.",
       request: {
@@ -618,7 +627,7 @@ export function agentRoutes(deps: AppDeps) {
       path: "/organizations/{orgId}/credentials/{credentialId}/openrouter-models",
       tags,
       security,
-      summary: "Choose the models an OpenRouter key uses (admins, ADR 0199)",
+      summary: "Choose the models an OpenRouter key uses (admins, ADR 9005)",
       description:
         "The pickers and Automático offer those alone. Agents already on another of the list's models keep running it.",
       request: {
@@ -640,7 +649,7 @@ export function agentRoutes(deps: AppDeps) {
       path: "/organizations/{orgId}/credentials/{credentialId}/efforts",
       tags,
       security,
-      summary: "Check the effort levels of an endpoint's models, in the background (admins, ADR 0199)",
+      summary: "Check the effort levels of an endpoint's models, in the background (admins, ADR 9005)",
       description:
         "One short call per level and model; the key's owner hears from the right hand when it ends. The credential stays usable meanwhile.",
       request: { params: OrgParams.extend({ credentialId: z.uuid() }) },
@@ -672,7 +681,7 @@ export function agentRoutes(deps: AppDeps) {
             syncEfforts: z
               .boolean()
               .optional()
-              .openapi({ description: "Also check the models' effort levels in the background (ADR 0199)." }),
+              .openapi({ description: "Also check the models' effort levels in the background (ADR 9005)." }),
           }),
         ),
       },
@@ -983,7 +992,7 @@ export function agentRoutes(deps: AppDeps) {
                       description:
                         "Where it shows when you read it: its conversation, or for work another agent handed it, where that agent handed it off. Null otherwise.",
                     }),
-                    channelKind: z.enum(["channel", "dm", "task"]).nullable(),
+                    channelKind: z.enum(["channel", "dm", "task", "file"]).nullable(),
                     channelName: z.string().nullable(),
                     threadId: z.uuid().nullable(),
                     messageId: z
@@ -1031,6 +1040,9 @@ export function agentRoutes(deps: AppDeps) {
       .openapi({ description: "The channels it is in that the current person may see, in the sidebar's order." }),
     canTalk: z.boolean(),
     seesDetails: z.boolean().openapi({ description: "Whether the current person sees how it works." }),
+    canManage: z.boolean().openapi({
+      description: "Whether the current person manages it (`manage_agents` where it reaches, ADR 0085 addendum).",
+    }),
   });
   app.openapi(
     createRoute({
@@ -1158,7 +1170,7 @@ export function agentRoutes(deps: AppDeps) {
       responses: { 201: json(Agent, "Created"), ...errors },
     }),
     async (c) => {
-      const { monthlyBudgetUsd, audience, appearance, proposal, brakes, ...input } = c.req.valid("json");
+      const { monthlyBudgetUsd, audience, editors, appearance, proposal, brakes, ...input } = c.req.valid("json");
       const orgId = c.req.valid("param").orgId;
       const make = () =>
         createAgent(
@@ -1169,25 +1181,20 @@ export function agentRoutes(deps: AppDeps) {
             ...input,
             monthlyBudgetNanoUsd: budget(monthlyBudgetUsd),
             ...(brakes ? { autonomyBrakes: brakes } : {}),
-            // A restricted one is born answering only its owner, so an audience refused below never leaves it open.
-            ...(audience && audience.mode !== "everyone" ? { audienceMode: "owner" as const } : {}),
+            // Who talks to it, who edits it besides its owner (ADR 0085 addendum of 2026-11-17) and its look, made
+            // with it: an audience that leaves its creator out never refuses the rest, and a value refused makes none.
+            ...(audience ? { audience } : {}),
+            ...(editors ? { editors } : {}),
+            ...(appearance ? { appearance } : {}),
           },
           // New agents start on "Automático".
           NEW_AGENT_DEFAULTS,
-          // The person's Criar agente: what they pick is what the next one starts with (ADR 0094).
+          // The person's Criar agente: where it thinks is where the next one starts (ADR 0094; its model starts on Automático).
           { remember: true, pubsub: adapters.pubsub },
         );
-      let agent = proposal
+      const agent = proposal
         ? await createAgentFromProposal({ db, pubsub: adapters.pubsub }, c.get("user").id, orgId, proposal, make)
         : await make();
-      if (audience) {
-        agent = await setAgentAudience(db, c.get("user").id, orgId, agent.id, audience);
-        await publishAgentsChanged(adapters.pubsub, orgId);
-      }
-      if (appearance)
-        agent = await setAgentAppearance(db, c.get("user").id, orgId, agent.id, appearance, {
-          pubsub: adapters.pubsub,
-        });
       // Born on the workspace's own computer: it lists its agents again.
       if (agent.machineId) await publishMachineAgentsChanged(adapters.pubsub, orgId);
       const userId = c.get("user").id;
@@ -1668,6 +1675,7 @@ export function agentRoutes(deps: AppDeps) {
       const {
         monthlyBudgetUsd,
         audience,
+        editors,
         appearance,
         coordinator: _coordinator,
         acceptPlanTerms: _,
@@ -1675,41 +1683,29 @@ export function agentRoutes(deps: AppDeps) {
         brakes,
         ...rest
       } = c.req.valid("json");
-      const input = { ...rest, ...(brakes ? { autonomyBrakes: brakes } : {}) };
+      const fields = {
+        ...rest,
+        ...(brakes ? { autonomyBrakes: brakes } : {}),
+        monthlyBudgetNanoUsd: budget(monthlyBudgetUsd),
+      };
       const actor = c.get("user").id;
-      // The audience and the look can be changed by the agent's owner too; everything else needs an admin.
-      const other =
-        (!audience && appearance === undefined) ||
-        Object.values(input).some((v) => v !== undefined) ||
-        monthlyBudgetUsd !== undefined;
-      let agent = other
-        ? await updateAgent(
-            db,
-            actor,
-            orgId,
-            agentId,
-            { ...input, monthlyBudgetNanoUsd: budget(monthlyBudgetUsd) },
-            { pubsub: adapters.pubsub },
-          )
-        : null;
-      if (audience) {
-        agent = await setAgentAudience(db, actor, orgId, agentId, audience, mailLossSeen);
-        await publishAgentsChanged(adapters.pubsub, orgId);
-      }
-      if (appearance !== undefined)
-        agent = await setAgentAppearance(db, actor, orgId, agentId, appearance, { pubsub: adapters.pubsub });
-      if (!agent) {
-        agent = await getAgent(db, orgId, agentId);
-        if (!agent) throw new NotFoundError("Agent not found");
-      }
+      // Every part is decided against the agent as it is, then all are saved together (`editAgent`): narrowing who
+      // talks to it never refuses the rest of the same change.
+      const agent = await editAgent({ db, pubsub: adapters.pubsub }, actor, orgId, agentId, {
+        ...(Object.values(fields).some((v) => v !== undefined) ? { fields } : {}),
+        audience,
+        mailLossSeen,
+        editors,
+        appearance,
+      });
       // Its computer shows its name and look (the desktop app, ADR 0036) and names its folder by its handle, and a new
       // owner may take its plan away.
       if (
         agent.machineId &&
-        (input.name !== undefined ||
-          input.handle !== undefined ||
+        (rest.name !== undefined ||
+          rest.handle !== undefined ||
           appearance !== undefined ||
-          input.ownerUserId !== undefined)
+          rest.ownerUserId !== undefined)
       ) {
         await publishMachineAgentsChanged(adapters.pubsub, orgId);
       }
@@ -1937,7 +1933,7 @@ export function agentRoutes(deps: AppDeps) {
       path: "/organizations/{orgId}/agent-groups/{groupId}",
       tags,
       security,
-      summary: "Delete a group; its agents go back to no group (owners and admins)",
+      summary: "Delete a group; its agents go back to no group (who manages every agent in it)",
       request: { params: GroupParams },
       responses: { 200: json(Groups), ...errors },
     }),
@@ -2076,7 +2072,7 @@ export function agentRoutes(deps: AppDeps) {
             brain: BrainKind.optional(),
             model: z.string().max(80).nullable().optional().openapi({
               description:
-                "Claude Code: `opus`, `sonnet`, `haiku`, a Claude model id or one of a coding plan's models by id (`@agenteschat/providers/plans`; another account runs `sonnet` for it); Codex: a model name; `auto` (each run picks the tier). Null = the brain's default; omitted = keep (reset when the brain changes).",
+                "Claude Code: `fable`, `opus`, `sonnet`, `haiku`, a Claude model id or one of a coding plan's models by id (`@agenteschat/providers/plans`; another account runs `sonnet` for it); Codex: a model name; `auto` (each run picks the tier). Null = the brain's default; omitted = keep (reset when the brain changes).",
             }),
             fallback: z.boolean().optional().openapi({
               deprecated: true,

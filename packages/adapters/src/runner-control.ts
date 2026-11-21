@@ -182,6 +182,8 @@ export interface ControlConfigPatch {
 /** Settings as `config.get` returns them. */
 export interface ControlConfig extends Required<ControlConfigPatch> {
   workspace: string;
+  /** The runner's own `maxConcurrentTasks` when the config has none, sized to the computer; absent: an older one (3). */
+  defaultMaxConcurrentTasks?: number;
   managedBy?: "desktop";
 }
 
@@ -291,6 +293,8 @@ export type ControlRequest =
   | { type: "cli.install"; action: "start" | "status" | "cancel"; tool: InstallableCli }
   /** Reads the plugged iPhone again now; answers once the status carries what it found. */
   | { type: "iphone.look" }
+  /** Repairs the test helper of the iPhone `serial` here (machine op `phone.repair`); the status shows its rebuild. */
+  | { type: "iphone.repair"; serial: string }
   /** Finish what's running briefly, then exit 0 (the app quits). */
   | { type: "shutdown" };
 
@@ -334,6 +338,7 @@ export interface ControlReplies {
   "iphone.fixXcode": ControlIphoneSetup;
   "cli.install": { install: CliInstall | null };
   "iphone.look": { looking: boolean };
+  "iphone.repair": { repairing: boolean };
   shutdown: { stopping: true };
 }
 

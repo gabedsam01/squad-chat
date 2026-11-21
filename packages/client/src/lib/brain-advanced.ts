@@ -14,7 +14,7 @@ import { isAuto } from "./providers";
 /** The effort levels the apps offer (a stored `xhigh` shows as high). */
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 export const EFFORT_LEVELS: readonly EffortLevel[] = ["low", "medium", "high", "xhigh", "max"];
-/** An API key's: the API takes low, medium and high (`apiEffort` sends a stored `xhigh` or `max` as high). */
+/** An API key's: low, medium and high, which every provider takes (a stored `xhigh` or `max` goes as set where the model takes it, else as high). */
 export const KEY_EFFORT_LEVELS: readonly EffortLevel[] = ["low", "medium", "high"];
 export const effortLevelsOf = (kind: BrainKind | undefined) => (kind === "model" ? KEY_EFFORT_LEVELS : EFFORT_LEVELS);
 
@@ -113,7 +113,10 @@ export const viewSpeedFits = (
   });
 
 export interface Advanced {
-  /** Null only on an API key with none chosen: the provider's own default. A model sold at levels keeps its own. */
+  /**
+   * Null only on an API key with none chosen: high where the model takes an effort and its output limit is known
+   * (`turnEffort`), else the provider's default. A model sold at levels keeps its own.
+   */
   effort: BrainEffort | null;
   /** Always `standard` where Velocidade doesn't show (`viewSpeedFits`). */
   speed: BrainSpeed;
@@ -134,7 +137,7 @@ export const ADVANCED_DEFAULTS: Advanced = {
 
 /**
  * "Voltar ao padrão": the API brain has only the effort and the context limit there, so the rest stays as it is; its
- * effort goes back to none, the provider's default.
+ * effort goes back to none (high where the model takes an effort, else the provider's default).
  */
 export const advancedDefaults = (kind: BrainKind, now: Advanced): Advanced =>
   kind === "model"
@@ -184,9 +187,9 @@ export function advancedParts(t: TFunction, _language: string, o: AdvancedOf): s
   ].filter((p): p is string => p !== null);
 }
 
-/** Claude's own models (`--model opus|sonnet|haiku`) say what each is for under their names. */
-export const isClaudeAlias = (v: string): v is "opus" | "sonnet" | "haiku" =>
-  v === "opus" || v === "sonnet" || v === "haiku";
+/** Claude's own models (`--model fable|opus|sonnet|haiku`) say what each is for under their names. */
+export const isClaudeAlias = (v: string): v is "fable" | "opus" | "sonnet" | "haiku" =>
+  v === "fable" || v === "opus" || v === "sonnet" || v === "haiku";
 
 /** An effort as stored, as the apps show it: `xhigh` is high, none (or an automatic one) medium, the default. */
 export const effortLevel = (e: string | null | undefined): EffortLevel =>

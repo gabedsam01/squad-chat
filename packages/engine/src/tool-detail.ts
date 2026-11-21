@@ -51,6 +51,10 @@ function promptAsked(i: Record<string, unknown>): { tool: string; input: Record<
 export const promptPoll = (name: string, input: Record<string, unknown> | undefined) =>
   name === PERMISSION_TOOL && typeof input?.request_id === "string";
 
+/** The runner telling of a call its own command policy refused (`refused`): recorded, never asked, held or judged. */
+export const promptRefused = (name: string, input: Record<string, unknown> | undefined) =>
+  name === PERMISSION_TOOL && typeof input?.refused === "object" && input.refused !== null;
+
 /**
  * `permission_prompt`'s answer: `{behavior}` when decided (a `deny` says why: `message` to the agent, `code` for
  * the apps), `{status: "pending", request_id}` while a person decides.
@@ -133,6 +137,9 @@ export function toolDetail(name: string, input: Record<string, unknown> | undefi
     case "comment_issue":
       return issueRef(i.issue);
     case "create_artifact":
+    case "create_spreadsheet":
+    case "create_presentation":
+    case "create_canvas":
       return short(i.title);
     case "update_artifact":
       return short(i.title);
@@ -159,6 +166,23 @@ export function toolDetail(name: string, input: Record<string, unknown> | undefi
   }
 }
 
+/** The input naming the file each Drive tool works on: `artifact_id`, a live file's `file` (ADR 0196), a canvas. */
+const FILE_FIELD: Readonly<Record<string, string>> = {
+  read_artifact: "artifact_id",
+  update_artifact: "artifact_id",
+  share_artifact: "artifact_id",
+  import_file: "artifact_id",
+  read_spreadsheet: "file",
+  edit_spreadsheet: "file",
+  read_presentation: "file",
+  edit_presentation: "file",
+  read_canvas: "file",
+  edit_canvas: "file",
+  read_document: "file",
+  edit_document: "file",
+  generate_image: "canvas",
+};
+
 /** Drive tools by id: the file's title, only when it belongs to this same channel (so no title leaks elsewhere). */
 export async function artifactToolDetail(
   db: Database,
@@ -167,8 +191,9 @@ export async function artifactToolDetail(
   name: string,
   input: Record<string, unknown> | undefined,
 ): Promise<string | undefined> {
-  if (!["read_artifact", "update_artifact", "share_artifact", "import_file"].includes(name)) return undefined;
-  const id = input?.artifact_id;
+  const field = Object.hasOwn(FILE_FIELD, name) ? FILE_FIELD[name] : undefined;
+  if (!field) return undefined;
+  const id = input?.[field];
   if (typeof id !== "string" || !/^[0-9a-f-]{36}$/i.test(id)) return undefined;
   const [a] = await db
     .select({ title: schema.artifacts.title, channelId: schema.artifacts.channelId })

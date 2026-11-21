@@ -20,7 +20,7 @@ import { enqueue } from "./outbox";
 const { instanceDecisionModel } = schema;
 
 /**
- * The installation's optional decision model (ADR 0195): one row, off until its owner turns it on. The switch is
+ * The installation's optional decision model (ADR 9001): one row, off until its owner turns it on. The switch is
  * Settings, the key is sealed, and the model itself is prepared by the decision.model.install job so the request that
  * turned it on never waits on a download. Jev keeps its own key and its own two routes, untouched.
  */
@@ -94,7 +94,7 @@ export interface DecisionModel {
   /** The model to call now, or null when off, missing or skipped after a refusal. */
   current(): Promise<ResolvedDecisionModel | null>;
   usable(): boolean;
-  /** Usable now and its recorded capabilities include images (ADR 0200: the only judge of pictures). */
+  /** Usable now and its recorded capabilities include images (ADR 9006: the only judge of pictures). */
   seesImages(): boolean;
   report(state: DecisionState): void;
   view(): Promise<DecisionModelView>;

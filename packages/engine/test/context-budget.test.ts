@@ -161,6 +161,9 @@ describe("fitContextWindow", () => {
     expect(limited?.report).toMatchObject({ windowTokens: 28_000, removed: 1, fits: true });
     // A limit past the window changes nothing.
     expect(await fitContextWindow(null, { ...input(three(), 200_000), limitTokens: 1_000_000 })).toBeNull();
+    // The output is held back from the model's window, not from the limit.
+    const roomy = { ...input(three(), 200_000), maxOutputTokens: 64_000, limitTokens: 40_000 };
+    expect(await fitContextWindow(null, roomy)).toBeNull();
   });
 
   test("over budget without a judge: the oldest results go first, the latest turn's never", async () => {

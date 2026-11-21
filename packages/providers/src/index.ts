@@ -15,6 +15,7 @@ export * from "./custom";
 export * from "./decision";
 export * from "./embeddings";
 export * from "./gemini";
+export * from "./images";
 export * from "./key-check";
 export * from "./live-catalog";
 export * from "./openai";

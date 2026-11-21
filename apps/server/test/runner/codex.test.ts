@@ -256,6 +256,7 @@ test("Codex model/list parsing, app-server probe, and parseExecutors keep live m
     {},
     {},
     () => false,
+    undefined,
     async () => parsed,
   );
   expect(detected.found.codex).toEqual({ version: "codex-cli 0.169.0", models: parsed });

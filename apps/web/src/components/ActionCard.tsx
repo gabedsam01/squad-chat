@@ -36,6 +36,7 @@ import {
   type UpdateSkillsCard,
 } from "@agenteschat/client/lib/action-cards";
 import { delegateUndoLine } from "@agenteschat/client/lib/approval-words";
+import { createsRoutinesFor } from "@agenteschat/client/lib/audience";
 import { connectedItems, itemName, personalAllowed } from "@agenteschat/client/lib/connected";
 import { setDraftFor } from "@agenteschat/client/lib/drafts";
 import { errorText } from "@agenteschat/client/lib/errors";
@@ -55,14 +56,14 @@ import { useTranslation } from "react-i18next";
 import { useConnectedById } from "@/components/AccessLevels";
 import { AgentAvatar } from "@/components/AgentAvatar";
 import { useOpenAgentPanel } from "@/components/agent-panel-context";
-import { useConnectAi } from "@/components/ConnectAi";
 import { ConnectFlow, type FlowState } from "@/components/ConnectFlow";
-import { ConnectorIcon } from "@/components/ConnectorCatalog";
+import { ConnectorIcon } from "@/components/ConnectorIcon";
 import { CostlyProposalCardView } from "@/components/CostlyProposalCard";
 import { CalendarProposalCardView } from "@/components/calendar/ProposalCard";
+import { useConnectAi } from "@/components/connect-ai-context";
 import { useInviteDialog } from "@/components/invite/InviteDialog";
 import { MailIcon } from "@/components/MailConnect";
-import { useNewAgent } from "@/components/new-agent/NewAgentDialog";
+import { useNewAgent } from "@/components/new-agent/new-agent-context";
 import { useOrg } from "@/components/org-context";
 import { PersonLimitCardView } from "@/components/PeopleUsage";
 import {
@@ -563,7 +564,7 @@ export function AgentProposalCardView({
             ? delegateUndoLine(t, i18n.language, delegate, draft.name)
             : undefined,
         time: at ? whenAt(t, i18n.language, at) : undefined,
-        action: byRightHand ? <DelegateUndo d={delegate} /> : undefined,
+        action: byRightHand ? <DelegateUndo d={delegate} agentId={card.agentId} /> : undefined,
       };
   const after = status === "created" && (card.agentId || routineLeft(card)) && (
     <div className="ac-acts">
@@ -579,17 +580,20 @@ export function AgentProposalCardView({
           </Link>
         </Button>
       )}
-      {routineLeft(card) && (card.decidedByUserId === me.user.id || can(org, "manage_routines")) && (
-        // Not made with it (the agent wasn't where it reports yet): made from here once it is.
-        <Button
-          size="sm"
-          variant="ghost"
-          loading={makeRoutine.isPending}
-          onClick={() => makeRoutine.mutate(messageId, { onError: failed })}
-        >
-          {t("newAgent.routineKeep", { name: draft.routine?.name })}
-        </Button>
-      )}
+      {routineLeft(card) &&
+        // Who created it, or who may make a routine for it (`createsRoutinesFor`: the server's `createRoutine`, ADR 0085
+        // addendum of 2026-11-17).
+        (card.decidedByUserId === me.user.id || createsRoutinesFor(dir.agentById.get(card.agentId ?? ""))) && (
+          // Not made with it (the agent wasn't where it reports yet): made from here once it is.
+          <Button
+            size="sm"
+            variant="ghost"
+            loading={makeRoutine.isPending}
+            onClick={() => makeRoutine.mutate(messageId, { onError: failed })}
+          >
+            {t("newAgent.routineKeep", { name: draft.routine?.name })}
+          </Button>
+        )}
     </div>
   );
   const end = Date.parse(card.expiresAt);

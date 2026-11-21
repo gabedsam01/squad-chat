@@ -10,7 +10,7 @@ import {
 import { learnFastModels } from "./plans";
 
 /**
- * Live public model catalog (`https://models.dev/api.json`, ADR 0198): keeps new frontier models, context limits,
+ * Live public model catalog (`https://models.dev/api.json`, ADR 9004): keeps new frontier models, context limits,
  * pricing, fast modes, and supported reasoning efforts up to date automatically at run time while preserving static
  * `MODEL_CATALOG` as an offline fallback. Disabled by default so unit tests stay deterministic; `enableLiveCatalog`
  * turns it on at server startup.

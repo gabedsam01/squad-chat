@@ -416,13 +416,17 @@ test("a model the plan's live list dropped: named, with the table's label; nothi
 test("Antigravity's fallback models: every slug agy models listed, each level its own, and the catalog model behind it", () => {
   const byId = new Map(ANTIGRAVITY_MODELS.map((m) => [m.id, m]));
   expect([...byId.keys()]).toEqual([
-    "gemini-4-argon-medium",
-    "gemini-4-argon-high",
-    "gemini-4-argon-low",
+    "gemini-4-neon-high",
+    "gemini-4-neon-xhigh",
+    "gemini-4-neon-medium",
+    "gemini-4-neon-low",
     "gemini-4-hydrogen-high",
     "gemini-4-hydrogen-xhigh",
     "gemini-4-hydrogen-medium",
     "gemini-4-hydrogen-low",
+    "gemini-4-argon-high",
+    "gemini-4-argon-medium",
+    "gemini-4-argon-low",
     "gemini-pro-orchestrator-g1-pro",
     "gemini-3.8-flash-high",
     "gemini-3.8-flash-medium",

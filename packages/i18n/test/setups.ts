@@ -167,7 +167,7 @@ export const SHOWN_ONLY: Record<Condition, readonly string[]> = {
     "jev.",
     "onboarding.jev.",
     // The decision model's card, in Settings › AI and usage: only the installation's owner on a self-hosted
-    // server gets it (GET /api/app/decision-model is 404 elsewhere, ADR 0195).
+    // server gets it (GET /api/app/decision-model is 404 elsewhere, ADR 9001).
     "decision.providers.local",
     "decision.providers.localText",
     "decision.recommended",

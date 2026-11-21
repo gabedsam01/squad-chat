@@ -127,7 +127,7 @@ export type Point = { x: number; y: number };
 export const SCREEN: ScreenRegion = { x: 0, y: 0, width: 1280, height: 800 };
 
 /**
- * A judge that answers the narrowing questions (ADR 0200): each round asks of the nine cells in order
+ * A judge that answers the narrowing questions (ADR 9006): each round asks of the nine cells in order
  * whether one holds the target's center; it says yes (`p`) for the cell of `at` nearest its center, by
  * the same grid as `narrowCells`, then keeps that cell as the region the next round splits; the spot's
  * check (`on`) says yes unless told otherwise.
