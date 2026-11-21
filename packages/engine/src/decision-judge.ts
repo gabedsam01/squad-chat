@@ -7,7 +7,7 @@ import {
 } from "@agenteschat/providers";
 import type { DecisionModel } from "./decision-model";
 import type { ModelGateway } from "./gateway";
-import { type Judge, type JudgeAnswer, type JudgeRequest, judgeSeesImages } from "./judge";
+import { type Judge, type JudgeAnswer, type JudgeQuestion, type JudgeRequest, judgeSeesImages } from "./judge";
 import {
   asksAddressee,
   ROUTER_MESSAGE_CHARS,
