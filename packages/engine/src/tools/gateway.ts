@@ -23,6 +23,7 @@ import {
   SQL_READS,
   sqlReadsTarget,
 } from "../approval-rules";
+import { type AgentOwnerFields, NO_OWNER, OWNER_COLUMNS } from "../audience";
 import {
   fedByRoutine,
   MAX_AUTHORITY_CHAIN,
@@ -81,7 +82,7 @@ import {
   confidentialLockAllows,
   confidentialRefusal,
 } from "./confidential-lock";
-import { connectorFirst } from "./connector-first";
+import { BROWSER_CONNECTOR_FIRST, browserFirst, browserOpens, connectorFirst } from "./connector-first";
 import { type BlockedTool, compactSchema, presentTools, resolveCall } from "./directory";
 import { canonicalJson, validateJson } from "./json-schema";
 import { missingPermissions, REQUEST_PERMISSION_TOOL } from "./permission";
@@ -844,7 +845,8 @@ export function createToolGateway(deps: {
         title: cutMarked(described.title, 300),
         detail: cutMarked(described.detail ?? "", APPROVAL_DETAIL_CHARS),
         why: request.why,
-        ownerUserId: owner,
+        ownerUserId: owner.ownerUserId,
+        ownerRoleId: owner.ownerRoleId,
         requestedByUserId: authority.personId,
         highRisk: highRisk(tool.name, tool.scope),
         // Decided by its time at the latest (else its run asks then), and within a day like any request.
@@ -911,7 +913,7 @@ export function createToolGateway(deps: {
       .select({
         ownActions: routines.ownActions,
         creator: routines.createdByUserId,
-        owner: agents.ownerUserId,
+        owner: OWNER_COLUMNS,
         target: routines.target,
       })
       .from(routines)
@@ -1542,6 +1544,18 @@ export function createToolGateway(deps: {
           if (way) return finish({ content: way, data: { code: "secret.connector_first" } });
         }
       }
+      // A page of a service we connect natively: the connector is suggested first, once per conversation.
+      const opens = tool.connectionId || !deps.catalog ? [] : browserOpens(tool.name, call.input);
+      if (deps.catalog && opens.length > 0) {
+        const tools = { usable: await grantedFor(ctx, authority, all), all: [...all.values()] };
+        const first = await browserFirst(ctx, deps.catalog, opens, tools).catch(() => null);
+        if (first) {
+          return finish({
+            content: first.content,
+            data: { code: BROWSER_CONNECTOR_FIRST, connectors: first.connectors },
+          });
+        }
+      }
       const problems = validateJson(tool.inputSchema, call.input);
       if (problems.length > 0) {
         // Through a directory the model never saw the schema up front: show it, so the next call can be right.
@@ -1775,7 +1789,8 @@ export function createToolGateway(deps: {
             detail: cutMarked(onCard(described.detail ?? ""), APPROVAL_DETAIL_CHARS),
             why,
             origin: authority ? approvalOrigin(authority) : null,
-            ownerUserId: owner,
+            ownerUserId: owner.ownerUserId,
+            ownerRoleId: owner.ownerRoleId,
             expiresAt: new Date(now().getTime() + APPROVAL_TTL_MS),
             approveAlways: remember,
             approvers: asked?.approvers ?? null,
@@ -1888,12 +1903,13 @@ export function createToolGateway(deps: {
     },
   };
 
-  async function ownerOf(ctx: ToolContext) {
+  /** Who answers for the agent now (a person or a role): what its approval keeps as who decides it. */
+  async function ownerOf(ctx: ToolContext): Promise<AgentOwnerFields> {
     const rows = await ctx.db
-      .select({ ownerUserId: agents.ownerUserId })
+      .select(OWNER_COLUMNS)
       .from(agents)
       .where(sql`${agents.id} = ${ctx.agentId} and ${agents.orgId} = ${ctx.orgId}`);
-    return rows[0]?.ownerUserId ?? null;
+    return rows[0] ?? NO_OWNER;
   }
 }
 

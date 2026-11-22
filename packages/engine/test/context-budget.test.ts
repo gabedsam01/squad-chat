@@ -108,6 +108,10 @@ describe("estimate", () => {
       },
     ]);
     expect(recent).toBe(messages[1]);
+    // Past the images a request may carry, by count, whatever their size.
+    const [byCount, kept] = dropOldImages(messages, 100, 1);
+    expect(byCount).not.toBe(messages[0]);
+    expect(kept).toBe(messages[1]);
   });
 
   test("an image counts as about a large image's tokens, never its base64; removing its result drops it", () => {

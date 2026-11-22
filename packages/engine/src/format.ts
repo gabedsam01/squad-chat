@@ -119,6 +119,15 @@ export function textOfBytes(bytes: Uint8Array): string | null {
   }
 }
 
+/** A moment as m:ss (h:mm:ss past an hour). */
+export function clockOf(seconds: number): string {
+  const s = Math.floor(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+
 /** `2.3 MB`, `12 KB`, `512 bytes`, `50.0 GB`: sizes in the English agents read. */
 export function formatBytes(n: number) {
   if (n < 1024) return `${n} bytes`;

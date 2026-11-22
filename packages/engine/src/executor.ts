@@ -119,6 +119,8 @@ import {
 import { agentBrowserProfiles } from "./browser/profiles";
 import { browsersPrompt } from "./browser/tools";
 import { BROWSER_SCOPE } from "./browser/types";
+import { tellBudgetPause } from "./budget-pause";
+import { resolveEarlierBudgetPaused } from "./budget-paused-rows";
 import { typingLogFor, waitForBurst } from "./burst";
 import {
   isShutdown,
@@ -194,7 +196,14 @@ import { rulesForRun } from "./context/rules";
 import { memoryArmOf } from "./context/scorecard";
 import { type ContextDeps, ensureThreadSummary } from "./context/summaries";
 import { EXPAND_TOOL, itemLabel, retrieveForRun } from "./context/tools";
-import { compactToolResults, cutOldToolSteps, cutResultIds, dropOldImages, fitContextWindow } from "./context-budget";
+import {
+  compactToolResults,
+  cutOldToolSteps,
+  cutResultIds,
+  dropOldImages,
+  fitContextWindow,
+  sentToolSteps,
+} from "./context-budget";
 import {
   advance as advanceContinuation,
   type ContinuationState,
@@ -208,6 +217,7 @@ import {
   localPathsCited,
   repeatedCalls,
   reportRunFailure,
+  shownNudge,
   type TurnEndDecision,
   toolsNamed,
   triedCalls,
@@ -247,6 +257,7 @@ import type { ModelGateway } from "./gateway";
 import { type CodeSetup, codeStart } from "./git/machine";
 import { agentRepositoryList, repositoriesPrompt } from "./git/repos";
 import { askVerdict, handOffHolds, repeatedAsk, saysNeedsNothing } from "./hand-off";
+import { announceIntent } from "./intent-line";
 import { UPDATE_ISSUE_TOOL } from "./issue-tools";
 import { linkRunToIssue, mirrorReplyToIssue } from "./issues";
 import { type Judge, JudgeGroup, judgeCallOf, TURN_END_CHECK_BUDGET_MS, withJudgeBudget } from "./judge";
@@ -651,6 +662,11 @@ export interface Transcript {
    * (`heldWords`), or alone when the run ends without any (a pass, an empty turn, a closing line, a failure).
    */
   held?: string;
+  /**
+   * Its last message was a reply judged `untried` and posted at once (`shownNudge`): the next words go out below it,
+   * unless they only say there is nothing to add (`heldWords`).
+   */
+  addsTo?: true;
   /**
    * A reply held for its wording (`tool_names`, `local_paths`), always one the run would otherwise have posted: unseen,
    * and never merged into its next words. It goes out wherever the run ends before any (an empty rewrite, a pass, a
@@ -1297,6 +1313,7 @@ async function executeRunInner(
         channelId: agentRuns.channelId,
         threadRootId: agentRuns.threadRootId,
         triggerMessageId: agentRuns.triggerMessageId,
+        replyInThread: agentRuns.replyInThread,
         workId: agentRuns.workId,
         since: sql<
           string | null
@@ -1530,6 +1547,8 @@ async function executeRunInner(
   // At work now (its start, or back from a wait): the phone of the person behind it shows it (ADR 0210).
   if (fresh || backFromWait) await queueLiveActivityRun(db, run).catch(() => {});
   if (waitedOn && USAGE_WAIT_CODES.has(waitedOn)) await usageWaitNoteEnded(deps, run, true).catch(() => {});
+  if (waitedOn === "budget" || waitedOn === "usage_pause")
+    await resolveEarlierBudgetPaused(deps, run.orgId, run.agentId).catch(() => {});
   if (backFromWait && channelRow && answersHandOffs(channelRow)) {
     await announceConsultationChange({ db, pubsub: deps.pubsub }, run).catch(() => {});
   }
@@ -1874,6 +1893,7 @@ async function executeRunInner(
     channelId: run.channelId,
     threadRootId: run.threadRootId,
     triggerMessageId: run.triggerMessageId,
+    replyInThread: run.replyInThread,
     signal,
     // A resumed run keeps the tools it started with (the list, and the prompt cache, stay the same).
     loadedGroups: (run.transcript as unknown as Transcript | null)?.toolGroups ?? null,
@@ -2100,6 +2120,7 @@ async function executeRunInner(
             keep: Array.isArray(trigger?.meta.artifacts) ? [...keep, toolGroupKey({ scope: "drive:read" })] : keep,
             previous: previous?.toolGroups,
             group: startGroup,
+            lean: Boolean(channelRow && isAgentOnlyDm(channelRow)),
           });
           toolChoice = choice;
           ctx.loadedGroups = choice.groups;
@@ -2153,6 +2174,24 @@ async function executeRunInner(
   ) {
     ctx.confidential = true;
     noteConfidentialRun(run.id);
+  }
+  // What it is about to do, on the bar a second or two in, while its first turn still thinks (ADR 0207 addendum).
+  const intents = deps.context?.intents;
+  if (
+    intents &&
+    fresh &&
+    needsContext &&
+    !askingForRoom &&
+    !run.background &&
+    !run.workId &&
+    !ctx.confidential &&
+    triggerMessage?.authorType === "person"
+  ) {
+    void announceIntent({ db, pubsub: deps.pubsub, intents }, run, {
+      agent: { name: agent.name, role: agent.role },
+      message: triggerMessage,
+      threadId: replyThreadId,
+    }).catch(() => {});
   }
   // The routine that called it (`viaRoutine`) and whether the router brought it in after another agent
   // spoke (`joined`, ADR 0034): every message it posts says so, cards included (`runMessageMeta`).
@@ -2466,6 +2505,7 @@ async function executeRunInner(
       // Its words went out, the held reply with them or in their place (`heldWords`), or before them (`closeWith`).
       delete transcript.held;
       delete transcript.heldWording;
+      delete transcript.addsTo;
     }
     return m;
   };
@@ -2480,15 +2520,28 @@ async function executeRunInner(
    * same words again). A judge error keeps both: nothing it wrote is lost.
    */
   const heldWords = async (words: string): Promise<string> => {
+    const read = async (held: string) =>
+      judge
+        ? await heldReplyRead(judge, {
+            orgId: run.orgId,
+            agentId: run.agentId,
+            runId: run.id,
+            held,
+            reply: words,
+          }).catch(() => "both" as const)
+        : "both";
+    const shown = transcript?.addsTo ? transcript.lastPosted : undefined;
+    if (shown && transcript) {
+      if (words && words.trim() !== shown && (await read(shown)) !== "held") return words;
+      // Nothing to add: never picked up again as a closing line.
+      transcript.postedUpTo = transcript.messages.length;
+      return "";
+    }
     const held = transcript?.held;
     if (!held) return words;
     if (!words || words.trim() === held.trim()) return held;
-    const read = judge
-      ? await heldReplyRead(judge, { orgId: run.orgId, agentId: run.agentId, runId: run.id, held, reply: words }).catch(
-          () => "both" as const,
-        )
-      : "both";
-    return read === "reply" ? words : read === "held" ? held : `${held}\n\n${words}`;
+    const r = await read(held);
+    return r === "reply" ? words : r === "held" ? held : `${held}\n\n${words}`;
   };
 
   const saveTranscript = (tx: Executor, t: Transcript) =>
@@ -3129,9 +3182,11 @@ async function executeRunInner(
     const person = await lastPersonAmong(db, run.orgId, run.agentId, ids);
     if (!person) return false;
     t.answerOwed = true;
-    // A new turn for them: its extra turns start over, and the last verdict no longer holds a mission.
+    // A new turn for them: its extra turns start over, and the last verdict no longer holds a mission. What it writes
+    // next answers them, never only an addition to its last reply.
     delete t.continuation;
     delete t.followThroughVerdict;
+    delete t.addsTo;
     // What they wrote may be what it lacked: its repetition so far no longer counts, unless it is already ending.
     if (t.stuck?.endAt === undefined) delete t.stuck;
     if (!run.background && !t.steeredBy) {
@@ -4759,6 +4814,10 @@ async function executeRunInner(
       if (view) await publishMessageCreated(deps.pubsub, view);
     }
     if (joined) await publishMessageCreated(deps.pubsub, messageView(joined));
+    if (budget && !u.soon)
+      await tellBudgetPause(deps, run, agent, u.pause?.used ?? 100, !(run.background || viaRoutine !== null)).catch(
+        () => {},
+      );
     // A routine's run says nothing in the conversation: its people hear it once per outage instead, and a widget's
     // refresh says on its widget what it waits for.
     if (firstPark && !budget) await routineRunWaitingForPlan({ db, pubsub: deps.pubsub }, run).catch(() => {});
@@ -5277,7 +5336,7 @@ async function executeRunInner(
           transcript.messages = pictured;
           await saveTranscript(db, transcript);
         }
-        const view = cutOldToolSteps(transcript.messages, turnTools);
+        const view = sentToolSteps(transcript.messages, turnTools, thinker.model);
         const fitted = await fitContextWindow(judge, {
           orgId: run.orgId,
           agentId: agent.id,
@@ -5806,7 +5865,8 @@ async function executeRunInner(
         transcript.harnessTried = [
           ...(transcript.harnessTried ?? []),
           ...own.map((c) => callLine(c.name, c.input, c.result)),
-        ].slice(-20);
+          // More than the judge reads (`triedCalls`), so it can tell it how many earlier ones it doesn't see.
+        ].slice(-60);
       // Independent writes in parallel (different rows).
       const [counted] = await Promise.all([
         db
@@ -6399,23 +6459,30 @@ async function executeRunInner(
       if (decision.outcome === "done") learnLater(decision);
       if (decision.outcome === "ask_card") return askWithCard(text || judged);
       let keep: string | null = null;
+      let addsTo = false;
       if (decision.outcome === "continue" && decision.nudge) {
-        // A give-up judged untried is held back, not dropped (`held`): it reads as unseen, and goes out if nothing
-        // better comes.
-        if (decision.rule === "untried") t.held = text;
+        // A give-up judged untried in a person's conversation goes out now: they read it while the run tries again, and
+        // only what that adds goes out below it. In an agents' DM, where nobody waits on it, it is held back (`held`):
+        // it reads as unseen, and goes out if nothing better comes.
+        const shown = decision.rule === "untried" && !betweenAgents;
+        if (decision.rule === "untried" && !shown) t.held = text;
         // A check that couldn't run says so in its own nudge (`uncheckedNudge`).
-        const nudge = decision.rule === "untried" && !decision.judgeError ? heldNudge(decision.nudge) : decision.nudge;
+        const nudge = shown
+          ? shownNudge(decision.nudge)
+          : decision.rule === "untried" && !decision.judgeError
+            ? heldNudge(decision.nudge)
+            : decision.nudge;
         appendUserText(t, nudge);
         if (plan.kind !== "model") nextPrompt = nudge;
-        // Nothing to post first: it simply goes on. A give-up judged untried isn't posted either: it would send people
-        // after something the next turn may do itself.
+        // Nothing to post first: it simply goes on. A give-up judged untried in an agents' DM isn't posted either: it
+        // would send the other agent after something the next turn may do itself.
         // Nor a secret asked in the chat (ADR 0109 addendum).
         // Nor a result it claims that no call produced (ADR 0167).
         // Nor a reply naming its tools to a person, nor one citing files on its computer, which nobody else can open.
         if (
           decision.rule === "decision" ||
           decision.rule === "answer" ||
-          decision.rule === "untried" ||
+          (decision.rule === "untried" && !shown) ||
           decision.rule === "secret" ||
           decision.rule === "unbacked" ||
           decision.rule === "tool_names" ||
@@ -6439,6 +6506,7 @@ async function executeRunInner(
           continue;
         }
         keep = decision.nudge;
+        if (shown) addsTo = true;
       }
       if (!text && !anythingPosted && !silent) return fail("empty_reply");
       // Someone wrote while it answered: post this answer, then read the new message(s) and go on.
@@ -6479,11 +6547,13 @@ async function executeRunInner(
                 const m = await post(tx, replyThreadId, text, withFallback(t, withCode(takeMemoryUpdates(t), code)));
                 t.postedUpTo = t.messages.length;
                 t.postedCount++;
+                if (addsTo) t.addsTo = true;
                 await addRunStep(tx, run, "message", { messageId: m.id });
                 await saveTranscript(tx, t);
                 return m;
               })
             : null;
+        if (addsTo) t.addsTo = true;
         if (posted) {
           const [view] = await withWikiLinks(db, run.orgId, [messageView(posted)]);
           if (view) await publishMessageCreated(deps.pubsub, view);

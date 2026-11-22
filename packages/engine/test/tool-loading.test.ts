@@ -3,6 +3,7 @@ import { asc, eq, schema } from "@agenteschat/db";
 import { systemText } from "@agenteschat/providers";
 import {
   chooseToolGroups,
+  createAgent,
   createFakeJudge,
   createToolGateway,
   describeCapabilities,
@@ -231,6 +232,14 @@ test("chooseToolGroups: one calibrated question per group, the threshold, and th
   expect(all).toMatchObject({ source: "error", kept: ["wiki"], reason: "down", scores: {} });
   expect(all.groups[0]).toBe("wiki");
   expect([...all.groups].sort()).toEqual(["browser", "issues", "sentry", "wiki"]);
+  // A run another agent started keeps to the kept groups: every group would be most of each note's prompt.
+  expect(await chooseToolGroups(broken, { ...input, keep: ["wiki"], lean: true })).toEqual({
+    groups: ["wiki"],
+    scores: {},
+    source: "error",
+    kept: ["wiki"],
+    reason: "down",
+  });
   const capped: Judge = { name: "jev", ask: () => Promise.reject(new Error(PLATFORM_CAP)) };
   expect(await chooseToolGroups(capped, input)).toMatchObject({ source: "error", reason: PLATFORM_CAP });
   // A server with no Jev key never judges a run: the kept groups and find_tools, as without an answer.
@@ -398,6 +407,53 @@ test("a group the judge expects goes in as it is, with no directory when nothing
   expect(names).toContain("list_issues");
   expect(names).toContain("propose_instruction_change");
   expect(names).not.toContain("find_tools");
+});
+
+test("a run another agent's note started: none of the tools only people use, and a failed judge lists no group", async () => {
+  f = await setup({
+    toolsOnDemand: true,
+    issueTools: true,
+    askAgent: true,
+    sayNow: true,
+    blockTools: true,
+    judge: (kind) => {
+      if (kind === "tool_groups") throw new Error("down");
+      return undefined;
+    },
+    reply: (_r, n) =>
+      n === 1
+        ? {
+            chunks: [],
+            toolUses: [{ name: "tell_agent", input: { agent: "@infra", message: "Close the stale issues." } }],
+          }
+        : { chunks: ["ok"] },
+  });
+  const infra = await createAgent(
+    f.db,
+    f.owner.id,
+    f.org.id,
+    { name: "Infra", handle: "infra", role: "Infrastructure", credentialId: f.credential.id },
+    { model: "claude-sonnet-5-5" },
+  );
+  for (const agentId of [f.agent.id, infra.id])
+    await grantScopes(f.db, f.org.id, agentId, [{ connectionId: null, scope: "issues:read" }]);
+  await postPersonMessage({ db: f.db, pubsub: f.pubsub }, f.owner.id, f.org.id, f.general.id, {
+    body: "@dev pede pro infra fechar as issues paradas",
+  });
+  await drainOutbox(f.db, f.handlers);
+  const listed = (who: string) =>
+    f.provider.calls
+      .find((c) => systemText(c.request.system).includes(`You are ${who}`))
+      ?.request.tools?.map((t) => t.name);
+  // A person's run gets every group when the judge is down; the note's run, what was kept, the rest a search away.
+  expect(listed("Dev")).toContain("list_issues");
+  expect(listed("Infra")).not.toContain("list_issues");
+  expect(listed("Infra")).toContain("find_tools");
+  // Nobody reads a conversation between agents: no line before slow work, no live block, no poll.
+  for (const name of ["say_now", "show_block", "start_poll"]) {
+    expect(listed("Dev")).toContain(name);
+    expect(listed("Infra")).not.toContain(name);
+  }
 });
 
 test("a run whose judge lists the browser starts the agent's browser while it thinks; any other run, never", async () => {

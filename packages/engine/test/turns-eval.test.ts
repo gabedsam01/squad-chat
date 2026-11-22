@@ -119,9 +119,11 @@ const size = (r: ModelRequest) =>
  * its usage pause, adds 356 (49,190), and `say_now`, one short line before slow work (ADR 0207), its definition and
  * its line in "# How you work" add about 765 (about 49,955), and a question getting its answer instead of unasked work
  * (its line in "# How you work" and `tell_agent`) adds 572 (50,720), and the reply rule following the person, not the
- * message, adds 46; the ceiling leaves a little room above them.
+ * message, adds 46, and history sent as it was on Claude's own API with lean wakes adds about 150 (50,918 on the Cloud),
+ * and the memory guard taking an admin's own words with the plainer nudges adds about 140, and `say_now` named the very
+ * first call before slow work (ADR 0207 addendum of 2026-11-21) adds 9; the ceiling leaves a little room above them.
  */
-const OI_CEILING_CHARS = 50_900;
+const OI_CEILING_CHARS = 51_300;
 
 test("a DM 'oi' stays under the size ceiling", async () => {
   const [request] = await play(TURNS.find((t) => t.id === "greet-dm") as ScriptedTurn);

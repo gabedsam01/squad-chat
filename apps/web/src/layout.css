@@ -9735,6 +9735,12 @@ html:not([data-pointer]) .onb__step:focus-visible {
   width: var(--option-face);
   height: var(--option-face);
 }
+/* A role picked as "Owner" (ADR 0085, addendum of 2026-11-21): its 20px mark in the trigger keeps its own
+   icon size, not the 16px the trigger gives a bare icon. */
+.ac-select__lead > .ac-rolemark .ac-icon {
+  width: 12px;
+  height: 12px;
+}
 /* The role step: "Do zero" first (its Função field right under it, one card's gap apart), then the groups of presets
    under small headings. */
 .newag__role-groups {
@@ -10608,6 +10614,16 @@ html:not([data-pointer]) .agp-cell:focus-visible {
 .agp-cell__key:has(> .ac-brand) {
   background: none;
   box-shadow: none;
+}
+/* A role that answers for the agent (ADR 0085, addendum of 2026-11-21) brings its own circle: its 18px mark, icon 11px,
+   where a person's face goes. */
+.agp-cell__key:has(> .ac-rolemark) {
+  background: none;
+  box-shadow: none;
+}
+.agp-cell__key > .ac-rolemark .ac-icon {
+  width: 11px;
+  height: 11px;
 }
 .agp-cell__key .ac-brand--sm {
   border-radius: inherit;

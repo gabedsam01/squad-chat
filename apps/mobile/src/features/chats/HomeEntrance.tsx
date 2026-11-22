@@ -1,14 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withSequence,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withDelay, withTiming } from "react-native-reanimated";
 import { useReducedMotion } from "@/ui";
 import { useRevealed } from "../launch/launched";
 
@@ -69,28 +61,16 @@ export function Arrive({
 }
 
 /**
- * The right hand waking as the app opens: asleep under the splash, it opens its eyes `delay` after it left and gives
- * one small hop (a spring, transform only), the one living thing that greets you. Unarmed, it is just awake.
+ * The right hand waking as the app opens: asleep under the splash, it opens its eyes `delay` after it left, the one
+ * living thing that greets you; it stays where it is (a hop on a spring there made the home bounce as it opened).
+ * Unarmed, it is just awake.
  */
 export function useWake(armed: boolean, play: boolean, delay = 300) {
-  const reduced = useReducedMotion();
   const [awake, setAwake] = useState(!armed);
-  const hop = useSharedValue(0);
   useEffect(() => {
     if (!play || awake) return;
-    const timer = setTimeout(() => {
-      setAwake(true);
-      // Up 3 points fast and back on a light spring: a hop, not a bounce.
-      if (!reduced)
-        hop.set(
-          withSequence(
-            withTiming(-3, { duration: 140, easing: EASE_OUT }),
-            withSpring(0, { duration: 360, dampingRatio: 0.6 }),
-          ),
-        );
-    }, delay);
+    const timer = setTimeout(() => setAwake(true), delay);
     return () => clearTimeout(timer);
-  }, [play, awake, delay, reduced, hop]);
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: hop.get() }] }));
-  return { mode: awake ? ("idle" as const) : ("sleep" as const), style };
+  }, [play, awake, delay]);
+  return { mode: awake ? ("idle" as const) : ("sleep" as const) };
 }

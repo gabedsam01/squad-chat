@@ -76,6 +76,7 @@ import {
   dropMailIfWidened,
   managesAgent,
   OWNER_ONLY,
+  ownsAgent,
   planOpened,
 } from "./audience";
 import { recordAudit } from "./audit";
@@ -795,7 +796,7 @@ async function agentBrainAccess(db: Database, userId: string, orgId: string, age
   if (!agent || agent.archivedAt) throw new NotFoundError("Agent not found");
   const admin = managesAgent(agent, userId, membership);
   const which: BrainScope | undefined = isRightHand(agent) ? (scope === "mine" ? "mine" : "workspace") : undefined;
-  if (which !== "mine" && !admin && agent.ownerUserId !== userId) {
+  if (which !== "mine" && !admin && !ownsAgent(agent, userId, membership.roleIds)) {
     throw new ForbiddenError("Only an admin or the agent's owner can see who thinks for it", "agent.not_owner");
   }
   return { agent, admin, membership, scope: which };
@@ -2128,6 +2129,8 @@ export async function agentBrainSummaries(
     brainModel: string | null;
     machineId: string | null;
     ownerUserId: string | null;
+    /** Its owner role (ADR 0085, addendum of 2026-11-21); absent reads as none. */
+    ownerRoleId?: string | null;
     brainAccountId?: string | null;
     brainSpeed?: string;
     builtin?: string | null;
@@ -2171,11 +2174,13 @@ export async function agentBrainSummaries(
   const live = new Map(machines.filter((m) => !m.deletedAt).map((m) => [m.id, m]));
   const accountById = new Map(accounts.map((r) => [r.id, r]));
   const reads = membership !== null && !readRefusal(membership.standing);
-  for (const a of agents) {
+  for (const given of agents) {
+    const a = { ...given, ownerRoleId: given.ownerRoleId ?? null };
     const kind = brainOf(a.brain);
     const machine = a.machineId ? live.get(a.machineId) : undefined;
     const manages = reads && managesAgent(a, viewerId, membership);
-    const computer = machine && (manages || a.ownerUserId === viewerId) ? machine.name : undefined;
+    const computer =
+      machine && (manages || ownsAgent(a, viewerId, membership?.roleIds ?? [])) ? machine.name : undefined;
     const row = kind !== "model" && a.brainAccountId ? accountById.get(a.brainAccountId) : undefined;
     const provider = kind === "claude_code" ? (row?.provider ?? undefined) : undefined;
     const ownPlan = kind === "claude_code" ? machine?.executors?.claude?.plan : undefined;

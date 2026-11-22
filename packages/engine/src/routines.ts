@@ -21,6 +21,7 @@ import { type AiStatusDeps, rightHandWorkAi } from "./ai-status";
 import { decidesAgentApprovals, MAX_OWN_ACTIONS, OWN_ACTION_NAME } from "./approval-rules";
 import { cancelRoutineAhead, type RoutineAheadView, routinesAhead } from "./approvals";
 import {
+  type AgentOwnerFields,
   audienceError,
   audienceSql,
   canTalkTo,
@@ -159,6 +160,8 @@ export const ROUTINE_EVENTS = [
   "email.received",
   /** A call to the routine's own address (only through a `webhook` trigger: ADR 0106). */
   "webhook.received",
+  /** A message to the workspace's Telegram bot: a private chat with it, or one that mentions or answers it (ADR 0170). */
+  "telegram.message",
 ] as const;
 export type RoutineEvent = (typeof ROUTINE_EVENTS)[number];
 /**
@@ -1413,8 +1416,8 @@ export function ownActionsOf(list: readonly string[]): string[] {
 }
 
 /** A routine acts on its own only by the word of someone who could approve those actions themselves. */
-async function requireActionApprover(db: Database, actorId: string, orgId: string, ownerUserId: string | null) {
-  if (await decidesAgentApprovals(db, orgId, actorId, ownerUserId)) return;
+async function requireActionApprover(db: Database, actorId: string, orgId: string, owner: AgentOwnerFields) {
+  if (await decidesAgentApprovals(db, orgId, actorId, owner)) return;
   throw new ForbiddenError(
     "Only the agent's owner or someone who approves its actions can let a routine act on its own",
     "routine.actions_need_approver",
@@ -1449,7 +1452,7 @@ export async function createRoutine(
   if (input.trigger.type === "connector") await checkConnectorTrigger(db, orgId, agent.id, input.trigger, actorId);
   const hooks = input.trigger.type === "webhook" || input.trigger.type === "connector" ? hooksOf(deps) : null;
   const ownActions = ownActionsOf(input.ownActions ?? []);
-  if (ownActions.length > 0) await requireActionApprover(db, actorId, orgId, agent.ownerUserId);
+  if (ownActions.length > 0) await requireActionApprover(db, actorId, orgId, agent);
   const name = input.name?.trim().slice(0, 120) || prompt.split("\n")[0]?.slice(0, 60) || "Routine";
   const [row] = await db
     .insert(routines)
@@ -1589,6 +1592,7 @@ export async function routineSeer(
       .select({
         id: agents.id,
         ownerUserId: agents.ownerUserId,
+        ownerRoleId: agents.ownerRoleId,
         audienceMode: agents.audienceMode,
         audienceUserIds: agents.audienceUserIds,
         audienceRoleIds: agents.audienceRoleIds,
@@ -1760,7 +1764,7 @@ export async function updateRoutine(
             "routine.act_take_over",
           );
         }
-        await requireActionApprover(db, actorId, orgId, agent.ownerUserId);
+        await requireActionApprover(db, actorId, orgId, agent);
       }
       set.ownActions = ownActions;
     }

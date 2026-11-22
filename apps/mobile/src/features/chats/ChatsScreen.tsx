@@ -225,8 +225,8 @@ function Home() {
   const load = useFirstLoad(list.loading);
 
   // The first Conversas after the splash arrives as one gesture (once per launch, never holding a tap back): the sky
-  // comes up from the splash's, the greeting rises, the right hand's field follows and its face wakes with a small
-  // hop. The title stays put: it is where the eye lands.
+  // comes up from the splash's, the greeting rises, the right hand's field follows and its face wakes. The title stays
+  // put: it is where the eye lands.
   const entrance = useHomeEntrance();
   const wake = useWake(entrance.armed, entrance.play);
   const arrive = { armed: entrance.armed, play: entrance.play };
@@ -234,7 +234,7 @@ function Home() {
   const ask =
     pinned.pin && !failed && !list.loading ? (
       <Arrive {...arrive} delay={90}>
-        <RightHandAsk row={pinned.pin} onStart={startDm} faceMode={wake.mode} faceStyle={wake.style} />
+        <RightHandAsk row={pinned.pin} onStart={startDm} faceMode={wake.mode} />
       </Arrive>
     ) : null;
 

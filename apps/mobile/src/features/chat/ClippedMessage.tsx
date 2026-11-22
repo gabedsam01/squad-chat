@@ -81,8 +81,11 @@ export function ClippedMessage({
   behind,
   ink,
   lead,
+  onEnd,
   children,
 }: {
+  /** Where the words end in what holds them (their top plus their height), after each layout (`useBubbleCap`). */
+  onEnd?: ((end: number) => void) | undefined;
   /** The message's id: the screen keeps it open by that. */
   id: string;
   behind: readonly string[];
@@ -124,7 +127,7 @@ export function ClippedMessage({
   }, [open, id]);
   return (
     // One tree whether it clips or not: the words never remount when their height is first known.
-    <View>
+    <View onLayout={onEnd ? (e) => onEnd(e.nativeEvent.layout.y + e.nativeEvent.layout.height) : undefined}>
       {/* Opened at once, never with a layout transition: inside the conversation's list an animated height left the
           words' frame at the fold while the bubble already took their whole height, an empty bubble under the cut
           words (seen on a phone). */}

@@ -1563,12 +1563,16 @@ describe("a turn end's reads and judgment", () => {
     });
   });
 
-  test("a check refused past the platform cap: once per run the agent checks itself, held in a conversation; then done", async () => {
+  test("a check refused past the platform cap: once per run the agent checks itself, held in an agents' DM; then done", async () => {
     const down = () => Promise.reject(new Error(PLATFORM_CAP));
     const evidence = { means: ["terminal (run_code)"], tried: ["github_get_issue #12 → ok"] };
     const first = await decideTurnEnd(turn({ verdict: down, evidence }));
     expect(first).toMatchObject({ outcome: "continue", rule: "untried", judgeError: true });
-    expect(first.nudge).toStartWith("Not posted yet");
+    // A person's conversation got the reply already (the executor posts it and wraps this in `shownNudge`).
+    expect(first.nudge).not.toContain("Not posted yet");
+    expect((await decideTurnEnd(turn({ kind: "agents_dm", verdict: down, evidence }))).nudge).toStartWith(
+      "Not posted yet",
+    );
     expect(first.nudge).toContain("check it yourself");
     expect(first.nudge).toContain("terminal (run_code)");
     expect(first.nudge).toContain("github_get_issue #12");

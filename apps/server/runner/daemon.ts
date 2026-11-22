@@ -146,8 +146,10 @@ import { AGENTS_CGROUP, systemdBooted } from "./service";
 import {
   ensureSingleShared,
   ensureSystemShared,
+  SHARED_FIX_MS,
   SHARED_SIZE_MS,
   type SharedSpec,
+  shareAgentFiles,
   sharedSizeGb,
   systemShared,
   withShared,
@@ -482,6 +484,10 @@ export class RunnerDaemon implements RequestObserver {
   /** The computer's shared folder (ADR 0115) once the session made it, and its last measured size. */
   private shared: string | null = null;
   private sharedGb: number | undefined;
+  /** System mode's folder (real path) and group, for `shareFiles`; null elsewhere. */
+  private sharedGroup: Required<SharedSpec> | null = null;
+  private sharing = false;
+  private sharingProblem = "";
   /** System mode: what this process relayed to the server, per stream (`relayed.json`). */
   private readonly relayed = new RelayCount();
   private resumeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -880,6 +886,9 @@ export class RunnerDaemon implements RequestObserver {
     const sizes = setInterval(() => this.measureShared(), SHARED_SIZE_MS);
     sizes.unref?.();
     this.timers.push(sizes);
+    const sharing = setInterval(() => this.shareFiles(), SHARED_FIX_MS);
+    sharing.unref?.();
+    this.timers.push(sharing);
     // System mode: for an operator's network guard, at most once a minute.
     this.checkStandby();
     if (this.opts.watch !== false) this.stopStandbyWatch = watchStandby(this.opts.home, () => this.checkStandby());
@@ -1272,7 +1281,9 @@ export class RunnerDaemon implements RequestObserver {
           : systemShared(config.managedBy === "host" ? agentId8(config.machineId) : undefined)
         : null;
     this.shared = this.prepareShared(workspaceReal, sharedSpec);
+    this.sharedGroup = sharedSpec && this.shared ? { path: this.shared, group: sharedSpec.group } : null;
     this.measureShared();
+    this.shareFiles();
     const secretsDir = path.join(home, "secrets");
     // Site passwords live in memory now (ADR 0144): one an older runner kept on disk goes.
     void dropStoredSiteSecrets(secretsDir);
@@ -2021,6 +2032,23 @@ export class RunnerDaemon implements RequestObserver {
     void sharedSizeGb(dir).then((gb) => {
       if (gb !== null && this.shared === dir) this.sharedGb = gb;
     });
+  }
+
+  /** System mode: what agents moved or copied into the shared folder becomes the others' to change too. */
+  private shareFiles() {
+    const spec = this.sharedGroup;
+    if (!spec || this.sharing) return;
+    this.sharing = true;
+    void shareAgentFiles(spec, readAgentUsers(this.opts.home))
+      .then((problems) => {
+        const said = problems.join("; ");
+        // Once per new problem, not every minute.
+        if (said && said !== this.sharingProblem) this.opts.log(`shared folder: ${said}`);
+        this.sharingProblem = said;
+      })
+      .finally(() => {
+        this.sharing = false;
+      });
   }
 
   /**

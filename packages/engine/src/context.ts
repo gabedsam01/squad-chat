@@ -79,6 +79,7 @@ import { seatState } from "./right-hand-seats";
 import { isRoutineRoomKey, type RoutineBrief, routineAccessOf, routineBriefOf, routineReportOf } from "./routine-brief";
 import { WEBHOOK_EVENT, webhookEventText } from "./routine-hooks";
 import { heldHere } from "./run-inbox";
+import { inChannelRun } from "./run-scope";
 import { type AgentRun, replyThreadOf } from "./runs";
 import { SITE_SECRET_TTL_TEXT, secretStillHeld } from "./secrets";
 import { stretchCardOf } from "./stretch";
@@ -142,6 +143,7 @@ export const HOW_YOU_WORK = [
   "- A question asks for information, not action: answer it, offer the next step in one line when one fits ('Want me to have Theo make that page?') and end your turn. Don't start or hand off longer work for it (a PR, a build, a deploy, another agent set to work) unless the person asked for action, the work is already yours (your routine, an assigned task, your instructions) or it's a quick step you can undo that completes the answer. Work asked as a question ('can you…?') is a request: do it.",
   "- Internal changes you can undo need no permission: do them and say what you did. That is creating or updating issues (status, priority, assignee, labels, due date), assigning work, saving what you learned (a correction, a preference or rule someone gave, a fact about the company, how you got something working), creating or changing routines, adding an agent to a channel, writing the wiki when asked, renaming or closing a thread. The person sees each change under your reply with an Undo button. If work you were asked about has no owner, don't just say someone must take it: assign it (to the agent or person whose role fits, or yourself) or do it.",
   ASK_ONLY_LINE,
+  "- Never rule on what a provider's terms allow: link its own terms and leave the choice to the person.",
   "- State only what your tools or your context returned; when your searches find nothing, say so instead of filling the gap. An empty search proves nothing happened only to the search: say you found no earlier mention, never 'it's the first time' or 'you never told me'. Never claim you lack access to something a tool just returned or a key you hold.",
   "- Compute ratios, totals and comparisons with code, never in your head. Keep each number's unit and currency as its source has it, also when you relay it, and read the whole source before saying something isn't there.",
   "- An empty or blocked result is not a closed way: when a search, a page or a tool gives nothing, fails or is blocked, change the words, the source or the tool and try again. When a way is really closed (no access, a refusal), take another that still gets the people what they need: another tool, the colleague whose role covers it, a document or a copy instead of a move. A refusal for safety (a credential, private data in an address, secrets, sending data out) is final: never send that data another way. Say what was refused. When a tool or the platform fails, say plainly what failed and what the person can do, or that it's on our side and to try again later; never paste a raw error or send anyone to support.",
@@ -205,7 +207,7 @@ export const WORK_IN_BACKGROUND_LINE =
  * `say_now` listed. The result still goes in the reply; a quick answer gets no line first.
  */
 export const SAY_NOW_LINE =
-  "- Before work that takes more than a few seconds, first tell them in one short line what you'll do (say_now, in the same response as your first work call), then work: your final message brings the result. Once per request; never for a quick answer, nor with work_in_background (its `say` is that line).";
+  "- Before work that takes more than a few seconds, make say_now your very first call: one short line on what you'll do, in the same response as your first work call, then work: your final message brings the result. Once per request; never for a quick answer, nor with work_in_background (its `say` is that line).";
 
 export const finishWhatYouStart = (followUp: boolean) =>
   `- Finish what you start. Never end your turn on a promise you don't keep in it ('I'll send the numbers', 'vou checar de novo', 'te aviso quando terminar'): do it now. ${
@@ -370,6 +372,7 @@ const QUIET_TOOLS = [
   "load_skill",
   "read_skill_file",
   "read_file",
+  "review_media",
   "list_files",
 ];
 
@@ -756,8 +759,8 @@ export async function buildRunContext(
   // was posted after it.
   const upToTrigger = postedBySql(messages, trigger);
   const rootIsTrigger = run.threadRootId === trigger.id;
-  // Asked in the main timeline: the run answers there, not in a thread.
-  const flat = rootIsTrigger;
+  // Asked in the main timeline: the run answers there, not in a thread, unless its channel replies in threads (ADR 0214).
+  const flat = rootIsTrigger && !run.replyInThread;
   const heldElsewhere = run.background ? null : heldHere(db, run).catch(() => null);
   const surface = surfaceOn();
   const surfaceTurn =
@@ -946,9 +949,7 @@ export async function buildRunContext(
   const quoted = (trigger.meta?.replyTo as { messageId?: unknown } | undefined)?.messageId;
   const quotedId = typeof quoted === "string" ? quoted : null;
   // A channel's conversations: its main timeline (runs asked there answer there) and each thread.
-  const sameConversation = flat
-    ? sql`r.thread_root_id = r.trigger_message_id`
-    : sql`r.thread_root_id = ${run.threadRootId}::uuid`;
+  const sameConversation = flat ? inChannelRun(sql`r`) : sql`r.thread_root_id = ${run.threadRootId}::uuid`;
   const actionRows = rowsOf<ActionRow>(
     await db.execute(sql`with here_readers as materialized ${channelReadersSql(sql`${run.orgId}::uuid`, sql`${run.channelId}::uuid`)}
       (select s.data, s.created_at, a.handle, false as elsewhere, c.kind, c.name, r.id as run_id,
