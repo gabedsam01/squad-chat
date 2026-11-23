@@ -1524,6 +1524,7 @@ describe("the compose file the setup drives", () => {
       [
         // biome-ignore lint/suspicious/noTemplateCurlyInString: Compose's interpolation, not a template literal
         "${DOMAIN:-localhost} {",
+        "\tencode zstd gzip",
         "\trequest_body /mcp* {",
         "\t\tmax_size 128KiB",
         "\t}",

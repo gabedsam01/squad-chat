@@ -18,7 +18,6 @@ import { backToSignIn } from "@/app/unauthorized";
 import type { AuthClient } from "@/auth/client";
 import { OrgProvider } from "@/components/org-context";
 import { forgetComposerDrafts } from "@/hooks/useComposerDraft";
-import { DirectoryProvider } from "@/hooks/useDirectory";
 import { createI18n, type LocaleCode, setLocale } from "@/i18n";
 import { STORAGE_KEYS, sessionStore } from "@/lib/storage";
 import { createToastStore } from "@/lib/toast";
@@ -150,11 +149,9 @@ export async function renderPage(
   const content =
     options.org && me?.organizations[0] ? (
       <OrgProvider org={me.organizations[0]} me={me}>
-        <DirectoryProvider orgId={me.organizations[0].id}>
-          <RealtimeProvider orgId={me.organizations[0].id} createSocket={createSocket}>
-            {node}
-          </RealtimeProvider>
-        </DirectoryProvider>
+        <RealtimeProvider orgId={me.organizations[0].id} createSocket={createSocket}>
+          {node}
+        </RealtimeProvider>
       </OrgProvider>
     ) : (
       node

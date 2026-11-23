@@ -765,6 +765,7 @@ export function ConnectAiDialog({
           setLogin(null);
         }}
         onComputer={toComputers}
+        onAssigned={(id) => setLinked((l) => ({ ...l, [id]: choice }))}
         {...(team
           ? {
               // Any agent may be passed over, the last too; the end then says why it stayed without an AI.

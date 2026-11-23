@@ -32,7 +32,6 @@ import { BootSplash } from "@/components/Sky";
 import { DeletingBanner, HoldBanner, SuspendedScreen } from "@/components/Standing";
 import { useWebPushClear, useWebPushRefresh } from "@/components/WebPush";
 import { ComputerSetupNotice } from "@/components/WorkspaceComputer";
-import { DirectoryProvider } from "@/hooks/useDirectory";
 import { HeaderSearchProvider } from "@/hooks/useWorkspaceSearch";
 import { useServerLocale } from "@/i18n";
 import { inDesktopApp } from "@/lib/desktop";
@@ -124,78 +123,74 @@ function OrgLayout() {
   if (membership.standing?.state === "suspended") {
     return (
       <OrgProvider org={membership} me={me}>
-        <DirectoryProvider orgId={membership.id}>
-          <RealtimeProvider orgId={membership.id}>
-            {strip}
-            <SuspendedScreen org={membership} me={me} />
-          </RealtimeProvider>
-        </DirectoryProvider>
+        <RealtimeProvider orgId={membership.id}>
+          {strip}
+          <SuspendedScreen org={membership} me={me} />
+        </RealtimeProvider>
       </OrgProvider>
     );
   }
 
   return (
     <OrgProvider org={membership} me={me}>
-      <DirectoryProvider orgId={membership.id}>
-        <RealtimeProvider orgId={membership.id}>
-          <HeaderSearchProvider>
-            <ArtifactViewerProvider>
-              <NavDrawerProvider>
-                {inDesktopApp() && <DesktopTitleBar />}
-                {inDesktopApp() && <MenuBarActions orgId={membership.id} />}
-                {/* One invite dialog for the workspace (ADR 0090): the menu, ⌘K, Members and a channel open it. */}
-                <InviteDialogProvider>
-                  <RemoveMemberProvider>
-                    {/* Connect AI for every page, and over the new agent's dialog (ADR 0164), which sits under it. */}
-                    <ConnectAiProvider>
-                      {/* One new agent's dialog for every way in (ADR 0164): the sidebar, the pages and the menus. */}
-                      <NewAgentProvider>
-                        <div className="shell">
-                          <RefetchBar />
-                          <CommandMenu />
-                          <LeaveChannelDialog />
-                          {!focused && (
-                            <>
-                              <NavScrim />
-                              <Sidebar />
-                              <ShellBar />
-                            </>
-                          )}
-                          {/* The work area: notices on top (agents paused, the workspace's computer on its way, a computer
+      <RealtimeProvider orgId={membership.id}>
+        <HeaderSearchProvider>
+          <ArtifactViewerProvider>
+            <NavDrawerProvider>
+              {inDesktopApp() && <DesktopTitleBar />}
+              {inDesktopApp() && <MenuBarActions orgId={membership.id} />}
+              {/* One invite dialog for the workspace (ADR 0090): the menu, ⌘K, Members and a channel open it. */}
+              <InviteDialogProvider>
+                <RemoveMemberProvider>
+                  {/* Connect AI for every page, and over the new agent's dialog (ADR 0164), which sits under it. */}
+                  <ConnectAiProvider>
+                    {/* One new agent's dialog for every way in (ADR 0164): the sidebar, the pages and the menus. */}
+                    <NewAgentProvider>
+                      <div className="shell">
+                        <RefetchBar />
+                        <CommandMenu />
+                        <LeaveChannelDialog />
+                        {!focused && (
+                          <>
+                            <NavScrim />
+                            <Sidebar />
+                            <ShellBar />
+                          </>
+                        )}
+                        {/* The work area: notices on top (agents paused, the workspace's computer on its way, a computer
                     the agents run on went offline), then the page. Being deleted, it reads as ever under one line that
                     says so (ADR 0088 §7), in the Criar agente flow too: its work stopped, nothing else is news. */}
-                          <div className={focused ? "shell__work shell__work--bare" : "shell__work"}>
-                            {membership.deletion && <DeletingBanner />}
-                            {!focused && !membership.deletion && (
-                              <>
-                                <HoldBanner />
-                                <ComputerSetupNotice />
-                                <OutageNotices />
-                              </>
-                            )}
-                            <div className="shell__pages">
-                              <ComputerDialogProvider>
-                                <DetailsHost>
-                                  <PushOpens />
-                                  {/* What reaches me while I'm here, at the top of the work area (ADR 0071 §9). */}
-                                  {!focused && <NoticeIsland />}
-                                  <Arrival />
-                                  <FeedbackHost />
-                                  <Outlet />
-                                </DetailsHost>
-                              </ComputerDialogProvider>
-                            </div>
+                        <div className={focused ? "shell__work shell__work--bare" : "shell__work"}>
+                          {membership.deletion && <DeletingBanner />}
+                          {!focused && !membership.deletion && (
+                            <>
+                              <HoldBanner />
+                              <ComputerSetupNotice />
+                              <OutageNotices />
+                            </>
+                          )}
+                          <div className="shell__pages">
+                            <ComputerDialogProvider>
+                              <DetailsHost>
+                                <PushOpens />
+                                {/* What reaches me while I'm here, at the top of the work area (ADR 0071 §9). */}
+                                {!focused && <NoticeIsland />}
+                                <Arrival />
+                                <FeedbackHost />
+                                <Outlet />
+                              </DetailsHost>
+                            </ComputerDialogProvider>
                           </div>
                         </div>
-                      </NewAgentProvider>
-                    </ConnectAiProvider>
-                  </RemoveMemberProvider>
-                </InviteDialogProvider>
-              </NavDrawerProvider>
-            </ArtifactViewerProvider>
-          </HeaderSearchProvider>
-        </RealtimeProvider>
-      </DirectoryProvider>
+                      </div>
+                    </NewAgentProvider>
+                  </ConnectAiProvider>
+                </RemoveMemberProvider>
+              </InviteDialogProvider>
+            </NavDrawerProvider>
+          </ArtifactViewerProvider>
+        </HeaderSearchProvider>
+      </RealtimeProvider>
     </OrgProvider>
   );
 }
