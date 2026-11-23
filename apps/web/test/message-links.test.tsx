@@ -161,41 +161,70 @@ describe("a link to a message far back", () => {
   const toLatest = () =>
     document.querySelector(".channel__latest-btn[aria-label='Ir para as mensagens mais recentes']") as HTMLElement;
 
+  /** The highlight lasts ~2.4 s: capture it whenever it lands, not only after `settle(10)` on slow CI. */
+  function watchFocus(id: string) {
+    let lit = false;
+    const check = () => {
+      if (row(id)?.classList.contains("ac-msg--focus")) lit = true;
+    };
+    const watch = new MutationObserver(check);
+    watch.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"] });
+    return {
+      seen: () => {
+        check();
+        return lit;
+      },
+      stop: () => watch.disconnect(),
+    };
+  }
+
   test("older than every page the list could load: it opens at it, lit, read around it by id", async () => {
     const state = longChannel(6000);
-    await renderApp(`/org/${ORG_ID}/c/${GENERAL_ID}?m=far-2`, { api: createFakeApi(state) });
-    await settle(10);
-    expect(row("far-2")?.classList.contains("ac-msg--focus")).toBe(true);
-    expect(state.calls.find((c) => c.method === "chat.messages")?.args[1]).toEqual({ around: "far-2", limit: 200 });
-    // Only the page around it: the latest messages wait below the gap.
-    expect(row("far-5999")).toBeNull();
-    expect(document.body.textContent).not.toContain("Essa mensagem não está disponível.");
-    expect(toLatest().closest(".channel__latest")?.hasAttribute("data-shown")).toBe(true);
+    const focus = watchFocus("far-2");
+    try {
+      await renderApp(`/org/${ORG_ID}/c/${GENERAL_ID}?m=far-2`, { api: createFakeApi(state) });
+      await settle(10);
+      expect(focus.seen()).toBe(true);
+      expect(state.calls.find((c) => c.method === "chat.messages")?.args[1]).toEqual({ around: "far-2", limit: 200 });
+      // Only the page around it: the latest messages wait below the gap.
+      expect(row("far-5999")).toBeNull();
+      expect(document.body.textContent).not.toContain("Essa mensagem não está disponível.");
+      expect(toLatest().closest(".channel__latest")?.hasAttribute("data-shown")).toBe(true);
+    } finally {
+      focus.stop();
+    }
   });
 
   test("scrolling down reads the newer pages until the latest; the round button goes straight back to it", async () => {
     const state = longChannel(400);
-    await renderApp(`/org/${ORG_ID}/c/${GENERAL_ID}?m=far-150`, { api: createFakeApi(state) });
-    await settle(10);
-    expect(row("far-150")?.classList.contains("ac-msg--focus")).toBe(true);
-    expect(row("far-249")).not.toBeNull();
-    expect(row("far-250")).toBeNull();
-    const list = document.querySelector(".channel__messages") as HTMLElement;
-    await act(async () => {
-      fireEvent.wheel(list, { deltaY: 120 });
-      fireEvent.scroll(list);
-    });
-    await settle(6);
-    expect(state.calls.some((c) => c.method === "chat.messages" && (c.args[1] as { after?: string }).after)).toBe(true);
-    expect(row("far-299")).not.toBeNull();
-    // The page after it meets the latest one: one list again.
-    await act(async () => {
-      fireEvent.wheel(list, { deltaY: 120 });
-      fireEvent.scroll(list);
-    });
-    await settle(6);
-    expect(row("far-399")).not.toBeNull();
-    expect(row("far-150")).not.toBeNull();
+    const focus = watchFocus("far-150");
+    try {
+      await renderApp(`/org/${ORG_ID}/c/${GENERAL_ID}?m=far-150`, { api: createFakeApi(state) });
+      await settle(10);
+      expect(focus.seen()).toBe(true);
+      expect(row("far-249")).not.toBeNull();
+      expect(row("far-250")).toBeNull();
+      const list = document.querySelector(".channel__messages") as HTMLElement;
+      await act(async () => {
+        fireEvent.wheel(list, { deltaY: 120 });
+        fireEvent.scroll(list);
+      });
+      await settle(6);
+      expect(state.calls.some((c) => c.method === "chat.messages" && (c.args[1] as { after?: string }).after)).toBe(
+        true,
+      );
+      expect(row("far-299")).not.toBeNull();
+      // The page after it meets the latest one: one list again.
+      await act(async () => {
+        fireEvent.wheel(list, { deltaY: 120 });
+        fireEvent.scroll(list);
+      });
+      await settle(6);
+      expect(row("far-399")).not.toBeNull();
+      expect(row("far-150")).not.toBeNull();
+    } finally {
+      focus.stop();
+    }
   });
 
   test("the round button leaves the page far back for the latest", async () => {
