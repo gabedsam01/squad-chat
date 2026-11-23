@@ -4,7 +4,7 @@ import { readsAsPageTitle } from "@agenteschat/client/lib/markdown";
 import { resolveWikiLink, splitSection } from "@agenteschat/client/lib/wiki";
 import { movesByKeys, Popover, useHoverCard } from "@agenteschat/ui";
 import { Link, useNavigate } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "@/components/org-context";
 import { headingId, Markdown, type WikiLinkRenderer } from "@/lib/markdown";
@@ -97,6 +97,9 @@ export function WikiLinkChip({ title, label, pages }: { title: string; label: st
 export function useWikiLinkRenderer(): WikiLinkRenderer {
   const { org } = useOrg();
   const tree = useWikiTree(org.id);
-  const pages = tree.data ?? [];
-  return (title, label, key): ReactNode => <WikiLinkChip key={key} title={title} label={label} pages={pages} />;
+  const pages = tree.data;
+  return useCallback<WikiLinkRenderer>(
+    (title, label, key): ReactNode => <WikiLinkChip key={key} title={title} label={label} pages={pages ?? []} />,
+    [pages],
+  );
 }

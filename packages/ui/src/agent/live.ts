@@ -109,12 +109,18 @@ export function playAgentReaction(key: string, kind: AgentReaction) {
 }
 
 const agents = new Set<LiveAgent>();
+const byBox = new Map<HTMLElement, LiveAgent>();
 const visible = new WeakSet<HTMLElement>();
 let raf = 0;
 let last = 0;
 let lastRest = 0;
 let gaze: { x: number; y: number } | null = null;
 let observer: IntersectionObserver | null = null;
+const isNoopDomObserver = () =>
+  typeof window !== "undefined" &&
+  "happyDOM" in window &&
+  typeof IntersectionObserver === "function" &&
+  IntersectionObserver === (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
 /** Frame gaps (ms): an agent at work, and one at rest. */
 const ACTIVE_MS = 40;
 const REST_MS = 80;
@@ -287,14 +293,28 @@ function decorate(agent: LiveAgent, t: number): DrawAgentOptions["after"] {
   };
 }
 
-/** Redraws every agent at once (a new theme changes their skies; the loop may be standing still). */
+/** Redraws every visible agent at once (a new theme changes their skies; the loop may be standing still). */
 function redrawAll() {
   darkCache = new WeakMap();
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
   const t = clock() / 1000;
-  for (const a of agents) drawLive(a, t);
+  for (const a of agents) if (visible.has(a.box)) drawLive(a, t);
 }
 
 let themeWatch: MutationObserver | null = null;
+let visibilityWatch = false;
+function watchVisibility() {
+  if (visibilityWatch || typeof document === "undefined") return;
+  visibilityWatch = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const t = clock() / 1000;
+    for (const a of agents) if (visible.has(a.box)) drawLive(a, t);
+    if (!raf && agents.size && !reduced() && typeof requestAnimationFrame === "function") {
+      raf = requestAnimationFrame(tick);
+    }
+  });
+}
 function watchTheme() {
   if (themeWatch || typeof MutationObserver === "undefined" || typeof document === "undefined") return;
   themeWatch = new MutationObserver(redrawAll);
@@ -312,6 +332,7 @@ const busy = (a: LiveAgent) => {
 
 function tick(now: number) {
   raf = 0;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
   if (now - last >= ACTIVE_MS) {
     last = now;
     const rest = now - lastRest >= REST_MS;
@@ -332,12 +353,19 @@ function tick(now: number) {
 /** Starts drawing an agent; returns the cleanup. */
 export function addLiveAgent(agent: LiveAgent): () => void {
   agents.add(agent);
+  byBox.set(agent.box, agent);
   watchTheme();
-  if (typeof IntersectionObserver === "function") {
+  watchVisibility();
+  if (typeof IntersectionObserver === "function" && !isNoopDomObserver()) {
     observer ??= new IntersectionObserver((entries) => {
+      const t = clock() / 1000;
       for (const e of entries) {
-        if (e.isIntersecting) visible.add(e.target as HTMLElement);
-        else visible.delete(e.target as HTMLElement);
+        const box = e.target as HTMLElement;
+        if (e.isIntersecting) {
+          visible.add(box);
+          const hit = byBox.get(box);
+          if (hit && sizes.get(box)) drawLive(hit, t);
+        } else visible.delete(box);
       }
     });
     observer.observe(agent.box);
@@ -348,14 +376,22 @@ export function addLiveAgent(agent: LiveAgent): () => void {
       // Every size first, while the layout is fresh, then the drawing: a canvas that changes size makes it stale.
       const boxes = entries.map((e) => e.target as HTMLElement);
       for (const box of boxes) sizes.set(box, box.clientWidth);
-      for (const box of boxes) for (const a of agents) if (a.box === box) drawLive(a, t);
+      for (const box of boxes) {
+        if (!visible.has(box)) continue;
+        const hit = byBox.get(box);
+        if (hit) drawLive(hit, t);
+      }
     });
     resizes.observe(agent.box);
   }
   drawLive(agent, typeof performance === "object" ? performance.now() / 1000 : 0);
-  if (!raf && !reduced() && typeof requestAnimationFrame === "function") raf = requestAnimationFrame(tick);
+  const pageHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+  if (!pageHidden && !raf && !reduced() && typeof requestAnimationFrame === "function") {
+    raf = requestAnimationFrame(tick);
+  }
   return () => {
     agents.delete(agent);
+    if (byBox.get(agent.box) === agent) byBox.delete(agent.box);
     observer?.unobserve(agent.box);
     resizes?.unobserve(agent.box);
     sizes.delete(agent.box);

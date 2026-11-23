@@ -21,7 +21,7 @@ import { agentsOnlyIn, waitSinceIn } from "./agent-work";
 import { currentHandles } from "./agents";
 import { type AiStatusDeps, agentAiState } from "./ai-status";
 import { canTalkTo, speakerFor, viaAgent } from "./audience";
-import { runAuthorityById } from "./authority";
+import { runAuthority, runAuthorityById, steeredByOf, transcriptKeys } from "./authority";
 import { routineBriefOfRun } from "./background";
 import { type BrakeOutcome, brakeWakes, callableAgents, LATER_JOB, notCallableText } from "./brakes";
 import { canceledBy, stopRun } from "./cancel";
@@ -1756,14 +1756,10 @@ export async function consultationsIn(db: Executor, orgId: string, channelId: st
       r.status === "open" && r.targetRunId ? [{ runId: r.targetRunId, dmId: r.dmId, since: r.createdAt }] : [],
     ),
   );
-  const hidden = new Set(
-    (
-      await Promise.all(
-        [...new Set(rows.flatMap((r) => (r.targetRunId ? [r.targetRunId] : [])))].map(async (id) =>
-          (await answersAgentsOnly(db, orgId, id)) ? [id] : [],
-        ),
-      )
-    ).flat(),
+  const hidden = await answersAgentsOnlyBatch(
+    db,
+    orgId,
+    rows.flatMap((r) => (r.targetRunId ? [r.targetRunId] : [])),
   );
   return rows.map((r) => {
     const kept = !!r.targetRunId && hidden.has(r.targetRunId);
@@ -2391,16 +2387,65 @@ export async function consultedInBackground(db: Executor, orgId: string, runId: 
  * agent that asked and nothing of it reaches that person: no card where they asked (its approvals and questions
  * stay in the agents' DM, for the people who decide for it), no DM, no post in their name.
  */
-export async function answersAgentsOnly(db: Executor, orgId: string, runId: string): Promise<boolean> {
-  const [run] = await db
-    .select({ agent: agents })
+export async function answersAgentsOnlyBatch(db: Executor, orgId: string, runIds: string[]): Promise<Set<string>> {
+  const unique = [...new Set(runIds)];
+  if (unique.length === 0) return new Set();
+  const runRows = await db
+    .select({
+      id: agentRuns.id,
+      orgId: agentRuns.orgId,
+      triggerMessageId: agentRuns.triggerMessageId,
+      background: agentRuns.background,
+      agent: agents,
+    })
     .from(agentRuns)
     .innerJoin(agents, eq(agents.id, agentRuns.agentId))
-    .where(and(eq(agentRuns.orgId, orgId), eq(agentRuns.id, runId)));
-  if (!run) return false;
-  const authority = await runAuthorityById(db, orgId, runId);
-  const person = authority.kind === "person" ? authority.personId : routineCreatorOf(authority);
-  return !!person && !canTalkTo(run.agent, person, await speakerFor(db, orgId, person));
+    .where(and(eq(agentRuns.orgId, orgId), inArray(agentRuns.id, unique)));
+  if (runRows.length === 0) return new Set();
+
+  const resolved = await Promise.all(runRows.map(async (run) => ({ run, auth: await runAuthority(db, run) })));
+  const unattendedIds = resolved.flatMap((e) => (e.auth.kind === "unattended" ? [e.run.id] : []));
+  const steeredMap = new Map<string, string>();
+  if (unattendedIds.length > 0) {
+    const steeredRows = await db
+      .select({ id: agentRuns.id, transcript: transcriptKeys("steeredBy") })
+      .from(agentRuns)
+      .where(and(eq(agentRuns.orgId, orgId), inArray(agentRuns.id, unattendedIds)));
+    for (const row of steeredRows) {
+      const by = steeredByOf(row.transcript);
+      if (by) steeredMap.set(row.id, by);
+    }
+  }
+
+  const withPeople = resolved.map((entry) => {
+    const { run, auth } = entry;
+    const person =
+      auth.kind === "person"
+        ? auth.personId
+        : auth.kind === "unattended"
+          ? (steeredMap.get(run.id) ?? routineCreatorOf(auth))
+          : routineCreatorOf(auth);
+    return { run, person };
+  });
+  const uniquePeople = [...new Set(withPeople.flatMap((e) => (e.person ? [e.person] : [])))];
+  if (uniquePeople.length === 0) return new Set();
+  const speakers = new Map(
+    await Promise.all(uniquePeople.map(async (p) => [p, { speaker: await speakerFor(db, orgId, p) }] as const)),
+  );
+
+  const restricted = new Set<string>();
+  for (const { run, person } of withPeople) {
+    if (!person) continue;
+    const found = speakers.get(person);
+    if (found && !canTalkTo(run.agent, person, found.speaker)) {
+      restricted.add(run.id);
+    }
+  }
+  return restricted;
+}
+
+export async function answersAgentsOnly(db: Executor, orgId: string, runId: string): Promise<boolean> {
+  return (await answersAgentsOnlyBatch(db, orgId, [runId])).has(runId);
 }
 
 /** Whether a consultation's consulted run answers agents only: what it wrote stays out of the people's views. */

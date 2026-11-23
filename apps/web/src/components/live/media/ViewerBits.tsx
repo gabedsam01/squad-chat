@@ -64,8 +64,8 @@ export function ChatCommentsLine({ artifactId, version }: { artifactId: string; 
   const { t } = useTranslation();
   const { org } = useOrg();
   const viewer = useMaybeArtifactViewer();
-  // The card's own query (the same version): read once for both.
-  const artifact = useArtifact(org.id, artifactId, version).data;
+  // The card's own query (the same version): read passively from cache so off-screen rows do not fetch.
+  const artifact = useArtifact(org.id, artifactId, version, { enabled: false }).data;
   const media = mediaKindOfArtifact(artifact);
   const talk = artifact?.conversation;
   if (!media || !talk || talk.count === 0) return null;

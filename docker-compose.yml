@@ -300,6 +300,7 @@ configs:
   caddyfile:
     content: |
       ${DOMAIN:-localhost} {
+      	encode zstd gzip
       	request_body /mcp* {
       		max_size 128KiB
       	}

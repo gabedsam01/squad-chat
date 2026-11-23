@@ -456,8 +456,12 @@ export function RealtimeProvider({
       // Reactions heard live may be stale now: the refetched message lists carry them again.
       qc.removeQueries({ queryKey: ["org", orgId, "reactions"] });
       // Nothing sent while the socket was down reached this tab, so everything the workspace holds may be old: what
-      // is on screen reads again now, the rest when it is shown.
-      void qc.invalidateQueries({ queryKey: keys.org(orgId) });
+      // is on screen reads again now, the rest when it is shown. Versioned immutable data (`meta.immutable`)
+      // never changes and does not need refetching on reconnect.
+      void qc.invalidateQueries({
+        queryKey: keys.org(orgId),
+        predicate: (q) => q.meta?.immutable !== true,
+      });
       void qc.invalidateQueries({ queryKey: keys.me });
     });
     // The first open too, for what a return from the billing service changes: a new plan's limits, standing and
@@ -573,9 +577,9 @@ export function RealtimeProvider({
     });
     conn.start();
     setConnection(conn);
-    // Back from a sleep or a network change, the socket may be dead while it still says open: check it now.
+    // Back from a sleep or a network change, the socket may be dead while it still says open: check it quickly.
     const wake = () => {
-      if (document.visibilityState === "visible") conn.checkAlive();
+      if (document.visibilityState === "visible") conn.checkAlive(3_500);
     };
     document.addEventListener("visibilitychange", wake);
     window.addEventListener("online", wake);
@@ -762,17 +766,26 @@ export function useChannelRealtime(orgId: string, channelId: string, enabled: bo
   // change), is read and added.
   useEffect(() => {
     if (!connection || !enabled) return;
+    let lastReconcileAt = Date.now();
     void reconcileChannelRuns(api, streams, orgId, channelId).then((dropped) => {
       if (dropped) void qc.invalidateQueries({ queryKey: keys.messages(orgId, channelId) });
     });
-    const resync = () => {
-      void reconcileChannelRuns(api, streams, orgId, channelId);
+    const resync = (fromSubscribe = false) => {
+      const now = Date.now();
+      if (!fromSubscribe || now - lastReconcileAt > 1_500) {
+        lastReconcileAt = now;
+        void reconcileChannelRuns(api, streams, orgId, channelId);
+      }
       catchUpLists(api, qc, streams, orgId, channelId);
       // The lines of its computers too: a `computer.queue` it missed leaves a wait's place unsaid.
       void qc.invalidateQueries({ queryKey: [...keys.machines(orgId), "queue"] });
     };
+    // After a disconnect/reconnect, the next subscription confirmation must always reconcile.
+    const offStatus = connection.onStatus((status) => {
+      if (status !== "open") lastReconcileAt = 0;
+    });
     const offSubscribed = connection.onSubscribed((id) => {
-      if (id === channelId) resync();
+      if (id === channelId) resync(true);
     });
     // Back to the tab after a while: read it again at once. The socket may have died in the meantime (its check takes
     // seconds), or stayed up while events never reached it (a sleeping tab, the server's pub/sub reconnecting).
@@ -785,11 +798,12 @@ export function useChannelRealtime(orgId: string, channelId: string, enabled: bo
       const away = hiddenAt === null ? 0 : Date.now() - hiddenAt;
       hiddenAt = null;
       if (away < RESYNC_AFTER_HIDDEN_MS) return;
-      resync();
+      resync(false);
       void qc.invalidateQueries({ queryKey: keys.threads(orgId) });
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      offStatus();
       offSubscribed();
       document.removeEventListener("visibilitychange", onVisibility);
     };
@@ -912,7 +926,7 @@ function catchUpLists(
   channelId: string,
 ) {
   const before = streams.get().receipts;
-  void catchUpChannel(api, qc, orgId, channelId).then((read) => {
+  void catchUpChannel(api, qc, orgId, channelId, { recent: 20 }).then((read) => {
     streams.seed(read, before);
     cacheReceipts(qc, orgId, channelId, read);
   });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ApiError, createApiClient, createHttpApi, createRequester } from "../src/index";
+import { ApiError, createApiClient, createHttpApi, createRequester, NetworkError } from "../src/index";
 
 type Call = { url: string; init: RequestInit };
 
@@ -747,5 +747,41 @@ describe("push devices (ADR 0035, ADR 0071)", () => {
     expect(await api.push.stale(["n1", "n2"])).toEqual(["n2"]);
     expect(calls.at(-1)?.init.method).toBe("POST");
     expect(JSON.parse(String(calls.at(-1)?.init.body))).toEqual({ ids: ["n1", "n2"] });
+  });
+
+  test("GET forwards caller AbortSignal cleanly (AbortError, not NetworkError) while readTimeout still yields NetworkError", async () => {
+    const abortingFetch = (_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        if (init.signal?.aborted) {
+          reject(new DOMException("The operation was aborted.", "AbortError"));
+          return;
+        }
+        init.signal?.addEventListener("abort", () =>
+          reject(new DOMException("The operation was aborted.", "AbortError")),
+        );
+      });
+    const request = createRequester({ fetch: abortingFetch, readTimeoutMs: 5000 });
+    const caller = new AbortController();
+    const pending = request("/slow", { signal: caller.signal });
+    caller.abort();
+    const abortedErr = await pending.catch((e) => e);
+    expect(abortedErr).toBeInstanceOf(DOMException);
+    expect((abortedErr as DOMException).name).toBe("AbortError");
+    expect(abortedErr).not.toBeInstanceOf(NetworkError);
+
+    const timedRequest = createRequester({ fetch: abortingFetch, readTimeoutMs: 15 });
+    const timeoutErr = await timedRequest("/timeout").catch((e) => e);
+    expect(timeoutErr).toBeInstanceOf(NetworkError);
+
+    const blobSignals: (AbortSignal | undefined)[] = [];
+    const blobFetch = async (_url: string, init: RequestInit) => {
+      blobSignals.push(init.signal ?? undefined);
+      return new Response(new Blob(["ok"], { type: "text/plain" }), { status: 200 });
+    };
+    const api = createHttpApi({ fetch: blobFetch });
+    const blobCtrl = new AbortController();
+    const blob = await api.artifacts.fileBlob("o1", "a1", 2, { signal: blobCtrl.signal });
+    expect(await blob.text()).toBe("ok");
+    expect(blobSignals[0]).toBe(blobCtrl.signal);
   });
 });

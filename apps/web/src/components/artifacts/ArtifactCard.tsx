@@ -1,5 +1,5 @@
 import type { Artifact, ArtifactContent, ArtifactFileContent, ArtifactRef } from "@agenteschat/client";
-import { isLiveFileKind, useArtifact } from "@agenteschat/client";
+import { isLiveFileKind, keys, useArtifact } from "@agenteschat/client";
 import { documentStart, KIND_ICON, parseDelimited, patchCounts } from "@agenteschat/client/lib/artifacts";
 import {
   extensionOf,
@@ -11,9 +11,10 @@ import {
   previewKindOfName,
 } from "@agenteschat/client/lib/files";
 import { Button, Icon, type IconName, Menu, Tip } from "@agenteschat/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { TFunction } from "i18next";
-import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { type CSSProperties, memo, type ReactNode, type RefObject, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
 import { useArtifactViewer } from "@/components/artifacts/viewer-context";
@@ -26,6 +27,7 @@ import { openLivePage } from "@/components/live/open";
 import { useOrg } from "@/components/org-context";
 import { contextMenuHandler, type MenuEntry } from "@/lib/context-menu";
 import { Markdown } from "@/lib/markdown";
+import { useNearViewport } from "@/lib/near-viewport";
 import { useArtifactDownload, useDeleteArtifact } from "./ArtifactActions";
 import { FileVideo, MAX_THUMB_BYTES, usePreviewUrl } from "./FileView";
 import { HtmlFrame } from "./HtmlFrame";
@@ -50,20 +52,38 @@ const COVER_CHARS = 1200;
  * (CSS: `.artifact-cards > :only-child`), in its own proportions when its size is known (`pictureRatio`). Every tile
  * has its size before what it holds loads (`LoadingTile`).
  */
-export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
+function sameArtifactProps(a: { artifact: ArtifactRef }, b: { artifact: ArtifactRef }) {
+  const x = a.artifact;
+  const y = b.artifact;
+  return (
+    x === y ||
+    (x.id === y.id &&
+      x.version === y.version &&
+      x.deleted === y.deleted &&
+      x.title === y.title &&
+      x.width === y.width &&
+      x.height === y.height)
+  );
+}
+
+export const ArtifactCard = memo(function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
   const { t, i18n } = useTranslation();
   const { org } = useOrg();
+  const qc = useQueryClient();
   const api = useApi();
   const viewer = useArtifactViewer();
   const download = useArtifactDownload();
   const share = useFileShare();
   const remove = useDeleteArtifact();
-  const query = useArtifact(org.id, ref.deleted ? null : ref.id, ref.version);
+  const tileBox = useRef<HTMLDivElement>(null);
+  const cached = !ref.deleted && qc.getQueryData(keys.artifact(org.id, ref.id, ref.version)) !== undefined;
+  const near = useNearViewport(tileBox, { skip: Boolean(ref.deleted) || cached });
+  const query = useArtifact(org.id, ref.deleted ? null : ref.id, ref.version, { enabled: near });
   const a = query.data;
   const navigate = useNavigate();
   // A live file is the file as it is now (ADR 0196 §7), whichever version the message named: its head's preview.
   const live = Boolean(a && isLiveFileKind(a.kind));
-  const head = useArtifact(org.id, live && ref.version ? ref.id : null).data;
+  const head = useArtifact(org.id, live && ref.version ? ref.id : null, undefined, { enabled: near }).data;
   // Deleted (to the trash): a quiet placeholder, never a broken card.
   if (ref.deleted) {
     return (
@@ -80,7 +100,7 @@ export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
       </div>
     );
   }
-  if (!a) return <LoadingTile title={ref.title} ratio={pictureRatio(ref)} />;
+  if (!a) return <LoadingTile tileRef={!near ? tileBox : undefined} title={ref.title} ratio={pictureRatio(ref)} />;
   // What lives in the conversation isn't a file: the thing itself, not a tile that opens it (ADR 0113).
   if (a.kind === "block") return <LiveBlockCard id={a.id} version={a.shownVersion} />;
   if (a.kind === "poll") return <PollCard id={a.id} version={a.shownVersion} />;
@@ -199,18 +219,26 @@ export function ArtifactCard({ artifact: ref }: { artifact: ArtifactRef }) {
       ),
     });
   return tile({ icon, meta, cover: <FileCover content={content} /> });
-}
+}, sameArtifactProps);
 
 /**
  * A tile before its file's details arrive, in the box it keeps once they do, so the rows around it never move: a
  * picture or a video by its name ("tela.png"), as the phone reads it; anything else a cover over its name, which wraps
  * as it will.
  */
-function LoadingTile({ title = "", ratio }: { title?: string; ratio?: number }) {
+function LoadingTile({
+  title = "",
+  ratio,
+  tileRef,
+}: {
+  title?: string;
+  ratio?: number;
+  tileRef?: RefObject<HTMLDivElement | null>;
+}) {
   const kind = previewKindOfName(title);
   if (kind === "video")
     return (
-      <div className="artifact-tile artifact-tile--loading" data-kind="video" aria-busy="true">
+      <div ref={tileRef} className="artifact-tile artifact-tile--loading" data-kind="video" aria-busy="true">
         <span className="ac-video ac-video--tile">
           <span className="ac-video__media" />
         </span>
@@ -218,6 +246,7 @@ function LoadingTile({ title = "", ratio }: { title?: string; ratio?: number }) 
     );
   return (
     <div
+      ref={tileRef}
       className="artifact-tile artifact-tile--loading"
       data-media={kind === "image" || undefined}
       {...(kind === "image" ? ratioProps(ratio) : {})}
@@ -475,13 +504,26 @@ function PictureCover({
   title: string;
 }) {
   const { t } = useTranslation();
-  const { url, failed } = usePreviewUrl(artifactId, version, content.contentType, true);
+  const { org } = useOrg();
+  const qc = useQueryClient();
+  const boxRef = useRef<HTMLSpanElement>(null);
+  const cached = qc.getQueryData(keys.artifactBlob(org.id, artifactId, version)) !== undefined;
+  const near = useNearViewport(boxRef, { skip: cached });
+  const { url, failed } = usePreviewUrl(artifactId, version, content.contentType, near, { maxDimension: 960 });
   // Fetched after it showed (a picture just made or sent, not one read again from the cache): it comes in softly.
   const fresh = useRef(url === null);
   if (failed) return <TypeCover content={content} />;
   return (
-    <span className="artifact-tile__picture">
-      {url && <img src={url} alt={t("files.imageAlt", { title })} data-fresh={fresh.current || undefined} />}
+    <span ref={boxRef} className="artifact-tile__picture">
+      {url && (
+        <img
+          src={url}
+          alt={t("files.imageAlt", { title })}
+          loading="lazy"
+          decoding="async"
+          data-fresh={fresh.current || undefined}
+        />
+      )}
     </span>
   );
 }

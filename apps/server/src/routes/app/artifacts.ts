@@ -7,7 +7,7 @@ import {
   addFileVersion,
   answerChoices,
   artifactDownload,
-  artifactFile,
+  artifactFileStream,
   attachmentDisposition,
   BLOCK_REPLY_CHARS,
   BLOCK_STATE_KEYS,
@@ -47,7 +47,7 @@ import {
 } from "@agenteschat/engine";
 import { createRoute, z } from "@hono/zod-openapi";
 import { bodyLimit } from "hono/body-limit";
-import { rangedResponse } from "../../http/byte-range";
+import { rangedResponse, rangedStreamResponse } from "../../http/byte-range";
 import { apiError, errorResponse } from "../../http/errors";
 import {
   type AppDeps,
@@ -748,21 +748,36 @@ export function artifactRoutes(deps: AppDeps) {
     const orgId = c.req.param("orgId");
     const artifactId = c.req.param("artifactId");
     const exported = version ? null : await liveExport(userId, orgId, artifactId, asked);
-    const file =
-      exported ??
-      (await artifactFile(artifacts(), userId, orgId, artifactId, {
-        version: version ? Number(version) : undefined,
-        format: asked,
-      }));
-    // In parts when asked (a video starts at once and jumps without the whole file first).
-    return rangedResponse(file.body, c.req.header("range"), {
-      "content-type": file.contentType,
-      "content-disposition": attachmentDisposition(file.filename),
+    const versionNum = version ? Number(version) : undefined;
+    const immutable = versionNum !== undefined && Number.isFinite(versionNum) && !exported;
+    // no-transform: no proxy rewrites the bytes (Cloudflare's email obfuscation edits text/html).
+    const cacheControl = immutable
+      ? "private, max-age=86400, immutable, no-transform"
+      : "private, no-store, no-transform";
+    const fileHeaders = (filename: string, contentType: string) => ({
+      "content-type": contentType,
+      "content-disposition": attachmentDisposition(filename),
       "x-content-type-options": "nosniff",
       "content-security-policy": "sandbox",
-      // no-transform: no proxy rewrites the bytes (Cloudflare's email obfuscation edits text/html).
-      "cache-control": "private, no-store, no-transform",
+      "cache-control": cacheControl,
     });
+    if (exported) {
+      return rangedResponse(exported.body, c.req.header("range"), fileHeaders(exported.filename, exported.contentType));
+    }
+    const file = await artifactFileStream(artifacts(), userId, orgId, artifactId, {
+      version: versionNum,
+      format: asked,
+    });
+    // In parts when asked (a video starts at once and jumps without the whole file first).
+    if ("stream" in file) {
+      return rangedStreamResponse(
+        file.stream.size,
+        file.stream.read,
+        c.req.header("range"),
+        fileHeaders(file.filename, file.contentType),
+      );
+    }
+    return rangedResponse(file.body, c.req.header("range"), fileHeaders(file.filename, file.contentType));
   });
 
   app.openapi(

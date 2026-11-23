@@ -45,6 +45,8 @@ export interface VideoPlayerProps {
   onVideo?: (video: HTMLVideoElement | null) => void;
   /** Over the timeline (a file's comments as marks, ADR 0208): placed by the caller, in fractions of its length. */
   marks?: ReactNode;
+  /** Hints to the browser how much video data to fetch before playback starts. */
+  preload?: "none" | "metadata" | "auto";
 }
 
 const SPEEDS = [1, 1.5, 2];
@@ -176,6 +178,7 @@ export function VideoPlayer({
   onTime,
   onVideo,
   marks,
+  preload = "metadata",
 }: VideoPlayerProps) {
   const root = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
@@ -329,7 +332,7 @@ export function VideoPlayer({
         className="ac-video__media"
         // `#t`: the first frame shows before it plays (Safari shows nothing otherwise).
         src={`${src}${src.includes("#") ? "" : "#t=0.001"}`}
-        preload="metadata"
+        preload={preload}
         playsInline
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onDurationChange={(e) => Number.isFinite(e.currentTarget.duration) && setDuration(e.currentTarget.duration)}

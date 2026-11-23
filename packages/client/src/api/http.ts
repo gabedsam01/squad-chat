@@ -172,7 +172,34 @@ export function createRequester(options: TransportOptions = {}) {
     // Only reads: a write cut short may still have happened on the server.
     const deadline = method === "GET" ? new AbortController() : null;
     const timer = deadline ? setTimeout(() => deadline.abort(), readTimeoutMs) : null;
-    const signal = deadline?.signal ?? options.signal;
+    const callerSignal = options.signal;
+    let combined: { signal: AbortSignal | undefined; dispose: () => void };
+    if (deadline && callerSignal) {
+      if (typeof AbortSignal !== "undefined" && "any" in AbortSignal) {
+        combined = { signal: AbortSignal.any([deadline.signal, callerSignal]), dispose: () => {} };
+      } else {
+        const merged = new AbortController();
+        const abortFrom = (src: AbortSignal) => () => merged.abort(src.reason);
+        const onDeadline = abortFrom(deadline.signal);
+        const onCaller = abortFrom(callerSignal);
+        if (deadline.signal.aborted) merged.abort(deadline.signal.reason);
+        else if (callerSignal.aborted) merged.abort(callerSignal.reason);
+        else {
+          deadline.signal.addEventListener("abort", onDeadline, { once: true });
+          callerSignal.addEventListener("abort", onCaller, { once: true });
+        }
+        combined = {
+          signal: merged.signal,
+          dispose: () => {
+            deadline.signal.removeEventListener("abort", onDeadline);
+            callerSignal.removeEventListener("abort", onCaller);
+          },
+        };
+      }
+    } else {
+      combined = { signal: deadline?.signal ?? callerSignal, dispose: () => {} };
+    }
+    const signal = combined.signal;
     try {
       const progress = options.onUploadProgress;
       const xhr = progress && method === "POST" && !t.ownFetch ? platformXhr() : undefined;
@@ -193,11 +220,16 @@ export function createRequester(options: TransportOptions = {}) {
             });
       return await parseResponse<T>(res);
     } catch (error) {
-      if (deadline?.signal.aborted && !(error instanceof ApiError || error instanceof NetworkError))
+      if (
+        deadline?.signal.aborted &&
+        !callerSignal?.aborted &&
+        !(error instanceof ApiError || error instanceof NetworkError)
+      )
         throw new NetworkError(error);
       throw error;
     } finally {
       if (timer) clearTimeout(timer);
+      combined.dispose();
     }
   };
 }
@@ -248,11 +280,12 @@ export function createFileRequester(options: TransportOptions = {}) {
       return parseResponse<T>(res);
     },
     /** The bytes of a download. */
-    async blob(path: string): Promise<Blob> {
+    async blob(path: string, options: { signal?: AbortSignal } = {}): Promise<Blob> {
       const res = await t.fetch(t.base + path, {
         method: "GET",
         headers: t.headers ? await t.headers() : {},
         credentials: t.credentials,
+        signal: options.signal,
       });
       if (!res.ok) await parseResponse<never>(res);
       // Bun's and React Native's Blob types differ from the DOM's; the value is the platform's Blob.

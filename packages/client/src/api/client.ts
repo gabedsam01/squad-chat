@@ -994,7 +994,7 @@ export interface ApiClient {
     /** Runs still active in a channel (reconciles the live rows); `null` while the server lacks the endpoint. */
     activeRuns(orgId: string, channelId: string): Promise<ActiveRun[] | null>;
     /** The questions agents asked other agents from a conversation, latest first; `[]` while the server lacks it. */
-    consultations(orgId: string, channelId: string): Promise<RunConsultation[]>;
+    consultations(orgId: string, channelId: string, options?: { signal?: AbortSignal }): Promise<RunConsultation[]>;
     /** One of those questions opened: what the two agents said for it (read only); `null` once it's gone. */
     consultation(orgId: string, channelId: string, consultationId: string): Promise<ConsultationConversation | null>;
     /** This month's usage per agent; `null` without the `view_usage` permission. */
@@ -1052,7 +1052,7 @@ export interface ApiClient {
     deleteChannel(orgId: string, channelId: string, name: string): Promise<void>;
     /** Members with names; agents carry `autoReply`. */
     roster(orgId: string, channelId: string): Promise<RosterMember[]>;
-    members(orgId: string, channelId: string): Promise<ChannelMember[]>;
+    members(orgId: string, channelId: string, options?: { signal?: AbortSignal }): Promise<ChannelMember[]>;
     addMember(orgId: string, channelId: string, member: { userId: string } | { agentId: string }): Promise<void>;
     removeMember(orgId: string, channelId: string, member: { userId: string } | { agentId: string }): Promise<void>;
     /** "Quando responde" for an agent in this channel (its creator, an admin or the agent's owner). */
@@ -1064,7 +1064,14 @@ export interface ApiClient {
     messages(
       orgId: string,
       channelId: string,
-      options?: { threadId?: string; before?: string; after?: string; around?: string; limit?: number },
+      options?: {
+        threadId?: string;
+        before?: string;
+        after?: string;
+        around?: string;
+        limit?: number;
+        signal?: AbortSignal;
+      },
     ): Promise<Message[]>;
     post(
       orgId: string,
@@ -1587,7 +1594,12 @@ export interface ApiClient {
     /** Threads you can see, most recent activity first (archived only with `tab: "archived"`). */
     list(orgId: string, filters?: ThreadFilters): Promise<ThreadPage>;
     /** A channel's threads (its "Threads (N)"). */
-    inChannel(orgId: string, channelId: string, filters?: Omit<ThreadFilters, "channelId">): Promise<ThreadPage>;
+    inChannel(
+      orgId: string,
+      channelId: string,
+      filters?: Omit<ThreadFilters, "channelId">,
+      options?: { signal?: AbortSignal },
+    ): Promise<ThreadPage>;
     get(orgId: string, threadId: string): Promise<ThreadInfo>;
     /** "Criar thread a partir daqui": the range is its context; nothing moves. */
     create(orgId: string, input: ThreadCreateInput): Promise<ThreadInfo>;
@@ -1900,7 +1912,7 @@ export interface ApiClient {
     /** One page of what the viewer can see (`cursor`: the page before's `nextCursor`), the first with counts. */
     page(orgId: string, filters?: ArtifactFilters, cursor?: string): Promise<ArtifactPage>;
     /** One artifact at `version` (default: latest), with content. */
-    get(orgId: string, id: string, version?: number): Promise<ArtifactDetail>;
+    get(orgId: string, id: string, version?: number, options?: { signal?: AbortSignal }): Promise<ArtifactDetail>;
     /**
      * A live file's conversation (ADR 0199), made on first use: its channel and thread root, for the chat's routes.
      * 404 for a file the person doesn't read, 400 `artifact.no_conversation` for a kind without one.
@@ -1957,7 +1969,7 @@ export interface ApiClient {
     /** A new version of an uploaded file (multipart, ≤ 50 MB). */
     uploadVersion(orgId: string, id: string, file: File, options?: { note?: string }): Promise<ArtifactDetail>;
     /** The bytes of a file version (inline previews of images and PDFs). */
-    fileBlob(orgId: string, id: string, version?: number): Promise<Blob>;
+    fileBlob(orgId: string, id: string, version?: number, options?: { signal?: AbortSignal }): Promise<Blob>;
     /** Always a new version. `baseVersion` stale → 409. */
     update(
       orgId: string,

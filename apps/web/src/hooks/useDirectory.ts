@@ -4,15 +4,11 @@ import { type AgentOwnerLike, ownerNameOf } from "@agenteschat/client/lib/agent-
 import { agentsByAnyHandle, formerById } from "@agenteschat/client/lib/directory";
 import { memberRoleColor } from "@agenteschat/client/lib/member-groups";
 import { type AgentColor, agentGradient } from "@agenteschat/ui";
-import { useMemo } from "react";
+import { createContext, createElement, type ReactNode, useContext, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { lookOf } from "@/lib/look";
 
-/**
- * People and agents of the organization, by id and handle, for names and avatars. `agents` is what lists and pickers
- * offer (`listed`); the lookups also resolve an agent unlisted to me, whose messages and public card still show.
- */
-export function useDirectory(orgId: string) {
+function useDirectoryData(orgId: string) {
   const { t } = useTranslation();
   const agents = useAllAgents(orgId);
   const former = useFormerAgents(orgId);
@@ -95,4 +91,25 @@ export function useDirectory(orgId: string) {
       loading: agents.isPending || members.isPending,
     };
   }, [agents.data, former.data, members.data, roles.data, agents.isPending, members.isPending, t]);
+}
+
+export type Directory = ReturnType<typeof useDirectoryData>;
+
+const DirectoryContext = createContext<{ orgId: string; dir: Directory } | null>(null);
+
+/** Shares one computed organization directory across all message rows and avatars in an org subtree. */
+export function DirectoryProvider({ orgId, children }: { orgId: string; children: ReactNode }) {
+  const dir = useDirectoryData(orgId);
+  const value = useMemo(() => ({ orgId, dir }), [orgId, dir]);
+  return createElement(DirectoryContext.Provider, { value }, children);
+}
+
+/**
+ * People and agents of the organization, by id and handle, for names and avatars. `agents` is what lists and pickers
+ * offer (`listed`); the lookups also resolve an agent unlisted to me, whose messages and public card still show.
+ */
+export function useDirectory(orgId: string): Directory {
+  const shared = useContext(DirectoryContext);
+  if (shared && shared.orgId === orgId) return shared.dir;
+  throw new Error("useDirectory must be used inside DirectoryProvider");
 }

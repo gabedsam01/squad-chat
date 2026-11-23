@@ -3561,6 +3561,48 @@ export async function artifactFile(
   return { body: object.body, contentType: object.contentType, filename: fileName(a, v.version, EXTENSIONS[a.kind]) };
 }
 
+/**
+ * Zero-copy / ranged variant of `artifactFile` for stored uploaded files when the blob store supports `stat` and `readRange`.
+ */
+export async function artifactFileStream(
+  deps: ArtifactDeps,
+  userId: string,
+  orgId: string,
+  artifactId: string,
+  options: { version?: number; format?: ArtifactFileFormat } = {},
+): Promise<
+  | { body: Uint8Array; contentType: string; filename: string }
+  | {
+      stream: {
+        size: number;
+        read: (range?: { start: number; end: number }) => Promise<Blob | ReadableStream<Uint8Array> | null>;
+      };
+      contentType: string;
+      filename: string;
+    }
+> {
+  const a = await readable(deps, { type: "person", userId }, orgId, artifactId);
+  const v = await versionRow(deps.db, a, options.version);
+  if (a.kind === "file" && !options.format) {
+    const store = await deps.blobs.forConfig(a.orgId, v.storageConfigId);
+    if (store.stat && store.readRange) {
+      const info = await store.stat(v.blobKey);
+      if (!info) throw new NotFoundError("The stored file is missing");
+      const filename = v.fileName ?? fileName(a, v.version, "bin");
+      const { readRange } = store;
+      return {
+        stream: {
+          size: info.size,
+          read: async (range) => (await readRange(v.blobKey, range))?.body ?? null,
+        },
+        contentType: fileContentType(filename, v.contentType),
+        filename,
+      };
+    }
+  }
+  return artifactFile(deps, userId, orgId, artifactId, options);
+}
+
 // ── Live files (ADR 0196) ────────────────────────────────────────────────────
 
 /** What `artifactFile` makes: tables' CSV, diffs' patch, PDF and docx, and live files' exports (ADR 0198, 0200). */

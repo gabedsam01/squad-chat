@@ -113,7 +113,11 @@ export function useMessageMenu(
   // An agent's chart can go on a board as a widget (ADR 0135): the first one the message has that reads as one.
   const chart = useMemo(
     () =>
-      message.author.type === "agent" && message.author.id && !message.local && !options.readOnly
+      message.author.type === "agent" &&
+      message.author.id &&
+      !message.local &&
+      !options.readOnly &&
+      message.body.toLowerCase().includes("chart")
         ? (chartBlocksOf(message.body).find((b) => chartBlockToWidgetSpec(b) !== null) ?? null)
         : null,
     [message.author.type, message.author.id, message.local, message.body, options.readOnly],

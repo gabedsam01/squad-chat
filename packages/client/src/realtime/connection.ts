@@ -533,25 +533,28 @@ export class RealtimeConnection {
   }
 
   /**
-   * Pings now and replaces the socket if nothing comes back in time (`pongTimeoutMs`). Runs on the ping interval;
-   * call it too when the page may have slept or changed networks (visible again, back online).
+   * Pings now and replaces the socket if nothing comes back in time (`timeoutMs`, default `pongTimeoutMs` / 10 s).
+   * Runs on the ping interval; call it too when the page may have slept or changed networks (visible again, back online).
    */
-  checkAlive() {
+  checkAlive(timeoutMs?: number) {
     if (!this.isOpen || this.pongTimer !== null) return;
     this.send({ type: "ping" });
     const socket = this.socket;
-    this.pongTimer = this.timers.setTimeout(() => {
-      this.pongTimer = null;
-      if (this.socket !== socket || !socket) return;
-      // Its close event may never come (or come late, after the new socket opened): detach it first.
-      socket.onclose = null;
-      socket.onmessage = null;
-      socket.onerror = null;
-      try {
-        socket.close(4000, "no pong");
-      } catch {}
-      this.lost();
-    }, this.options.pongTimeoutMs ?? 10_000);
+    this.pongTimer = this.timers.setTimeout(
+      () => {
+        this.pongTimer = null;
+        if (this.socket !== socket || !socket) return;
+        // Its close event may never come (or come late, after the new socket opened): detach it first.
+        socket.onclose = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        try {
+          socket.close(4000, "no pong");
+        } catch {}
+        this.lost();
+      },
+      timeoutMs ?? this.options.pongTimeoutMs ?? 10_000,
+    );
   }
 
   /** Whether frames can go out now. */

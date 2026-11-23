@@ -1,6 +1,6 @@
 import { isEveryoneWord } from "@agenteschat/client/lib/everyone";
 import { type AgentColor, Mention } from "@agenteschat/ui";
-import { type ReactNode, useCallback } from "react";
+import { memo, type ReactNode, useCallback } from "react";
 import { ChannelRef } from "@/chat/ChannelRef";
 import { renderIdRef } from "@/chat/IdRef";
 import { ChartAccent, ChartMessage } from "@/components/ChartBlock";
@@ -12,7 +12,7 @@ import { type ChannelRenderer, Markdown, type WikiLinkRenderer } from "@/lib/mar
  * links and an internal id as the pill of what it names (`IdRef`).
  * React elements only: HTML in a message is shown as text.
  */
-export function MessageBody({
+export const MessageBody = memo(function MessageBody({
   body,
   resolveMention,
   mentionTone,
@@ -73,4 +73,4 @@ export function MessageBody({
       </ChartMessage.Provider>
     </ChartAccent.Provider>
   );
-}
+});

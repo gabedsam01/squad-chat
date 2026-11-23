@@ -1726,8 +1726,8 @@ export function usePlaceChannel(orgId: string) {
 export const channelMembersQuery = (api: ApiClient, orgId: string, channelId: string) =>
   queryOptions({
     queryKey: keys.channelMembers(orgId, channelId),
-    queryFn: async ({ client }) => {
-      const members = await api.chat.members(orgId, channelId);
+    queryFn: async ({ client, signal }) => {
+      const members = await api.chat.members(orgId, channelId, { signal });
       readUnknownMembers(client, orgId, members);
       return members;
     },
@@ -1756,10 +1756,10 @@ export const THREAD_PAGE = 200;
 export const messagesQuery = (api: ApiClient, orgId: string, channelId: string) =>
   queryOptions({
     queryKey: keys.messages(orgId, channelId),
-    queryFn: async ({ client, queryKey }) => {
+    queryFn: async ({ client, queryKey, signal }) => {
       const start = client.getQueryData<Message[]>(queryKey);
       return withLocalCopies(
-        await api.chat.messages(orgId, channelId, { limit: MESSAGES_PAGE }),
+        await api.chat.messages(orgId, channelId, { limit: MESSAGES_PAGE, signal }),
         client.getQueryData<Message[]>(queryKey),
         outbox.has,
         start,
@@ -4228,7 +4228,7 @@ export const useRun = (orgId: string, runId: string | null) => {
 export const consultationsQuery = (api: ApiClient, orgId: string, channelId: string) =>
   queryOptions({
     queryKey: keys.consultations(orgId, channelId),
-    queryFn: () => api.agents.consultations(orgId, channelId),
+    queryFn: ({ signal }) => api.agents.consultations(orgId, channelId, { signal }),
     staleTime: 10_000,
     // Kept as long as the conversation's messages (`messagesQuery`): they change its rows, so a conversation shown
     // again at once from memory has them too.
@@ -5264,14 +5264,15 @@ export function useFileConversation(
   return known ?? made.data ?? null;
 }
 
-export const useArtifact = (orgId: string, id: string | null, version?: number) => {
+export const useArtifact = (orgId: string, id: string | null, version?: number, options?: { enabled?: boolean }) => {
   const api = useApi();
-  return useQuery({
+  return useQuery<ArtifactDetail>({
     queryKey: keys.artifact(orgId, id ?? "", version),
-    queryFn: () => api.artifacts.get(orgId, id ?? "", version),
-    enabled: Boolean(id),
+    queryFn: ({ signal }) => api.artifacts.get(orgId, id ?? "", version, { signal }),
+    enabled: Boolean(id) && (options?.enabled ?? true),
     // Old versions never change.
-    staleTime: version ? Number.POSITIVE_INFINITY : 0,
+    staleTime: version ? Number.POSITIVE_INFINITY : 30_000,
+    ...(version ? { meta: { immutable: true } } : {}),
   });
 };
 
@@ -5530,12 +5531,12 @@ export const useArtifactBlob = (orgId: string, id: string, version: number, enab
   const api = useApi();
   return useQuery({
     queryKey: keys.artifactBlob(orgId, id, version),
-    queryFn: () => api.artifacts.fileBlob(orgId, id, version),
+    queryFn: ({ signal }) => api.artifacts.fileBlob(orgId, id, version, { signal }),
     enabled,
     staleTime: Number.POSITIVE_INFINITY,
-    gcTime: 60_000,
+    gcTime: 10 * 60_000,
     retry: false,
-    meta: { quiet: true },
+    meta: { quiet: true, immutable: true },
   });
 };
 
@@ -7111,7 +7112,7 @@ export function useThreadList(orgId: string, filters: ThreadFilters, enabled = t
 export const channelThreadsQuery = (api: ApiClient, orgId: string, channelId: string, tab: "all" | "archived") =>
   queryOptions({
     queryKey: keys.channelThreads(orgId, channelId, tab),
-    queryFn: () => api.threads.inChannel(orgId, channelId, { tab, limit: 100 }),
+    queryFn: ({ signal }) => api.threads.inChannel(orgId, channelId, { tab, limit: 100 }, { signal }),
     staleTime: 30_000,
     // As long as the conversation's messages (`messagesQuery`): its links are rows of that conversation.
     gcTime: 30 * 60_000,

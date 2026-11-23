@@ -37,3 +37,34 @@ export function rangedResponse(bytes: Uint8Array, range: string | undefined, hea
     },
   });
 }
+
+/**
+ * Streams whole (200) or the byte part `range` asks for (206) without reading the whole file into memory; 416 when invalid.
+ */
+export async function rangedStreamResponse(
+  size: number,
+  read: (range?: { start: number; end: number }) => Promise<Blob | ReadableStream<Uint8Array> | null>,
+  range: string | undefined,
+  headers: Record<string, string>,
+): Promise<Response> {
+  const all = { ...headers, "accept-ranges": "bytes" };
+  const part = rangeOf(range, size);
+  if (part === "bad") {
+    return new Response(null, { status: 416, headers: { ...all, "content-range": `bytes */${size}` } });
+  }
+  const body = await read(part ?? undefined);
+  if (!body) {
+    return new Response(null, { status: 404 });
+  }
+  if (!part) {
+    return new Response(body, { headers: { ...all, "content-length": String(size) } });
+  }
+  return new Response(body, {
+    status: 206,
+    headers: {
+      ...all,
+      "content-length": String(part.end - part.start + 1),
+      "content-range": `bytes ${part.start}-${part.end}/${size}`,
+    },
+  });
+}

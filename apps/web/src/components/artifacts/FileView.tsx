@@ -13,13 +13,14 @@ import {
   previewType,
 } from "@agenteschat/client/lib/files";
 import { Icon, Spinner, Tip, VideoPlayer, type VideoPlayerLabels } from "@agenteschat/ui";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
 import { CodeBlock } from "@/components/CodeBlock";
 import { OfficePreview } from "@/components/live/office/OfficePreview";
 import { useOrg } from "@/components/org-context";
 import { Markdown } from "@/lib/markdown";
+import { useNearViewport } from "@/lib/near-viewport";
 import { ImageZoom } from "./ImageZoom";
 
 /** Object URLs for blobs (swappable: test DOMs may lack `URL.createObjectURL`). */
@@ -74,21 +75,78 @@ export function useVideoLabels(): VideoPlayerLabels {
 /** Images up to this size get a thumbnail in the chat card (bigger ones only in the viewer). */
 export const MAX_THUMB_BYTES = 8 * 1024 * 1024;
 
+const RASTER_DOWNSCALE_TYPES = new Set(["image/jpeg", "image/png"]);
+
+/** Downscales large static raster images to `maxDimension` for chat tiles to bound decode RAM. */
+async function downscaleImageBlob(blob: Blob, type: string, maxDimension: number): Promise<Blob | null> {
+  if (!RASTER_DOWNSCALE_TYPES.has(type) || typeof createImageBitmap !== "function") return null;
+  let bmp: ImageBitmap | null = null;
+  try {
+    bmp = await createImageBitmap(blob);
+    const longest = Math.max(bmp.width, bmp.height);
+    if (longest <= maxDimension || bmp.width <= 0 || bmp.height <= 0) return null;
+    const scale = maxDimension / longest;
+    const width = Math.max(1, Math.round(bmp.width * scale));
+    const height = Math.max(1, Math.round(bmp.height * scale));
+    const quality = type === "image/jpeg" ? 0.85 : undefined;
+    if (typeof OffscreenCanvas === "function") {
+      const canvas = new OffscreenCanvas(width, height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(bmp, 0, 0, width, height);
+      return await canvas.convertToBlob({ type, quality });
+    }
+    if (typeof document !== "undefined") {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(bmp, 0, 0, width, height);
+      return await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    bmp?.close?.();
+  }
+}
+
 /** The blob of a previewable file as an object URL of exactly the allowed type (null until loaded). */
-export function usePreviewUrl(artifactId: string, version: number, contentType: string, enabled: boolean) {
+export function usePreviewUrl(
+  artifactId: string,
+  version: number,
+  contentType: string,
+  enabled: boolean,
+  options?: { maxDimension?: number },
+) {
   const { org } = useOrg();
   const blob = useArtifactBlob(org.id, artifactId, version, enabled);
   const [url, setUrl] = useState<string | null>(null);
+  const maxDimension = options?.maxDimension;
   useEffect(() => {
     if (!blob.data) return;
+    let cancelled = false;
+    let created: string | null = null;
     // Exactly the allowed type, whatever the server or the bytes say.
-    const typed = new Blob([blob.data], { type: previewType(contentType) });
-    const next = objectUrls.create(typed);
-    setUrl(next);
-    return () => {
-      if (next) objectUrls.revoke(next);
+    const mime = previewType(contentType);
+    const typed = new Blob([blob.data], { type: mime });
+    const publish = (target: Blob) => {
+      if (cancelled) return;
+      created = objectUrls.create(target);
+      setUrl(created);
     };
-  }, [blob.data, contentType]);
+    if (maxDimension && maxDimension > 0) {
+      void downscaleImageBlob(typed, mime, maxDimension).then((scaled) => publish(scaled ?? typed));
+    } else {
+      publish(typed);
+    }
+    return () => {
+      cancelled = true;
+      if (created) objectUrls.revoke(created);
+    };
+  }, [blob.data, contentType, maxDimension]);
   return { url, failed: blob.isError };
 }
 
@@ -119,18 +177,27 @@ export function FileVideo({
   const api = useApi();
   const [failed, setFailed] = useState(false);
   const labels = useVideoLabels();
+  const boxRef = useRef<HTMLDivElement>(null);
+  const near = useNearViewport(boxRef);
   if (failed) return <>{fallback}</>;
   return (
-    <div className="artifact-tile" data-kind="video">
+    <div ref={boxRef} className="artifact-tile" data-kind="video">
       <Tip className="artifact-tile__tip" tip={tip} look="ac-msg__tip">
-        <VideoPlayer
-          src={api.artifacts.fileUrl(org.id, artifactId, { version })}
-          name={content.name}
-          labels={labels}
-          onOpen={onOpen}
-          actions={actions}
-          onFailed={() => setFailed(true)}
-        />
+        {near ? (
+          <VideoPlayer
+            src={api.artifacts.fileUrl(org.id, artifactId, { version })}
+            name={content.name}
+            labels={labels}
+            preload="metadata"
+            onOpen={onOpen}
+            actions={actions}
+            onFailed={() => setFailed(true)}
+          />
+        ) : (
+          <span className="ac-video ac-video--tile">
+            <span className="ac-video__media" />
+          </span>
+        )}
       </Tip>
     </div>
   );

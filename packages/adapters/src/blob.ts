@@ -16,6 +16,13 @@ export interface BlobStore {
   get(key: string): Promise<{ body: Uint8Array; contentType: string } | null>;
   /** The object's bytes as they are read, where the store can; without it, `get`. */
   stream?(key: string): Promise<ReadableStream<Uint8Array> | null>;
+  /** Metadata without reading bytes, where the store can (`stat` avoids buffering large files). */
+  stat?(key: string): Promise<{ size: number; contentType: string } | null>;
+  /** Whole object or inclusive `[start, end]` byte range streamed without buffering the full object. */
+  readRange?(
+    key: string,
+    range?: { start: number; end: number },
+  ): Promise<{ body: Blob | ReadableStream<Uint8Array>; size: number; contentType: string } | null>;
   delete(key: string): Promise<void>;
   /** Keys under `prefix`, at most `limit` (default 1000). */
   list(prefix: string, limit?: number): Promise<string[]>;

@@ -2179,7 +2179,26 @@ async function withReceipts(db: Database, orgId: string, list: Message[]): Promi
       ...(handed.has(m.id) ? { handedWorks: handed.get(m.id) } : {}),
     };
   });
-  return withGoneQuotes(db, orgId, await withDeletedArtifacts(db, orgId, await withWikiLinks(db, orgId, views)));
+  const [wikiViews, delViews, quoteViews] = await Promise.all([
+    withWikiLinks(db, orgId, views),
+    withDeletedArtifacts(db, orgId, views),
+    withGoneQuotes(db, orgId, views),
+  ]);
+  return views.map((v, i) => {
+    const w = wikiViews[i]?.meta ?? v.meta;
+    const d = delViews[i]?.meta ?? v.meta;
+    const q = quoteViews[i]?.meta ?? v.meta;
+    if (w === v.meta && d === v.meta && q === v.meta) return v;
+    return {
+      ...v,
+      meta: {
+        ...v.meta,
+        ...(w !== v.meta ? { wikiLinks: w.wikiLinks } : {}),
+        ...(d !== v.meta ? { artifacts: d.artifacts } : {}),
+        ...(q !== v.meta ? { replyTo: q.replyTo } : {}),
+      },
+    };
+  });
 }
 
 /** A quote of a message deleted since keeps only that: the words saved with it go when the original does. */

@@ -6,6 +6,7 @@ import type {
   Agent,
   AgentQuestion,
   Approval,
+  Artifact,
   ArtifactRef,
   Channel,
   HeldPlace,
@@ -31,6 +32,7 @@ import {
   fileConversationOf,
   heldRowsIn,
   inMainTimeline,
+  isLiveFileKind,
   isQuiet,
   isScreenTool,
   keys,
@@ -333,6 +335,7 @@ import { useLeaveChannelWithUndo } from "@/components/LeaveChannelDialog";
 import { useUploadFailed } from "@/components/Limits";
 import { LiveCodeToggle } from "@/components/LiveCode";
 import { ErrorState, LoadingConversation } from "@/components/Loading";
+import { LivePresenceScope } from "@/components/live/LiveCover";
 import { ResolveButton, ResolvedLine } from "@/components/live/media/ResolveBits";
 import { ChatCommentsLine } from "@/components/live/media/ViewerBits";
 import { LiveQuoteBar, LiveRefLine } from "@/components/live/TalkBits";
@@ -431,6 +434,7 @@ import { desktopPlatform, thisMac, useDocumentTitle } from "@/lib/desktop";
 import { holdOnScreen } from "@/lib/island";
 import { composes, typingInField } from "@/lib/keys";
 import { lookOf } from "@/lib/look";
+import type { WikiLinkRenderer } from "@/lib/markdown";
 import { type AgentPanelPlace, agentPanelSearch, threadSearch, useAgentPanel, useThreadPanel } from "@/lib/open-param";
 import { reportPainted } from "@/lib/perf";
 import { useToast } from "@/lib/toast";
@@ -445,6 +449,8 @@ import {
   useTypingSender,
 } from "@/realtime/context";
 import { ThreadPage } from "./ThreadPage";
+
+const LIVE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** One clock for every "· 12 s" on screen: the block and the card above the box never differ by a second. */
 const secondClock = (() => {
@@ -826,6 +832,10 @@ function ChannelView({
   const { t, i18n } = useTranslation();
   const { org, me } = useOrg();
   const dir = useDirectory(org.id);
+  const wikiLink = useWikiLinkRenderer();
+  const allChannels = useChannels(org.id).data;
+  const channelsById = useMemo(() => new Map((allChannels ?? []).map((c) => [c.id, c.name] as const)), [allChannels]);
+  const rowMeta = useMemo(() => ({ channelsById, wikiLink }), [channelsById, wikiLink]);
   const rightHandLook = useRightHandLook();
   const rightHandId = useMemo(() => dir.agents.find(isRightHand)?.id, [dir.agents]);
   const isMember = channel.isMember;
@@ -1282,47 +1292,107 @@ function ChannelView({
   }, [messages.data, live]);
 
   // Older pages, loaded on scroll-up. Kept in the query cache, so they belong to this session: signing
-  // out clears them, and they never show to whoever signs in next in the same tab.
+  // out clears them, and they never show to whoever signs in next in the same tab. On reopen, only the
+  // newest cached page mounts right away; earlier cached pages slice back in as the person scrolls up.
   const olderKey = keys.olderPages(org.id, channel.id);
-  const [older, setOlder] = useState<MessageType[]>(() => qc.getQueryData<OlderPages>(olderKey)?.pages ?? []);
-  const [olderState, setOlderState] = useState<"idle" | "loading" | "done">(() =>
-    qc.getQueryData<OlderPages>(olderKey)?.done ? "done" : "idle",
-  );
+  const cachedOlderRef = useRef<MessageType[]>([]);
+  const [older, setOlder] = useState<MessageType[]>(() => {
+    const cached = qc.getQueryData<OlderPages>(olderKey)?.pages ?? [];
+    if (cached.length <= OLDER_PAGE) {
+      cachedOlderRef.current = [];
+      return cached;
+    }
+    cachedOlderRef.current = cached.slice(0, cached.length - OLDER_PAGE);
+    return cached.slice(-OLDER_PAGE);
+  });
+  const [olderState, setOlderState] = useState<"idle" | "loading" | "done">(() => {
+    const entry = qc.getQueryData<OlderPages>(olderKey);
+    if (!entry) return "idle";
+    const buffered = Math.max(0, entry.pages.length - OLDER_PAGE);
+    return buffered === 0 && entry.done ? "done" : "idle";
+  });
+  const [olderError, setOlderError] = useState(false);
+  const olderErrorRef = useRef(olderError);
+  olderErrorRef.current = olderError;
+  const olderAbort = useRef<AbortController | null>(null);
+  const topSentinel = useRef<HTMLDivElement>(null);
   // Going to a message far back shows the page around it on its own (`older`), apart from the latest page: newer
   // pages come as the person scrolls down, until they reach it.
   const [gap, setGap] = useState(false);
   const [newerLoading, setNewerLoading] = useState(false);
   const anchor = useRef<{ height: number; top: number } | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: abort pending older fetch when channel changes
+  useEffect(
+    () => () => {
+      olderAbort.current?.abort();
+      olderAbort.current = null;
+    },
+    [channel.id],
+  );
   const loadOlder = (limit = OLDER_PAGE) => {
     // A thread view loads its whole conversation at once.
     if (thread || olderState !== "idle" || !messages.data) return;
+    if (cachedOlderRef.current.length > 0) {
+      const take = cachedOlderRef.current.slice(-limit);
+      cachedOlderRef.current = cachedOlderRef.current.slice(0, -limit);
+      const el = scroller.current;
+      if (el && !anchor.current) anchor.current = { height: el.scrollHeight, top: el.scrollTop };
+      setOlderError(false);
+      setOlder((prev) => {
+        const known = new Set(prev.map((m) => m.id));
+        return [...take.filter((m) => !known.has(m.id)), ...prev];
+      });
+      if (cachedOlderRef.current.length === 0 && qc.getQueryData<OlderPages>(olderKey)?.done) {
+        setOlderState("done");
+      }
+      return;
+    }
     const oldest = older[0] ?? messages.data[0];
     if (!oldest || messages.data.length < MESSAGES_PAGE) {
       setOlderState("done");
       return;
     }
+    olderAbort.current?.abort();
+    const ctrl = new AbortController();
+    olderAbort.current = ctrl;
+    setOlderError(false);
     setOlderState("loading");
     api.chat
-      .messages(org.id, channel.id, { before: oldest.createdAt, limit })
+      .messages(org.id, channel.id, { before: oldest.createdAt, limit, signal: ctrl.signal })
       .then((page) => {
+        if (ctrl.signal.aborted) return;
         // Keep what's on screen where it is: remember the distance from the bottom.
         const el = scroller.current;
-        if (el) anchor.current = { height: el.scrollHeight, top: el.scrollTop };
+        if (el && !anchor.current) anchor.current = { height: el.scrollHeight, top: el.scrollTop };
         setOlder((prev) => {
           const known = new Set(prev.map((m) => m.id));
           const next = [...page.filter((m) => !known.has(m.id)), ...prev];
-          if (!gap) qc.setQueryData<OlderPages>(olderKey, { pages: next, done: page.length < limit });
+          if (!gap) {
+            qc.setQueryData<OlderPages>(olderKey, {
+              pages: [...cachedOlderRef.current, ...next],
+              done: page.length < limit,
+            });
+          }
           return next;
         });
         setOlderState(page.length < limit ? "done" : "idle");
       })
-      .catch(() => setOlderState("idle"));
+      .catch(() => {
+        if (ctrl.signal.aborted) return;
+        setOlderError(true);
+        setOlderState("idle");
+      });
   };
+  const loadOlderRef = useRef(loadOlder);
+  loadOlderRef.current = loadOlder;
   /** Shows the page around a message: joined to the latest page when they meet, apart (`gap`) when not. */
   const showAround = (page: MessageType[]) => {
     const start = channelMessages.data?.[0]?.createdAt;
     const joins = !start || (page.at(-1)?.createdAt ?? "") >= start;
     const kept = joins && start ? page.filter((m) => m.createdAt < start) : page;
+    cachedOlderRef.current = [];
+    olderAbort.current?.abort();
+    setOlderError(false);
     setOlder(kept);
     setGap(!joins);
     setOlderState("idle");
@@ -1425,6 +1495,27 @@ function ChannelView({
       Boolean(channelList?.lines.has(m.id));
     return ungroupAfter(items, special);
   }, [thread, channelList, channelMessages.data, threadMessages.data, threadsView]);
+  const liveArtifactIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of timeline) {
+      if (item.kind !== "message") continue;
+      const liveRef = messageLiveRef(item.message);
+      if (liveRef && isLiveFileKind(liveRef.kind) && LIVE_UUID_RE.test(liveRef.artifactId)) {
+        ids.add(liveRef.artifactId);
+        if (ids.size >= 100) break;
+      }
+      for (const r of artifactRefs(item.message.meta)) {
+        if (r.deleted || !LIVE_UUID_RE.test(r.id)) continue;
+        const cached = qc.getQueryData<Artifact>(keys.artifact(org.id, r.id, r.version));
+        if (cached && isLiveFileKind(cached.kind)) {
+          ids.add(r.id);
+          if (ids.size >= 100) break;
+        }
+      }
+      if (ids.size >= 100) break;
+    }
+    return [...ids];
+  }, [timeline, qc, org.id]);
 
   // The agents' blocks (one per run, from "pensando" to its final message: `chat/run-slots.ts`), at the end. They
   // change when runs start or end, never on another of a run's events.
@@ -1725,14 +1816,42 @@ function ChannelView({
       hold(entries);
       pin();
     });
-    for (const child of Array.from(el.children)) ro.observe(child);
+    const observedTail = new Set<Element>();
+    const syncTail = () => {
+      if (heights) return;
+      const tail = Array.from(el.children).slice(-4);
+      const next = new Set(tail);
+      for (const prev of observedTail) {
+        if (!next.has(prev)) {
+          ro.unobserve(prev);
+          observedTail.delete(prev);
+        }
+      }
+      for (const node of tail) {
+        if (!observedTail.has(node)) {
+          ro.observe(node);
+          observedTail.add(node);
+        }
+      }
+    };
+    if (heights) {
+      for (const child of Array.from(el.children)) ro.observe(child);
+    } else {
+      syncTail();
+    }
     ro.observe(el);
-    // Only rows that came in are watched (observing every row again on each change cost a pass per delta).
+    // Only rows that came in are watched (observing every row again on each change cost a pass per delta);
+    // browsers with native scroll anchoring only need the bottom tail watched so streaming stays pinned.
     const mo =
       typeof MutationObserver === "undefined"
         ? null
         : new MutationObserver((records) => {
-            for (const r of records) for (const n of Array.from(r.addedNodes)) if (n instanceof Element) ro.observe(n);
+            if (heights) {
+              for (const r of records)
+                for (const n of Array.from(r.addedNodes)) if (n instanceof Element) ro.observe(n);
+            } else {
+              syncTail();
+            }
           });
     mo?.observe(el, { childList: true });
     return () => {
@@ -1741,6 +1860,27 @@ function ChannelView({
       mo?.disconnect();
     };
   }, [isMember]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sentinel mounts only for members and resets per channel
+  useEffect(() => {
+    const el = scroller.current;
+    const sentinel = topSentinel.current;
+    const isNoopIo =
+      typeof window !== "undefined" &&
+      "happyDOM" in window &&
+      typeof IntersectionObserver === "function" &&
+      IntersectionObserver === (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
+    if (!el || !sentinel || thread || !serverRead || typeof IntersectionObserver !== "function" || isNoopIo) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        if (olderErrorRef.current || stick.current || Date.now() - openedAt.current < 400) return;
+        if (el.scrollHeight > el.clientHeight && el.scrollTop < 240) loadOlderRef.current();
+      },
+      { root: el, rootMargin: "240px 0px 0px 0px" },
+    );
+    io.observe(sentinel);
+    return () => io.disconnect();
+  }, [isMember, thread, serverRead, channel.id]);
   const lastKey = timeline.at(-1)?.key;
   const previousLastKey = useRef(lastKey);
   /** The person asked for the end (the round button, "Fim da resposta", a correction sent). */
@@ -2720,11 +2860,19 @@ function ChannelView({
                             </span>
                           </div>
                         )}
-                        {olderState !== "loading" && <DatePill scroller={scroller} ref={datePill} />}
+                        {olderError && olderState === "idle" && (
+                          <div className="channel__older">
+                            <button type="button" className="channel__older-pill" onClick={() => loadOlder()}>
+                              {t("common.retry")}
+                            </button>
+                          </div>
+                        )}
+                        {olderState !== "loading" && !olderError && <DatePill scroller={scroller} ref={datePill} />}
                         <RowsProvider
                           asks={askRegistry}
                           stop={stopTarget?.runId}
                           drawn={rowDrawn}
+                          meta={rowMeta}
                           seat={{
                             orgId: org.id,
                             channelId: channel.id,
@@ -2746,6 +2894,7 @@ function ChannelView({
                               if (e.deltaY < 0) {
                                 markUpGesture();
                                 letGo();
+                                if (e.currentTarget.scrollTop < 240) loadOlder();
                               } else markGesture();
                             }}
                             onTouchMove={() => {
@@ -2793,6 +2942,11 @@ function ChannelView({
                           >
                             {/* Pushes short channels down, next to the composer. */}
                             <div className="channel__spacer" aria-hidden="true" />
+                            <div
+                              ref={topSentinel}
+                              aria-hidden="true"
+                              style={{ height: 1, marginTop: -1, pointerEvents: "none" }}
+                            />
                             {chrome?.top}
                             {chrome?.intro}
                             {messages.isLoading && <LoadingConversation />}
@@ -2863,20 +3017,22 @@ function ChannelView({
                               />
                             ) : (
                               <>
-                                <Timeline
-                                  items={timeline}
-                                  ready={serverRead}
-                                  slots={gap ? NO_SLOTS : slots}
-                                  runKeys={runKeys.current}
-                                  divider={divider}
-                                  channelId={channel.id}
-                                  runVisible={runVisible}
-                                  dmPersonId={thread ? undefined : chrome?.dmPersonId}
-                                  consultGroups={consultGroups}
-                                  seenId={thread ? null : seenId}
-                                  marks={contextMarkIds}
-                                  progressive={opensAtEnd}
-                                />
+                                <LivePresenceScope ids={liveArtifactIds}>
+                                  <Timeline
+                                    items={timeline}
+                                    ready={serverRead}
+                                    slots={gap ? NO_SLOTS : slots}
+                                    runKeys={runKeys.current}
+                                    divider={divider}
+                                    channelId={channel.id}
+                                    runVisible={runVisible}
+                                    dmPersonId={thread ? undefined : chrome?.dmPersonId}
+                                    consultGroups={consultGroups}
+                                    seenId={thread ? null : seenId}
+                                    marks={contextMarkIds}
+                                    progressive={opensAtEnd}
+                                  />
+                                </LivePresenceScope>
                                 {/* A thread's root is on screen from the channel: only its replies are loading. */}
                                 {thread && messages.isPlaceholderData && thread.replyCount > 0 && (
                                   <LoadingConversation count={Math.min(thread.replyCount, 6)} />
@@ -3245,37 +3401,39 @@ function ChannelView({
               </Tag>
               {consultId && (
                 /* Rows from more than the two people of a DM: they keep their names there too. */
-                <MessageLookContext.Provider value={namedLook}>
-                  <ConsultationDialog
-                    key={consultId}
-                    channelId={channel.id}
-                    channelName={chrome?.composerTarget ? null : channel.name}
-                    consultationId={consultId}
-                    group={consult?.group}
-                    onClose={() => setConsult(null)}
-                    // The composer takes the focus once the dialog is gone: its trap would hold it while open.
-                    onTalk={(handle) => {
-                      setConsult(null);
-                      actions.insertMention(handle);
-                      requestAnimationFrame(() => actions.focusComposer());
-                    }}
-                    onAnswer={() => {
-                      setConsult(null);
-                      requestAnimationFrame(() => actions.focusComposer());
-                    }}
-                    renderMessage={(m, grouped) => (
-                      <ErrorBoundary resetKey={m} fallback={unshownLine}>
-                        <TimelineMessage
-                          message={m}
-                          grouped={grouped}
-                          entering={false}
-                          modelLabels={NO_LABELS}
-                          readOnly
-                        />
-                      </ErrorBoundary>
-                    )}
-                  />
-                </MessageLookContext.Provider>
+                <RowMetaContext.Provider value={rowMeta}>
+                  <MessageLookContext.Provider value={namedLook}>
+                    <ConsultationDialog
+                      key={consultId}
+                      channelId={channel.id}
+                      channelName={chrome?.composerTarget ? null : channel.name}
+                      consultationId={consultId}
+                      group={consult?.group}
+                      onClose={() => setConsult(null)}
+                      // The composer takes the focus once the dialog is gone: its trap would hold it while open.
+                      onTalk={(handle) => {
+                        setConsult(null);
+                        actions.insertMention(handle);
+                        requestAnimationFrame(() => actions.focusComposer());
+                      }}
+                      onAnswer={() => {
+                        setConsult(null);
+                        requestAnimationFrame(() => actions.focusComposer());
+                      }}
+                      renderMessage={(m, grouped) => (
+                        <ErrorBoundary resetKey={m} fallback={unshownLine}>
+                          <TimelineMessage
+                            message={m}
+                            grouped={grouped}
+                            entering={false}
+                            modelLabels={NO_LABELS}
+                            readOnly
+                          />
+                        </ErrorBoundary>
+                      )}
+                    />
+                  </MessageLookContext.Provider>
+                </RowMetaContext.Provider>
               )}
               {!chrome && !profile && membersColumn.sheet && (
                 <MembersSheet
@@ -3345,6 +3503,7 @@ function Parts({ resetKey, children }: { resetKey: unknown; children: ReactNode 
  */
 /** The rows a conversation opening at its end draws first: more than a tall screen shows. */
 const FIRST_ROWS = 30;
+const REVEAL_CHUNK = 30;
 
 const Timeline = memo(function Timeline({
   items,
@@ -3384,13 +3543,19 @@ const Timeline = memo(function Timeline({
   progressive?: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  // A conversation opening at its end shows its last rows: they are drawn first and the rest in a transition, which
-  // yields to the page, instead of a hundred rows in one task that holds the page still for most of a second.
-  const [whole, setWhole] = useState(!progressive);
+  // A conversation opening at its end shows its last rows first and reveals the rest in frame-sized chunks
+  // so opening a dense channel stays responsive.
+  const [shown, setShown] = useState(() => (progressive ? FIRST_ROWS : Number.POSITIVE_INFINITY));
   useEffect(() => {
-    if (!whole && ready) startTransition(() => setWhole(true));
-  }, [whole, ready]);
-  const from = whole ? 0 : Math.max(0, items.length - FIRST_ROWS);
+    if (!ready || shown >= items.length) return;
+    const frame = requestAnimationFrame(() =>
+      startTransition(() =>
+        setShown((n) => (n + REVEAL_CHUNK >= items.length ? Number.POSITIVE_INFINITY : n + REVEAL_CHUNK)),
+      ),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [ready, shown, items.length]);
+  const from = shown >= items.length ? 0 : Math.max(0, items.length - shown);
   const models = useModels();
   const modelLabels = useMemo(
     () => new Map((models.data?.models ?? []).map((m) => [m.id, m.label] as const)),
@@ -3783,6 +3948,11 @@ function RunClock({ run }: { run: LiveRun }) {
 const RowStopContext = createContext<string | undefined>(undefined);
 /** Told when a run's live row is drawn, so the view measures which blocks are in view again. */
 const RowDrawnContext = createContext<(() => void) | undefined>(undefined);
+/** Shared per-channel row metadata (channel names and wiki link renderer) so rows avoid subscribing individually. */
+const RowMetaContext = createContext<{
+  channelsById: ReadonlyMap<string, string>;
+  wikiLink: WikiLinkRenderer;
+} | null>(null);
 
 /**
  * What the conversation's rows read from their view: the requests' registry, which row stops, "a row drew", and
@@ -3792,21 +3962,25 @@ function RowsProvider({
   asks,
   stop,
   drawn,
+  meta,
   seat,
   children,
 }: {
   asks: AskRegistry;
   stop: string | undefined;
   drawn: () => void;
+  meta: { channelsById: ReadonlyMap<string, string>; wikiLink: WikiLinkRenderer };
   seat: Omit<Parameters<typeof ConversationSeat>[0], "children">;
   children: ReactNode;
 }) {
   return (
     <ConversationSeat {...seat}>
       <AskRegistryProvider value={asks}>
-        <RowDrawnContext.Provider value={drawn}>
-          <RowStopContext.Provider value={stop}>{children}</RowStopContext.Provider>
-        </RowDrawnContext.Provider>
+        <RowMetaContext.Provider value={meta}>
+          <RowDrawnContext.Provider value={drawn}>
+            <RowStopContext.Provider value={stop}>{children}</RowStopContext.Provider>
+          </RowDrawnContext.Provider>
+        </RowMetaContext.Provider>
       </AskRegistryProvider>
     </ConversationSeat>
   );
@@ -4507,7 +4681,8 @@ export const TimelineMessage = memo(function TimelineMessage({
   const report = routine?.noticeId ? routineReportText(shown, routine.noticeId) : null;
   // A short reply it gave while its task kept working (the talker): its message, "enquanto trabalha".
   const talker = m.author.type === "agent" && isTalkerReply(m.meta);
-  const wikiLink = useWikiLinkRenderer();
+  const rowMeta = useContext(RowMetaContext);
+  const wikiLink = rowMeta?.wikiLink;
   // A stopped run's message (`meta.canceled`): the text so far, and "Interrompido por Walter" as a note.
   // A text the server wrote (`meta.bodyCode`, a deploy's notice) is shown in the person's language.
   const stopped = useMemo(
@@ -4539,7 +4714,7 @@ export const TimelineMessage = memo(function TimelineMessage({
   // A long work's end after its AI provider failed: Continuar under it as well.
   const providerCut = m.author.type === "agent" && Boolean(workContinuable(m.meta));
 
-  const channelName = useChannels(org.id).data?.find((c) => c.id === m.channelId)?.name;
+  const channelName = rowMeta?.channelsById.get(m.channelId);
   // A plain reminder: the agent's own message, with a small "Reminder" label.
   const reminder = isReminderMessage(m.meta);
   const via = m.author.type === "person" ? appVia(m.meta) : null;
@@ -4547,33 +4722,44 @@ export const TimelineMessage = memo(function TimelineMessage({
   const myHandle = dir.memberById.get(me.user.id)?.handle?.toLowerCase();
   const mentionsMe =
     !(m.author.type === "person" && m.author.id === me.user.id) && mentionsReader({ body, meta: m.meta }, myHandle);
-  const renderMention = (handle: string, key: string) => {
-    // The mention of everyone: the reader's own word, marked as a mention of them.
-    if (isEveryoneMention(m.meta, handle))
+  const renderMention = useCallback(
+    (handle: string, key: string) => {
+      // The mention of everyone: the reader's own word, marked as a mention of them.
+      if (isEveryoneMention(m.meta, handle))
+        return (
+          <Mention key={key} className="ac-mention--me">
+            @{everyoneWord(i18n.language)}
+          </Mention>
+        );
+      const a = dir.agentByHandle.get(handle.toLowerCase());
+      const p = a ? undefined : dir.memberByHandle.get(handle.toLowerCase());
+      if (!a && !p) return `@${handle}`;
+      const isMe = !!p && p.userId === me.user.id;
+      const actor = a ? { type: "agent" as const, id: a.id } : { type: "person" as const, id: p?.userId ?? "" };
+      const shown = a?.name ?? p?.name ?? handle;
       return (
-        <Mention key={key} className="ac-mention--me">
-          @{everyoneWord(i18n.language)}
-        </Mention>
+        <ProfileTrigger
+          key={key}
+          actor={actor}
+          label={t("profile.of", { name: shown })}
+          className="profile-trigger--mention"
+        >
+          <Mention tone={dir.mentionTone(handle)} className={isMe ? "ac-mention--me" : undefined}>
+            @{shown}
+          </Mention>
+        </ProfileTrigger>
       );
-    const a = dir.agentByHandle.get(handle.toLowerCase());
-    const p = a ? undefined : dir.memberByHandle.get(handle.toLowerCase());
-    if (!a && !p) return `@${handle}`;
-    const isMe = !!p && p.userId === me.user.id;
-    const actor = a ? { type: "agent" as const, id: a.id } : { type: "person" as const, id: p?.userId ?? "" };
-    const shown = a?.name ?? p?.name ?? handle;
-    return (
-      <ProfileTrigger
-        key={key}
-        actor={actor}
-        label={t("profile.of", { name: shown })}
-        className="profile-trigger--mention"
-      >
-        <Mention tone={dir.mentionTone(handle)} className={isMe ? "ac-mention--me" : undefined}>
-          @{shown}
-        </Mention>
-      </ProfileTrigger>
-    );
-  };
+    },
+    [m.meta, i18n.language, dir, me.user.id, t],
+  );
+  const channelRefs = useMemo(() => channelRefsOf(m.meta), [m.meta]);
+  const pinFrom = useMemo(
+    () =>
+      m.author.type === "agent" && m.author.id && !m.local && !readOnly
+        ? { messageId: m.id, agentId: m.author.id }
+        : null,
+    [m.author.type, m.author.id, m.local, readOnly, m.id],
+  );
   const meta = m.meta ?? {};
   const standIn = modelStandInText(t, meta);
   const approvalId = typeof meta.approvalId === "string" ? meta.approvalId : null;
@@ -4936,13 +5122,9 @@ export const TimelineMessage = memo(function TimelineMessage({
                       mentionTone={dir.mentionTone}
                       renderMention={renderMention}
                       wikiLink={wikiLink}
-                      channelRefs={channelRefsOf(m.meta)}
+                      channelRefs={channelRefs}
                       accent={colorOf(agent)}
-                      pinFrom={
-                        m.author.type === "agent" && m.author.id && !m.local && !readOnly
-                          ? { messageId: m.id, agentId: m.author.id }
-                          : null
-                      }
+                      pinFrom={pinFrom}
                     />
                   )}
                 </ClippedBody>

@@ -1061,10 +1061,12 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
         if (res?.consults) consultSeeds.publish(channelId, res.consults, askedAt);
         return res ? res.runs : null;
       },
-      consultations: async (orgId, channelId) =>
+      consultations: async (orgId, channelId, options) =>
         (
           (await nullOn(404, () =>
-            request<{ consultations: RunConsultation[] }>(`${org(orgId)}/channels/${enc(channelId)}/consultations`),
+            request<{ consultations: RunConsultation[] }>(`${org(orgId)}/channels/${enc(channelId)}/consultations`, {
+              signal: options?.signal,
+            }),
           )) ?? { consultations: [] }
         ).consultations,
       consultation: (orgId, channelId, consultationId) =>
@@ -1176,8 +1178,12 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
         request<void>(`${org(orgId)}/channels/${enc(channelId)}/delete`, { json: { name } }),
       roster: async (orgId, channelId) =>
         (await request<{ members: RosterMember[] }>(`${org(orgId)}/channels/${enc(channelId)}/roster`)).members,
-      members: async (orgId, channelId) =>
-        (await request<{ members: ChannelMember[] }>(`${org(orgId)}/channels/${enc(channelId)}/members`)).members,
+      members: async (orgId, channelId, options) =>
+        (
+          await request<{ members: ChannelMember[] }>(`${org(orgId)}/channels/${enc(channelId)}/members`, {
+            signal: options?.signal,
+          })
+        ).members,
       addMember: (orgId, channelId, member) =>
         request<void>(`${org(orgId)}/channels/${enc(channelId)}/members`, { json: member }),
       removeMember: (orgId, channelId, member) =>
@@ -1202,9 +1208,9 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
         })) ?? null,
       messages: async (orgId, channelId, options = {}) => {
         const path = `${org(orgId)}/channels/${enc(channelId)}/messages`;
-        const { threadId, before, after, around, limit } = options;
+        const { threadId, before, after, around, limit, signal } = options;
         const query = { threadId, before, after, around, limit };
-        const { messages } = await request<{ messages: Message[] }>(path, { query });
+        const { messages } = await request<{ messages: Message[] }>(path, { query, signal });
         steerStore.seed(channelId, messages);
         return messages;
       },
@@ -1598,8 +1604,11 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
         (await request<ArtifactPage>(`${org(orgId)}/artifacts`, { query: artifactQuery(filters) })).artifacts,
       page: (orgId, filters = {}, cursor) =>
         request<ArtifactPage>(`${org(orgId)}/artifacts`, { query: { ...artifactQuery(filters), cursor } }),
-      get: (orgId, id, version) =>
-        request<ArtifactDetail>(`${org(orgId)}/artifacts/${enc(id)}`, { query: { version } }),
+      get: (orgId, id, version, options) =>
+        request<ArtifactDetail>(`${org(orgId)}/artifacts/${enc(id)}`, {
+          query: { version },
+          signal: options?.signal,
+        }),
       conversation: (orgId, id) =>
         request<FileConversationRef>(`${org(orgId)}/artifacts/${enc(id)}/conversation`, { method: "POST" }),
       keep: (orgId, id) => request<Artifact>(`${org(orgId)}/artifacts/${enc(id)}/keep`, { method: "POST" }),
@@ -1649,8 +1658,10 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
         if (options.note) form.append("note", options.note);
         return files.upload<ArtifactDetail>(`${org(orgId)}/artifacts/${enc(id)}/files`, form);
       },
-      fileBlob: (orgId, id, version) =>
-        files.blob(`${org(orgId)}/artifacts/${enc(id)}/file${version ? `?version=${version}` : ""}`),
+      fileBlob: (orgId, id, version, options) =>
+        files.blob(`${org(orgId)}/artifacts/${enc(id)}/file${version ? `?version=${version}` : ""}`, {
+          signal: options?.signal,
+        }),
       create: (orgId, input) => request<ArtifactDetail>(`${org(orgId)}/artifacts`, { json: input }),
       update: (orgId, id, input) =>
         request<ArtifactDetail>(`${org(orgId)}/artifacts/${enc(id)}/versions`, { json: input }),
@@ -1733,8 +1744,11 @@ export function createHttpApi(options: TransportOptions = {}): HttpApi {
     },
     threads: {
       list: (orgId, filters = {}) => request<ThreadPage>(`${org(orgId)}/threads`, { query: threadQuery(filters) }),
-      inChannel: (orgId, channelId, filters = {}) =>
-        request<ThreadPage>(`${org(orgId)}/channels/${enc(channelId)}/threads`, { query: threadQuery(filters) }),
+      inChannel: (orgId, channelId, filters = {}, options) =>
+        request<ThreadPage>(`${org(orgId)}/channels/${enc(channelId)}/threads`, {
+          query: threadQuery(filters),
+          signal: options?.signal,
+        }),
       get: (orgId, threadId) => request<ThreadInfo>(`${org(orgId)}/threads/${enc(threadId)}`),
       create: (orgId, input) => request<ThreadInfo>(`${org(orgId)}/threads`, { json: input }),
       update: (orgId, threadId, patch) =>

@@ -8,6 +8,8 @@ import {
   type AgentRun,
   answerNow,
   answerQuestion,
+  answersAgentsOnly,
+  answersAgentsOnlyBatch,
   CONSULTATION_HUNG_MS,
   CONSULTATION_KNOWN_WAIT_MS,
   CONSULTATION_TTL_MS,
@@ -48,7 +50,7 @@ import {
   type ToolContext,
   wakesLater,
 } from "../src";
-import { type Fixture, setup } from "./fixtures";
+import { addMember, type Fixture, setup } from "./fixtures";
 import { fakeRunner, pairMachine, RUNNER } from "./machine-fixtures";
 import { ALL_GITHUB_SCOPES, fakeGithub } from "./tool-fixtures";
 
@@ -2362,5 +2364,70 @@ describe("tell_agent: what comes of work handed off comes back by itself (ADR 00
     expect((await notesBack()).map((m) => refsOf(m).status)).toEqual(["failed", "failed"]);
     // Each work posted its end where the person asked: nothing for Dev to relay.
     expect(await runsOf(f.agent.id)).toHaveLength(1);
+  });
+
+  test("answersAgentsOnlyBatch matches answersAgentsOnly and filters restricted runs in consultationsIn", async () => {
+    f = await setup({ askAgent: true, judge: notesMatter });
+    const infra = await addInfra();
+    const ops = await addAgent("Ops");
+    await f.db
+      .update(schema.agents)
+      .set({ ownerUserId: f.owner.id, audienceMode: "owner" })
+      .where(eq(schema.agents.id, infra.id));
+
+    const lia = await addMember(f.db, f.org.id, "member", "lia");
+    const trigger = await insertMessage(f.db, {
+      orgId: f.org.id,
+      channelId: f.general.id,
+      author: { type: "person", userId: lia.id },
+      body: "@dev confere infra e ops",
+    });
+    const [run] = await f.db
+      .insert(schema.agentRuns)
+      .values({
+        orgId: f.org.id,
+        agentId: f.agent.id,
+        channelId: f.general.id,
+        threadRootId: trigger.id,
+        triggerMessageId: trigger.id,
+        trigger: "mention",
+        hop: 1,
+        stretchId: trigger.id,
+      })
+      .returning();
+    if (!run) throw new Error("no run");
+    await ended(run.id);
+
+    await tell(run, "@infra", "Checa o disco.");
+    await tell(run, "@ops", "Checa a fila.");
+
+    const all = await consultations();
+    const runIds = all.flatMap((c) => (c.targetRunId ? [c.targetRunId] : []));
+    expect(runIds).toHaveLength(2);
+
+    const batched = await answersAgentsOnlyBatch(f.db, f.org.id, runIds);
+    const individual = await Promise.all(runIds.map((id) => answersAgentsOnly(f.db, f.org.id, id)));
+    expect(runIds.map((id) => batched.has(id))).toEqual(individual);
+
+    const infraCons = all.find((c) => c.targetAgentId === infra.id);
+    const opsCons = all.find((c) => c.targetAgentId === ops.id);
+    expect(batched.has(infraCons?.targetRunId ?? "")).toBe(true);
+    expect(batched.has(opsCons?.targetRunId ?? "")).toBe(false);
+
+    const [infraRun, opsRun] = [await runFor(infraCons), await runFor(opsCons)];
+    await endsWith(infraRun, "Disco ok.");
+    await endsWith(opsRun, "Fila ok.");
+    await f.db
+      .update(schema.agentConsultations)
+      .set({ status: "answered", answer: "Segredo interno", answeredAt: new Date() })
+      .where(eq(schema.agentConsultations.id, infraCons?.id ?? ""));
+    await f.db
+      .update(schema.agentConsultations)
+      .set({ status: "answered", answer: "Fila vazia", answeredAt: new Date() })
+      .where(eq(schema.agentConsultations.id, opsCons?.id ?? ""));
+
+    const listed = await consultationsIn(f.db, f.org.id, f.general.id);
+    expect(listed.find((c) => c.consultedAgentId === infra.id)?.answer).toBeNull();
+    expect(listed.find((c) => c.consultedAgentId === ops.id)?.answer).toBe("Fila vazia");
   });
 });
