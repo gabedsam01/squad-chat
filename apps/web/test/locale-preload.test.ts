@@ -91,6 +91,52 @@ describe("the language file loads with the app (#1)", () => {
     );
   });
 
+  test("virtual i18n-core chunks preload and split cleanly without preloading i18n-rest", async () => {
+    expect(localeOfModule("\0virtual:i18n-core/pt-BR")).toBe("pt-BR");
+    expect(localeOfModule("\0virtual:i18n-core/zh-Hans")).toBe("zh-Hans");
+    expect(localeOfModule("\0virtual:i18n-rest/pt-BR")).toBeNull();
+
+    const plugin = preloadLocale();
+    (plugin.configResolved as unknown as (config: { base: string }) => void)({ base: "/" });
+    const resolveId = plugin.resolveId as unknown as (id: string) => string | null;
+    const load = plugin.load as unknown as (id: string) => string | null;
+
+    expect(resolveId("virtual:i18n-core/pt-BR")).toBe("\0virtual:i18n-core/pt-BR");
+    expect(resolveId("virtual:i18n-rest/pt-BR")).toBe("\0virtual:i18n-rest/pt-BR");
+    expect(resolveId("./other")).toBeNull();
+
+    const splitCode = load("/srv/app/apps/web/src/i18n/split.ts");
+    expect(splitCode).toContain('import("virtual:i18n-core/pt-BR")');
+    expect(splitCode).toContain('import("virtual:i18n-rest/pt-BR")');
+
+    const evalJsonExport = (code: string | null) => {
+      expect(code).not.toBeNull();
+      return new Function(String(code).replace(/^export default /, "return "))() as Record<string, unknown>;
+    };
+    const corePt = evalJsonExport(load("\0virtual:i18n-core/pt-BR"));
+    const restPt = evalJsonExport(load("\0virtual:i18n-rest/pt-BR"));
+    const fullPt = await loadStrings["pt-BR"]();
+
+    expect(corePt.common).toEqual(fullPt.common);
+    expect(corePt.onboarding).toBeUndefined();
+    expect(restPt.onboarding).toEqual(fullPt.onboarding);
+    expect(restPt.live).toEqual(fullPt.live);
+    for (const k of Object.keys(corePt)) expect(restPt[k]).toBeUndefined();
+    expect({ ...corePt, ...restPt }).toEqual(fullPt);
+
+    const chunk = (fileName: string, facadeModuleId: string | null) => ({ type: "chunk", fileName, facadeModuleId });
+    const bundle = {
+      corePt: chunk("assets/pt-BR-core.js", "\0virtual:i18n-core/pt-BR"),
+      restPt: chunk("assets/pt-BR-rest.js", "\0virtual:i18n-rest/pt-BR"),
+    };
+    const hook = plugin.transformIndexHtml as unknown as {
+      handler: (html: string, ctx: { bundle: typeof bundle }) => string;
+    };
+    expect(hook.handler(`<script>const f = (${LOCALE_FILES})[x];</script>`, { bundle })).toBe(
+      '<script>const f = ({"pt-BR":"/assets/pt-BR-core.js"})[x];</script>',
+    );
+  });
+
   test("a ready language downloads alone, no English beside it", async () => {
     const fetched: AppLocale[] = [];
     const real = { ...loadStrings };

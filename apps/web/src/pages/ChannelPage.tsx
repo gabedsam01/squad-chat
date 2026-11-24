@@ -437,6 +437,12 @@ import { lookOf } from "@/lib/look";
 import type { WikiLinkRenderer } from "@/lib/markdown";
 import { type AgentPanelPlace, agentPanelSearch, threadSearch, useAgentPanel, useThreadPanel } from "@/lib/open-param";
 import { reportPainted } from "@/lib/perf";
+import {
+  computeTimelineWindow,
+  DEFAULT_ROW_HEIGHT,
+  type TimelineWindow,
+  VIRTUALIZE_MIN_ROWS,
+} from "@/lib/timeline-window";
 import { useToast } from "@/lib/toast";
 import {
   reconcileChannelRuns,
@@ -1321,6 +1327,7 @@ function ChannelView({
   const [gap, setGap] = useState(false);
   const [newerLoading, setNewerLoading] = useState(false);
   const anchor = useRef<{ height: number; top: number } | null>(null);
+  const timelineSyncRef = useRef<(() => void) | null>(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: abort pending older fetch when channel changes
   useEffect(
     () => () => {
@@ -1425,6 +1432,7 @@ function ChannelView({
     if (!el || !a) return;
     anchor.current = null;
     el.scrollTop = el.scrollHeight - a.height + a.top;
+    timelineSyncRef.current?.();
   }, [older]);
 
   // Every thread with replies is one line under its root; its replies live in the panel.
@@ -1739,7 +1747,10 @@ function ChannelView({
         if (smooth && !reducedMotionRef.current && typeof el.scrollTo === "function") {
           autoScrollUntil.current = Date.now() + 600;
           el.scrollTo({ top: land.top, behavior: "smooth" });
-        } else el.scrollTop = land.top;
+        } else {
+          el.scrollTop = land.top;
+          timelineSyncRef.current?.();
+        }
         return;
       }
     }
@@ -1747,7 +1758,10 @@ function ChannelView({
       autoScrollUntil.current = Date.now() + 600;
       glideEnd.current = el.scrollHeight - el.clientHeight;
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    } else el.scrollTop = el.scrollHeight;
+    } else {
+      el.scrollTop = el.scrollHeight;
+      timelineSyncRef.current?.();
+    }
     clearUnseen();
   };
   const followRef = useRef(follow);
@@ -1789,7 +1803,7 @@ function ChannelView({
       const resized: RowResize[] = [];
       const listTop = el.getBoundingClientRect().top - el.scrollTop;
       for (const { target } of entries) {
-        if (!(target instanceof HTMLElement) || target === el) continue;
+        if (!(target instanceof HTMLElement) || target === el || target.dataset.virtSpacer) continue;
         const before = heights.get(target);
         const after = target.offsetHeight;
         heights.set(target, after);
@@ -1899,7 +1913,10 @@ function ChannelView({
         autoScrollUntil.current = Date.now() + 600;
         glideEnd.current = el.scrollHeight - el.clientHeight;
         el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-      } else el.scrollTop = el.scrollHeight;
+      } else {
+        el.scrollTop = el.scrollHeight;
+        timelineSyncRef.current?.();
+      }
     }
     stick.current = true;
     setHold(false);
@@ -3031,6 +3048,13 @@ function ChannelView({
                                     seenId={thread ? null : seenId}
                                     marks={contextMarkIds}
                                     progressive={opensAtEnd}
+                                    scroller={scroller}
+                                    focusMessageId={
+                                      (!focusDone ? focusTarget : undefined) ??
+                                      (catchUp.current ? divider?.key : undefined)
+                                    }
+                                    stickRef={stick}
+                                    windowSyncRef={timelineSyncRef}
                                   />
                                 </LivePresenceScope>
                                 {/* A thread's root is on screen from the channel: only its replies are loading. */}
@@ -3505,6 +3529,27 @@ function Parts({ resetKey, children }: { resetKey: unknown; children: ReactNode 
 const FIRST_ROWS = 30;
 const REVEAL_CHUNK = 30;
 
+const MAX_CACHED_ROW_HEIGHTS = 2000;
+
+function recordRowHeight(map: Map<string, number>, key: string, height: number) {
+  if (height <= 0) return;
+  if (map.get(key) === height) return;
+  if (map.has(key)) map.delete(key);
+  map.set(key, height);
+  while (map.size > MAX_CACHED_ROW_HEIGHTS) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
+
+type PersistedTimelineEntry = {
+  key: string;
+  kind: "unread" | "day" | "message";
+  messageId?: string;
+  row: ReactElement<{ message?: MessageType }>;
+};
+
 const Timeline = memo(function Timeline({
   items,
   ready,
@@ -3518,6 +3563,10 @@ const Timeline = memo(function Timeline({
   seenId = null,
   marks,
   progressive = false,
+  scroller,
+  focusMessageId,
+  stickRef,
+  windowSyncRef,
 }: {
   items: ReturnType<typeof buildTimeline>;
   /** The first page loaded: rows from then on slide in. */
@@ -3541,21 +3590,26 @@ const Timeline = memo(function Timeline({
   marks: ReadonlySet<string>;
   /** It opens at its end: the last rows are drawn first, the ones above them right after (`FIRST_ROWS`). */
   progressive?: boolean;
+  scroller: { current: HTMLElement | null };
+  focusMessageId?: string;
+  stickRef?: { current: boolean };
+  windowSyncRef?: { current: (() => void) | null };
 }) {
   const { t, i18n } = useTranslation();
   // A conversation opening at its end shows its last rows first and reveals the rest in frame-sized chunks
   // so opening a dense channel stays responsive.
   const [shown, setShown] = useState(() => (progressive ? FIRST_ROWS : Number.POSITIVE_INFINITY));
+  const virtualizing = (scroller.current?.clientHeight ?? 0) > 0 && items.length > VIRTUALIZE_MIN_ROWS;
   useEffect(() => {
-    if (!ready || shown >= items.length) return;
+    if (!ready || virtualizing || shown >= items.length) return;
     const frame = requestAnimationFrame(() =>
       startTransition(() =>
         setShown((n) => (n + REVEAL_CHUNK >= items.length ? Number.POSITIVE_INFINITY : n + REVEAL_CHUNK)),
       ),
     );
     return () => cancelAnimationFrame(frame);
-  }, [ready, shown, items.length]);
-  const from = shown >= items.length ? 0 : Math.max(0, items.length - shown);
+  }, [ready, virtualizing, shown, items.length]);
+  const from = virtualizing || shown >= items.length ? 0 : Math.max(0, items.length - shown);
   const models = useModels();
   const modelLabels = useMemo(
     () => new Map((models.data?.models ?? []).map((m) => [m.id, m.label] as const)),
@@ -3666,8 +3720,8 @@ const Timeline = memo(function Timeline({
   const shownMessages = useMemo(() => items.flatMap((i) => (i.kind === "message" ? [i.message] : [])), [items]);
   // One stop, one pill: a stopped task's notice goes into its reply's pill while that reply (or its block) is here.
   const stops = useMemo(() => stopsOf(shownMessages, slots), [shownMessages, slots]);
-  const rows: ReactElement<{ message?: MessageType }>[] = [];
-  const afterUnshown = () => unshown.has(rows.at(-1)?.key ?? "");
+  const persisted: PersistedTimelineEntry[] = [];
+  const afterUnshown = () => unshown.has(persisted.at(-1)?.key ?? "");
   const blockRow = (slot: RunSlot) => {
     if (!blockEnters.current.has(slot.key)) blockEnters.current.set(slot.key, ready && Date.now() - mountedAt > 1500);
     return (
@@ -3687,72 +3741,304 @@ const Timeline = memo(function Timeline({
     // Where it sits in its author's run: my own rows' bubbles square the corners they share.
     const run = runPosition(grouped, after?.kind === "message" && after.grouped && !unshown.has(item.key));
     if (divider?.key === item.key) {
-      rows.push(
-        <div key="unread-divider" className="channel__unread" data-fade={divider.fading || undefined}>
-          {t("channel.unreadDivider")}
-        </div>,
-      );
+      persisted.push({
+        key: "unread-divider",
+        kind: "unread",
+        row: (
+          <div key="unread-divider" className="channel__unread" data-fade={divider.fading || undefined}>
+            {t("channel.unreadDivider")}
+          </div>
+        ),
+      });
     }
     if (item.kind === "day") {
-      rows.push(
-        <DayDivider key={item.key} day={item.iso}>
-          {dayLabel(t, i18n.language, item.iso)}
-        </DayDivider>,
-      );
+      persisted.push({
+        key: item.key,
+        kind: "day",
+        row: (
+          <DayDivider key={item.key} day={item.iso}>
+            {dayLabel(t, i18n.language, item.iso)}
+          </DayDivider>
+        ),
+      });
       continue;
     }
     if (item.kind !== "message") continue;
     const m = item.message;
     const special = threadRow(item.key, m);
     if (special) {
-      rows.push(special);
+      if (special.type === Fragment) continue;
+      persisted.push({ key: item.key, kind: "message", messageId: m.id, row: special });
       continue;
     }
     const entering = initial !== null && entersWithMotion(item.key, m.createdAt, initial, mountedAt);
     const blockKey = m.agentRunId && blockRows.get(m.agentRunId) === item.key ? runKeys.get(m.agentRunId) : undefined;
-    rows.push(
-      blockKey && m.agentRunId ? (
-        // Seen live: the same block, grouped as it was while it worked.
-        <RunBlock
-          key={blockKey}
-          runId={m.agentRunId}
-          message={m}
-          grouped={grouped}
-          entering={false}
-          modelLabels={modelLabels}
-          contextMark={marks.has(m.id)}
-          replyContext={item.context}
-          lastOfRun={lastByRun.get(m.agentRunId) === item.key}
-          run={run}
-        />
-      ) : (
-        <TimelineMessage
-          key={item.key}
-          message={m}
-          grouped={grouped}
-          entering={entering}
-          modelLabels={modelLabels}
-          contextMark={marks.has(m.id)}
-          replyContext={item.context}
-          lastOfRun={Boolean(m.agentRunId && lastByRun.get(m.agentRunId) === item.key)}
-          dmPersonId={dmPersonId}
-          seen={m.id === seenId}
-          helping={m.agentRunId && !isMediaAfterReply(m.meta) ? consultGroups.helping.get(m.agentRunId) : undefined}
-          run={run}
-        />
-      ),
-    );
+    const rowKey = blockKey && m.agentRunId ? blockKey : item.key;
+    persisted.push({
+      key: rowKey,
+      kind: "message",
+      messageId: m.id,
+      row:
+        blockKey && m.agentRunId ? (
+          // Seen live: the same block, grouped as it was while it worked.
+          <RunBlock
+            key={blockKey}
+            runId={m.agentRunId}
+            message={m}
+            grouped={grouped}
+            entering={false}
+            modelLabels={modelLabels}
+            contextMark={marks.has(m.id)}
+            replyContext={item.context}
+            lastOfRun={lastByRun.get(m.agentRunId) === item.key}
+            run={run}
+          />
+        ) : (
+          <TimelineMessage
+            key={item.key}
+            message={m}
+            grouped={grouped}
+            entering={entering}
+            modelLabels={modelLabels}
+            contextMark={marks.has(m.id)}
+            replyContext={item.context}
+            lastOfRun={Boolean(m.agentRunId && lastByRun.get(m.agentRunId) === item.key)}
+            dmPersonId={dmPersonId}
+            seen={m.id === seenId}
+            helping={m.agentRunId && !isMediaAfterReply(m.meta) ? consultGroups.helping.get(m.agentRunId) : undefined}
+            run={run}
+          />
+        ),
+    });
   }
-  rows.push(<QueueWaitTurns key="queue-waits" channelId={channelId} messages={shownMessages} />);
-  for (const slot of drawn) rows.push(blockRow(slot));
-  for (const place of held) rows.push(<HeldBrowserRow key={`held-${place.runId}`} place={place} />);
+  const tailRows: ReactElement<{ message?: MessageType }>[] = [
+    <QueueWaitTurns key="queue-waits" channelId={channelId} messages={shownMessages} />,
+    ...drawn.map((slot) => blockRow(slot)),
+    ...held.map((place) => <HeldBrowserRow key={`held-${place.runId}`} place={place} />),
+  ];
+
+  const persistedKeys = persisted.map((e) => e.key);
+  const pinnedIndex = focusMessageId
+    ? persisted.findIndex((e) => e.messageId === focusMessageId || e.key === focusMessageId)
+    : -1;
+
+  const heightsRef = useRef(new Map<string, number>());
+  const [win, setWin] = useState<TimelineWindow>(() => ({
+    start: 0,
+    end: persistedKeys.length,
+    topSpacer: 0,
+    bottomSpacer: 0,
+  }));
+
+  const viewportHeight = scroller.current?.clientHeight ?? 0;
+  const effectiveWin: TimelineWindow =
+    viewportHeight <= 0 || persistedKeys.length <= VIRTUALIZE_MIN_ROWS
+      ? { start: 0, end: persistedKeys.length, topSpacer: 0, bottomSpacer: 0 }
+      : {
+          start: Math.min(win.start, persistedKeys.length),
+          end: Math.min(Math.max(Math.min(win.start, persistedKeys.length), win.end), persistedKeys.length),
+          topSpacer: win.topSpacer,
+          bottomSpacer: win.bottomSpacer,
+        };
+
+  const latestRef = useRef({
+    persisted,
+    persistedKeys,
+    pinnedIndex,
+    effectiveWin,
+  });
+  latestRef.current = { persisted, persistedKeys, pinnedIndex, effectiveWin };
+
+  const syncWindow = useCallback(() => {
+    const el = scroller.current;
+    const { persistedKeys: keys, pinnedIndex: pinned } = latestRef.current;
+    const vh = el?.clientHeight ?? 0;
+    const next = computeTimelineWindow({
+      keys,
+      heights: heightsRef.current,
+      defaultHeight: DEFAULT_ROW_HEIGHT,
+      scrollTop: el?.scrollTop ?? 0,
+      viewportHeight: vh,
+      overscanPx: Math.max(900, vh * 1.25),
+      pinnedIndex: pinned >= 0 ? pinned : undefined,
+      stickToBottom: stickRef?.current,
+    });
+    setWin((prev) =>
+      prev.start === next.start &&
+      prev.end === next.end &&
+      prev.topSpacer === next.topSpacer &&
+      prev.bottomSpacer === next.bottomSpacer
+        ? prev
+        : next,
+    );
+  }, [scroller, stickRef]);
+
+  if (windowSyncRef) windowSyncRef.current = syncWindow;
+
+  // Measure rendered persisted rows and recompute window when list size, focus, or visible slice shifts.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally tracks structural keys and active slice
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el && el.clientHeight > 0) {
+      const { persisted: entries, effectiveWin: curWin } = latestRef.current;
+      const slice = entries.slice(curWin.start, curWin.end);
+      if (slice.length > 0) {
+        const children = Array.from(el.children) as HTMLElement[];
+        const byMsgId = new Map<string, HTMLElement>();
+        let startIdx = 0;
+        const hasTopSpacer = curWin.topSpacer > 0;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          if (!child) continue;
+          if (hasTopSpacer && child.dataset.virtSpacer === "top") startIdx = i + 1;
+          const mid = child.dataset.messageId;
+          if (mid) byMsgId.set(mid, child);
+        }
+        if (!hasTopSpacer) {
+          const first = slice[0];
+          if (first) {
+            for (let i = 0; i < children.length; i++) {
+              const child = children[i];
+              if (!child) continue;
+              if (
+                (first.kind === "unread" && child.classList.contains("channel__unread")) ||
+                (first.kind === "day" && child.classList.contains("ac-divider")) ||
+                (first.kind === "message" &&
+                  ((child.classList.contains("consult-pair") &&
+                    children[i + 1]?.dataset.messageId === first.messageId) ||
+                    child.dataset.messageId === first.messageId))
+              ) {
+                startIdx = i;
+                break;
+              }
+            }
+          }
+        }
+        const strideOf = (idx: number, extraEl?: HTMLElement): number => {
+          const cur = children[idx];
+          if (!cur) return 0;
+          if (extraEl) {
+            const after = children[idx + 2];
+            return after && after.offsetTop > cur.offsetTop
+              ? after.offsetTop - cur.offsetTop
+              : cur.offsetHeight + extraEl.offsetHeight;
+          }
+          const next = children[idx + 1];
+          return next && next.offsetTop > cur.offsetTop ? next.offsetTop - cur.offsetTop : cur.offsetHeight;
+        };
+        let cursor = startIdx;
+        for (const entry of slice) {
+          const cur = children[cursor];
+          if (entry.kind === "unread") {
+            if (cur?.classList.contains("channel__unread")) {
+              recordRowHeight(heightsRef.current, entry.key, strideOf(cursor));
+              cursor++;
+            }
+            continue;
+          }
+          if (entry.kind === "day") {
+            if (cur?.classList.contains("ac-divider")) {
+              recordRowHeight(heightsRef.current, entry.key, strideOf(cursor));
+              cursor++;
+            }
+            continue;
+          }
+          const msgId = entry.messageId;
+          const nextChild = children[cursor + 1];
+          if (cur?.classList.contains("consult-pair") && msgId && nextChild?.dataset.messageId === msgId) {
+            recordRowHeight(heightsRef.current, entry.key, strideOf(cursor, nextChild));
+            cursor += 2;
+          } else if (msgId && cur?.dataset.messageId === msgId) {
+            recordRowHeight(heightsRef.current, entry.key, strideOf(cursor));
+            cursor++;
+          } else if (msgId) {
+            const matched = byMsgId.get(msgId);
+            if (matched) {
+              const matchedIdx = children.indexOf(matched);
+              if (matchedIdx >= 0) {
+                const prev = children[matchedIdx - 1];
+                if (prev?.classList.contains("consult-pair")) {
+                  recordRowHeight(heightsRef.current, entry.key, strideOf(matchedIdx - 1, matched));
+                } else {
+                  recordRowHeight(heightsRef.current, entry.key, strideOf(matchedIdx));
+                }
+                cursor = matchedIdx + 1;
+              }
+            }
+          } else if (cur && !cur.dataset.virtSpacer && !cur.dataset.messageId) {
+            recordRowHeight(heightsRef.current, entry.key, strideOf(cursor));
+            cursor++;
+          }
+        }
+      }
+    }
+    syncWindow();
+  }, [
+    persistedKeys.length,
+    persistedKeys[0],
+    persistedKeys.at(-1),
+    focusMessageId,
+    effectiveWin.start,
+    effectiveWin.end,
+    syncWindow,
+  ]);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    let raf = 0;
+    const schedule = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        syncWindow();
+      });
+    };
+    el.addEventListener("scroll", schedule, { passive: true });
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(schedule) : null;
+    ro?.observe(el);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      el.removeEventListener("scroll", schedule);
+      ro?.disconnect();
+    };
+  }, [scroller, syncWindow]);
+
+  const visiblePersisted = persisted.slice(effectiveWin.start, effectiveWin.end);
+
   // A row that fails to draw (data this build doesn't expect) is one quiet line: the rest of the conversation, the
   // sidebar and the composer keep working. Its message changing draws it again: a live block that broke has none,
   // so streaming never retries it, and its final message landing does.
   return (
     <ConsultGroupsProvider value={consultGroups}>
       <StopsProvider value={stops}>
-        {rows.map((row) => (
+        {effectiveWin.topSpacer > 0 && (
+          <div
+            key="virt-top"
+            data-virt-spacer="top"
+            aria-hidden="true"
+            style={{ height: effectiveWin.topSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
+          />
+        )}
+        {visiblePersisted.map((entry) => (
+          <ErrorBoundary
+            key={entry.key}
+            resetKey={entry.row.props.message}
+            onError={() => markUnshown(entry.key)}
+            fallback={unshownLine}
+          >
+            {entry.row}
+          </ErrorBoundary>
+        ))}
+        {effectiveWin.bottomSpacer > 0 && (
+          <div
+            key="virt-bottom"
+            data-virt-spacer="bottom"
+            aria-hidden="true"
+            style={{ height: effectiveWin.bottomSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
+          />
+        )}
+        {tailRows.map((row) => (
           <ErrorBoundary
             key={row.key}
             resetKey={row.props.message}

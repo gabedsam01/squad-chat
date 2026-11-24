@@ -193,9 +193,12 @@ function sandboxFrame(scripts: string[]): MermaidFrame {
   return { window: inner, loaded, remove: () => el.remove() };
 }
 
+const IDLE_FRAME_MS = 60_000;
+const APART_CACHE_KEY = "agentes.mermaidApart";
 let makeFrame = sandboxFrame;
 let timeLimit = 10_000;
 let frame: { host: MermaidFrame; ready: Promise<void>; markReady: () => void } | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | undefined;
 const waiting = new Map<string, { resolve: (svg: string) => void; reject: (error: Error) => void }>();
 let apart: Promise<boolean> | undefined;
 
@@ -211,7 +214,19 @@ let apart: Promise<boolean> | undefined;
  * drawings behind a slow one wait it out.
  */
 export function mermaidRunsApart(): Promise<boolean> {
-  apart ??= new Promise((resolve) => {
+  if (apart) return apart;
+  if (makeFrame === sandboxFrame) {
+    try {
+      const cached = sessionStorage.getItem(APART_CACHE_KEY);
+      if (cached === "1" || cached === "0") {
+        apart = Promise.resolve(cached === "1");
+        return apart;
+      }
+    } catch {
+      // Storage may be unavailable in restricted browsing contexts.
+    }
+  }
+  apart = new Promise((resolve) => {
     const ask = () => {
       const host = makeFrame([frameScript]);
       let busy: [number, number] | undefined;
@@ -221,6 +236,13 @@ export function mermaidRunsApart(): Promise<boolean> {
         clearTimeout(timer);
         clearTimeout(spell);
         host.remove();
+        if (makeFrame === sandboxFrame) {
+          try {
+            sessionStorage.setItem(APART_CACHE_KEY, value ? "1" : "0");
+          } catch {
+            // Storage may be unavailable in restricted browsing contexts.
+          }
+        }
         resolve(value);
       };
       const question = () => {
@@ -262,7 +284,17 @@ function onAnswer({ source, data }: MessageEvent) {
   else if (typeof data?.error === "string") asked?.reject(new Error(data.error));
 }
 
+function dropFrame() {
+  clearTimeout(idleTimer);
+  idleTimer = undefined;
+  frame?.host.remove();
+  if (typeof window !== "undefined") window.removeEventListener("message", onAnswer);
+  frame = null;
+}
+
 function currentFrame() {
+  clearTimeout(idleTimer);
+  idleTimer = undefined;
   if (!frame) {
     window.addEventListener("message", onAnswer);
     let markReady = () => {};
@@ -288,10 +320,7 @@ export async function drawWithMermaid(id: string, source: string, dark: boolean,
     return await new Promise<string>((resolve, reject) => {
       waiting.set(id, { resolve, reject });
       timer = setTimeout(() => {
-        if (frame === used) {
-          used.host.remove();
-          frame = null;
-        }
+        if (frame === used) dropFrame();
         apart = Promise.resolve(false);
         reject(new Error("Mermaid didn't finish drawing"));
       }, timeout);
@@ -300,6 +329,12 @@ export async function drawWithMermaid(id: string, source: string, dark: boolean,
   } finally {
     clearTimeout(timer);
     waiting.delete(id);
+    if (waiting.size === 0 && frame) {
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        if (waiting.size === 0 && frame) dropFrame();
+      }, IDLE_FRAME_MS);
+    }
   }
 }
 
@@ -308,8 +343,7 @@ export async function drawWithMermaid(id: string, source: string, dark: boolean,
  * null for real ones, and how long a drawing may take.
  */
 export function setMermaidFrame(next: ((scripts: string[]) => MermaidFrame) | null, limit = 10_000) {
-  frame?.host.remove();
-  frame = null;
+  dropFrame();
   apart = undefined;
   makeFrame = next ?? sandboxFrame;
   timeLimit = limit;

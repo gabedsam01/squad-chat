@@ -1290,7 +1290,7 @@ async function markOpenedByReply(db: Database, reply: Message, userId: string): 
  */
 async function resendView(deps: { db: Database; pubsub: PubSub }, orgId: string, message: Message) {
   const [view] = (await withWikiLinks(deps.db, orgId, [messageView(message)])) as [MessageView];
-  await publishMessageCreated(deps.pubsub, view);
+  await publishMessageCreated(deps.pubsub, view, orgId);
   return view;
 }
 
@@ -1428,7 +1428,7 @@ export async function postPersonMessage(
   if (duplicate) return resendView(deps, orgId, message);
   const [view] = (await withWikiLinks(deps.db, orgId, [messageView(message)])) as [MessageView];
   // Right after the commit, before any routing: the sender's optimistic copy reconciles by `clientId`.
-  await publishMessageCreated(deps.pubsub, view);
+  await publishMessageCreated(deps.pubsub, view, orgId);
   // One decision per message: the named agents' when there are several, else the mention of everyone's.
   const decision = addressees ?? (message.meta.mentionsEveryone === true ? everyone : null);
   if (decision) await recordAddressees(deps.db, message, decision);

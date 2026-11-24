@@ -750,7 +750,7 @@ export async function publishTyping(
   );
 }
 
-export async function publishMessageCreated(pubsub: PubSub, message: MessageView) {
+export async function publishMessageCreated(pubsub: PubSub, message: MessageView, orgId?: string) {
   const inline = Buffer.byteLength(JSON.stringify(message)) <= INLINE_LIMIT;
   const authorUserId = message.author.type === "person" ? message.author.id : null;
   await publishChannelEvent(pubsub, {
@@ -762,6 +762,7 @@ export async function publishMessageCreated(pubsub: PubSub, message: MessageView
   try {
     await pubsub.publish(chatActivityTopic, {
       type: "channel.activity",
+      ...(orgId ? { orgId } : {}),
       channelId: message.channelId,
       threadId: message.threadId,
       authorUserId,

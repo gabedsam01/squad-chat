@@ -1,6 +1,5 @@
 import { type LocaleState, useLocaleSync } from "@agenteschat/client/lib/locale-sync";
 import { resources } from "@agenteschat/i18n";
-import { loadStrings } from "@agenteschat/i18n/load";
 import {
   type AppLocale,
   appLocale,
@@ -14,6 +13,7 @@ import i18n, { type i18n as I18n, type InitOptions } from "i18next";
 import { useEffect, useState } from "react";
 import { initReactI18next, useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
+import { loadCoreStrings, loadRestStrings } from "./split";
 
 export type LocaleCode = AppLocale;
 export { DEFAULT_LOCALE };
@@ -89,12 +89,35 @@ export function savedLocale(
 
 const retryOnce = <T>(load: () => Promise<T>) => load().catch(() => load());
 
+const restLoaded = new WeakMap<I18n, Set<LocaleCode>>();
+const restSetFor = (instance: I18n) => {
+  let set = restLoaded.get(instance);
+  if (!set) {
+    set = new Set();
+    restLoaded.set(instance, set);
+  }
+  return set;
+};
+
 /** Downloads `code` into the instance without switching to it (a page shown in another language). */
-export function loadLocale(code: LocaleCode, instance: I18n = i18n): Promise<void> {
-  if (instance.hasResourceBundle(code, "translation")) return Promise.resolve();
-  return retryOnce(loadStrings[code]).then((strings) => {
-    instance.addResourceBundle(code, "translation", strings);
-  });
+export async function loadLocale(code: LocaleCode, instance: I18n = i18n): Promise<void> {
+  const restLoader = loadRestStrings?.[code];
+  if (instance.hasResourceBundle(code, "translation")) {
+    if (!restLoader || restSetFor(instance).has(code)) return;
+    const rest = await retryOnce(restLoader);
+    instance.addResourceBundle(code, "translation", rest, true, true);
+    restSetFor(instance).add(code);
+    return;
+  }
+  const [core, rest] = await Promise.all([
+    retryOnce(loadCoreStrings[code]),
+    restLoader ? retryOnce(restLoader) : Promise.resolve(null),
+  ]);
+  instance.addResourceBundle(code, "translation", core, true, true);
+  if (rest) {
+    instance.addResourceBundle(code, "translation", rest, true, true);
+    restSetFor(instance).add(code);
+  }
 }
 
 /** `t` in `lang` for a page shown in another language than the app's: the app's until `lang` has downloaded. */
@@ -164,6 +187,7 @@ const options = (lng: LocaleCode): InitOptions => ({
   interpolation: { escapeValue: false, defaultVariables: { device: "Mac" } },
   initAsync: false,
   returnNull: false,
+  react: { bindI18nStore: "added" },
 });
 
 /**
@@ -172,12 +196,29 @@ const options = (lng: LocaleCode): InitOptions => ({
  */
 export async function loadI18n(lng: LocaleCode): Promise<I18n> {
   const codes = [...new Set<LocaleCode>(localeInfo(lng).ready ? [lng] : [lng, DEFAULT_LOCALE])];
-  const strings = await Promise.all(codes.map((code) => retryOnce(loadStrings[code])));
+  const strings = await Promise.all(codes.map((code) => retryOnce(loadCoreStrings[code])));
   const instance = i18n.createInstance();
   void instance.use(initReactI18next).init({
     ...options(lng),
     resources: Object.fromEntries(codes.map((code, i) => [code, { translation: strings[i] ?? {} }])),
   });
+  if (loadRestStrings) {
+    const restLoaders = loadRestStrings;
+    const schedule =
+      typeof requestIdleCallback === "function"
+        ? (fn: () => void) => requestIdleCallback(fn)
+        : (fn: () => void) => setTimeout(fn, 1);
+    schedule(() => {
+      for (const code of codes) {
+        void retryOnce(restLoaders[code])
+          .then((rest) => {
+            instance.addResourceBundle(code, "translation", rest, true, true);
+            restSetFor(instance).add(code);
+          })
+          .catch(() => {});
+      }
+    });
+  }
   return instance;
 }
 

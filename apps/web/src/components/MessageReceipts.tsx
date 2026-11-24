@@ -120,50 +120,58 @@ function SteerMark({ steer, size }: { steer: SteerState; size?: 14 }) {
   return <Icon name={steer.state === "now" ? "bolt" : steer.state === "delivered" ? "check" : "waiting"} size={size} />;
 }
 
-/**
- * A person's message's receipt (and an agent's that mentions agents: whom it handed work to, and "Só mencionado"
- * with "Chamar um agente" for one it only mentioned, ADR 0089): a small muted mark at the end of its first line, or of
- * the time's line under my own turn (`part="check"`), never a line of its own, so it never changes the message's
- * height or the room before the next one. Clicking or focusing it opens a popover with each agent and its status, and
- * the rule that picked them. The mark is the clock, one tick or two (`receiptTicks`). While the author's own plan
- * picks, and when no agent will answer or every one it was for passed (an agent's reaction counts as acting), "Chamar
- * um agente" is in its popover: never a line in the timeline, which read as wrong beside an agent's reaction. A
- * message sent into a task at work wears what became of it there instead of the check ("Ada leu" is the double check,
- * said in its description), the words said to screen readers as they change. Words only for what you can act on (a
- * failure, no AI connected) or what nobody can (the AI provider is down, it retries by itself; the plan or budget has to renew): then the whole
- * receipt is a line under the message (`part="line"`), so the text still follows the name.
- */
-export function MessageReceipts({ message, part }: { message: Message; part: "check" | "line" }) {
+type SteerDisplay = { steer: SteerState; name: string; text: string };
+
+function isWordedStatus(status: ReceiptView["status"], hasActions: boolean, isPerson: boolean) {
+  return (
+    status?.kind === "outage" ||
+    status?.kind === "queued" ||
+    status?.kind === "away" ||
+    status?.kind === "plan" ||
+    status?.kind === "budget" ||
+    status?.kind === "no_ai" ||
+    status?.kind === "platform_cap" ||
+    (status?.kind === "failed" && hasActions && isPerson)
+  );
+}
+
+function receiptStatusText(
+  t: ReturnType<typeof useTranslation>["t"],
+  status: ReceiptView["status"],
+  held: boolean,
+  names: (ids: string[]) => string,
+) {
+  if (status === null) return "";
+  if (status.kind === "nobody") return t(status.mentionNeeded === true ? "receipts.mentionNeeded" : "receipts.nobody");
+  if (status.kind === "no_ai") return held ? t("noAi.kept.receipt") : t("noAi.receipt");
+  if (status.kind === "platform_cap") return t("receipts.platformCap");
+  return t(`receipts.${status.kind}`, { count: status.agents.length, names: names(status.agents) });
+}
+
+function ReceiptCheck({
+  message,
+  receipt,
+  view,
+  held,
+  steered,
+  steerId,
+}: {
+  message: Message;
+  receipt: MessageReceipt | undefined;
+  view: ReceiptView;
+  held: boolean;
+  steered: SteerDisplay | null;
+  steerId?: string;
+}) {
   const { t, i18n } = useTranslation();
-  const { org, me } = useOrg();
+  const { org } = useOrg();
   const dir = useDirectory(org.id);
   const actions = useChannelActions();
-  const api = useApi();
-  const toast = useToast();
-  const connect = useConnectAi();
-  const held = usePlanHold() !== null;
-  const steerId = useId();
-  const [retrying, setRetrying] = useState(false);
-  const receipt = useLive((s) => s.receipts[message.id]);
   // The pills' list (live through `message.reactions`), else the message's: an agent's reaction is its answer.
   const reactions = useReactions(org.id, message.id, false).data ?? message.reactions;
-  const steer = useSteerState(org.id, message.channelId, part === "check" ? message.id : "");
-  // Waiting for the agent's next pause: no mark at all. It was sent, and a spinner or a clock beside its time reads as
-  // a message that never arrived; the agent's row says when it reads it.
-  const waits = steer?.state === "waiting";
-  const steerName = steer ? dir.agentById.get(steer.agentId)?.name : undefined;
-  const steered =
-    steer && steerName
-      ? { steer, name: steerName, text: t(`run.steer.${steerWords(steer, receipt)}`, { name: steerName }) }
-      : null;
-  const view = receiptView(receipt);
   const status = view.status;
-  const aiStatus = useAiStatus(org.id, status?.kind === "no_ai").data;
-  // One agent failed: while its failed row is in the conversation the row says why; once it's closed (its ×, a
-  // reload), this line does.
-  const failedAgent = status?.kind === "failed" && status.agents.length === 1 ? status.agents[0] : undefined;
-  const failedRun = failedAgent ? receipt?.runOf?.[failedAgent] : undefined;
-  const rowSaysWhy = useLive((s) => (failedRun ? s.streams.runs[failedRun]?.status === "failed" : false));
+  const name = (id: string) => dir.agentById.get(id)?.name ?? t("channel.unknownAgent");
+  const names = (ids: string[]) => joinNames(ids.map(name), t);
   const callAgent =
     actions && actions.channelAgents.length > 0 ? (
       <ReceiptAction>
@@ -172,60 +180,8 @@ export function MessageReceipts({ message, part }: { message: Message; part: "ch
     ) : null;
   // Nobody will answer, or every agent it was for ended without answering: a person can call one.
   const nobody = status?.kind === "nobody" || status?.kind === "passed";
-  // "Tentar de novo" answers my message again: never an agent's.
-  const worded =
-    status?.kind === "outage" ||
-    status?.kind === "queued" ||
-    status?.kind === "away" ||
-    status?.kind === "plan" ||
-    status?.kind === "budget" ||
-    status?.kind === "no_ai" ||
-    status?.kind === "platform_cap" ||
-    (status?.kind === "failed" && actions !== null && message.author.type === "person");
-  // An agent's message that called several: one strip says where each stands once they start (`fanShows`).
-  const fanned = part === "line" && message.author.type === "agent" && message.mentionedAgentIds.length > 1;
-  const name = (id: string) => dir.agentById.get(id)?.name ?? t("channel.unknownAgent");
-  // A mention of everyone one agent answered for all: one quiet line under it, never one reply each.
-  const everyone = part === "line" ? everyoneLineOf(t, message.meta, view, { agent: name }) : null;
-  const everyoneRow = everyone && (
-    <div className="ac-receipt ac-receipt--everyone">
-      <AvatarStack aria-hidden="true">
-        {everyone.faces.slice(0, 5).map((id) => (
-          <AgentAvatar key={id} agentId={id} size="xs" name={name(id)} />
-        ))}
-      </AvatarStack>
-      <span className="ac-receipt__words">
-        <HintLine name={t("common.about", { label: t("receipts.everyone.who") })} hint={everyone.hint}>
-          {everyone.text}
-        </HintLine>
-      </span>
-    </div>
-  );
-  // The mark stays where a line says the rest (a failure, no AI): what became of it in the task is its own news.
-  if (part === "line" ? !worded && !fanned : waits || (worded && !steered)) return everyoneRow || null;
-  const marked = view.seen.length > 0 || view.picking === true || steered !== null;
-  if (!marked && status?.kind !== "no_ai" && status?.kind !== "platform_cap") return everyoneRow || null;
-
-  const names = (ids: string[]) => joinNames(ids.map(name), t);
-  const failure = failedAgent && !rowSaysWhy ? receipt?.failures?.[failedAgent] : undefined;
-  const failedWhy = failedAgent && failure ? runFailureLine(t, name(failedAgent), failure, i18n.language) : null;
-  const only = status?.kind === "no_ai" && status.agents.length === 1 ? status.agents[0] : undefined;
-  const mayConnect = mayConnectAi(only ? dir.agentById.get(only) : null, me.user.id, org);
-  // Every plan here serves only someone else: the agent's card has the way out, so the line only says whose.
-  const notYours = plansNotYoursOf(aiStatus, only);
   const mentionNeeded = status?.kind === "nobody" && status.mentionNeeded === true;
-  const statusText =
-    status === null
-      ? ""
-      : status.kind === "nobody"
-        ? t(mentionNeeded ? "receipts.mentionNeeded" : "receipts.nobody")
-        : status.kind === "no_ai"
-          ? held
-            ? t("noAi.kept.receipt")
-            : t("noAi.receipt")
-          : status.kind === "platform_cap"
-            ? t("receipts.platformCap")
-            : t(`receipts.${status.kind}`, { count: status.agents.length, names: names(status.agents) });
+  const statusText = receiptStatusText(t, status, held, names);
   const label = [
     view.picking && t("receipts.picking"),
     view.seen.length > 0 && t("receipts.seenBy", { names: names(view.seen) }),
@@ -245,8 +201,7 @@ export function MessageReceipts({ message, part }: { message: Message; part: "ch
       : t(`receipts.status.${phase}`);
   };
   const by = deciderOf(t, view, { agent: name });
-
-  const check = marked && (
+  return (
     <Popover
       label={t("receipts.popoverTitle")}
       trigger={
@@ -320,22 +275,128 @@ export function MessageReceipts({ message, part }: { message: Message; part: "ch
       <div className="receipt-sent">{sentAtLine(t, i18n.language, message.createdAt)}</div>
     </Popover>
   );
+}
 
-  if (part === "check") {
-    return (
-      <div className="ac-receipt">
-        {check}
-        {steered && (
-          <span id={steerId} className="ac-visually-hidden" aria-live="polite">
-            {steered.text}
-          </span>
+function FailedReceiptWords({
+  message,
+  receipt,
+  failedAgent,
+}: {
+  message: Message;
+  receipt: MessageReceipt | undefined;
+  failedAgent: string | undefined;
+}) {
+  const { t, i18n } = useTranslation();
+  const { org, me } = useOrg();
+  const dir = useDirectory(org.id);
+  const actions = useChannelActions();
+  const api = useApi();
+  const toast = useToast();
+  const [retrying, setRetrying] = useState(false);
+  // One agent failed: while its failed row is in the conversation the row says why; once it's closed (its ×, a
+  // reload), this line does.
+  const failedRun = failedAgent ? receipt?.runOf?.[failedAgent] : undefined;
+  const rowSaysWhy = useLive((s) => (failedRun ? s.streams.runs[failedRun]?.status === "failed" : false));
+  if (!actions) return null;
+  const failure = failedAgent && !rowSaysWhy ? receipt?.failures?.[failedAgent] : undefined;
+  const failedWhy =
+    failedAgent && failure
+      ? runFailureLine(t, dir.agentById.get(failedAgent)?.name ?? t("channel.unknownAgent"), failure, i18n.language)
+      : null;
+  return (
+    <span className="ac-receipt__words">
+      <span>{failedWhy ?? t("receipts.failedShort")}</span>
+      {/* Only who asked: anyone else's click would be refused (`run.answer_forbidden`). */}
+      {message.author.id === me.user.id && (
+        <ReceiptAction>
+          <button
+            type="button"
+            className="ac-receipt__action"
+            disabled={retrying}
+            aria-busy={retrying || undefined}
+            onClick={() => {
+              setRetrying(true);
+              void retryAnswer(api, org.id, message, () => actions.resend(message.body))
+                .catch((error) => toast.show(errorText(t, error), "error"))
+                .finally(() => setRetrying(false));
+            }}
+          >
+            {retrying && <PixelSpinner size={14} />}
+            {t(retrying ? "receipts.retrying" : "receipts.retry")}
+          </button>
+        </ReceiptAction>
+      )}
+    </span>
+  );
+}
+
+function NoAiReceiptWords({
+  message,
+  receipt,
+  agents,
+}: {
+  message: Message;
+  receipt: MessageReceipt | undefined;
+  agents: string[];
+}) {
+  const { t } = useTranslation();
+  const { org, me } = useOrg();
+  const dir = useDirectory(org.id);
+  const connect = useConnectAi();
+  const aiStatus = useAiStatus(org.id).data;
+  const only = agents.length === 1 ? agents[0] : undefined;
+  const mayConnect = mayConnectAi(only ? dir.agentById.get(only) : null, me.user.id, org);
+  // Every plan here serves only someone else: the agent's card has the way out, so the line only says whose.
+  const notYours = plansNotYoursOf(aiStatus, only);
+  return (
+    <KeptAnswer message={message} kept={receipt?.server?.kept === true}>
+      <span className="ac-receipt__words">
+        <span>{notYours ? t("noAi.notYours.receipt", notYours) : t("noAi.receipt")}</span>
+        {connect && mayConnect && !notYours && (
+          <ReceiptAction>
+            <button
+              type="button"
+              className="ac-receipt__action"
+              onClick={() =>
+                connect.open({
+                  intent: receipt?.noAi?.intent,
+                  provider: receipt?.noAi?.provider,
+                  agentId: only,
+                  from: message.id,
+                })
+              }
+            >
+              {t("noAi.action")}
+            </button>
+          </ReceiptAction>
         )}
-      </div>
-    );
-  }
-  const words = (
+      </span>
+    </KeptAnswer>
+  );
+}
+
+function ReceiptLineWords({
+  message,
+  receipt,
+  view,
+  marked,
+}: {
+  message: Message;
+  receipt: MessageReceipt | undefined;
+  view: ReceiptView;
+  marked: boolean;
+}) {
+  const { t } = useTranslation();
+  const { org } = useOrg();
+  const dir = useDirectory(org.id);
+  const held = usePlanHold() !== null;
+  const status = view.status;
+  const name = (id: string) => dir.agentById.get(id)?.name ?? t("channel.unknownAgent");
+  const statusText = receiptStatusText(t, status, held, (ids) => joinNames(ids.map(name), t));
+  const failedAgent = status?.kind === "failed" && status.agents.length === 1 ? status.agents[0] : undefined;
+  return (
     <div className="ac-receipt">
-      {check}
+      {marked && <ReceiptCheck message={message} receipt={receipt} view={view} held={held} steered={null} />}
       {(status?.kind === "outage" ||
         status?.kind === "away" ||
         status?.kind === "queued" ||
@@ -345,30 +406,8 @@ export function MessageReceipts({ message, part }: { message: Message; part: "ch
           <span>{statusText}</span>
         </span>
       )}
-      {status?.kind === "failed" && actions && (
-        <span className="ac-receipt__words">
-          <span>{failedWhy ?? t("receipts.failedShort")}</span>
-          {/* Only who asked: anyone else's click would be refused (`run.answer_forbidden`). */}
-          {message.author.id === me.user.id && (
-            <ReceiptAction>
-              <button
-                type="button"
-                className="ac-receipt__action"
-                disabled={retrying}
-                aria-busy={retrying || undefined}
-                onClick={() => {
-                  setRetrying(true);
-                  void retryAnswer(api, org.id, message, () => actions.resend(message.body))
-                    .catch((error) => toast.show(errorText(t, error), "error"))
-                    .finally(() => setRetrying(false));
-                }}
-              >
-                {retrying && <PixelSpinner size={14} />}
-                {t(retrying ? "receipts.retrying" : "receipts.retry")}
-              </button>
-            </ReceiptAction>
-          )}
-        </span>
+      {status?.kind === "failed" && (
+        <FailedReceiptWords message={message} receipt={receipt} failedAgent={failedAgent} />
       )}
       {status?.kind === "platform_cap" && (
         <span className="ac-receipt__words">
@@ -383,32 +422,82 @@ export function MessageReceipts({ message, part }: { message: Message; part: "ch
         </span>
       )}
       {status?.kind === "no_ai" && !held && (
-        <KeptAnswer message={message} kept={receipt?.server?.kept === true}>
-          <span className="ac-receipt__words">
-            <span>{notYours ? t("noAi.notYours.receipt", notYours) : t("noAi.receipt")}</span>
-            {connect && mayConnect && !notYours && (
-              <ReceiptAction>
-                <button
-                  type="button"
-                  className="ac-receipt__action"
-                  onClick={() =>
-                    connect.open({
-                      intent: receipt?.noAi?.intent,
-                      provider: receipt?.noAi?.provider,
-                      agentId: status.agents.length === 1 ? status.agents[0] : undefined,
-                      from: message.id,
-                    })
-                  }
-                >
-                  {t("noAi.action")}
-                </button>
-              </ReceiptAction>
-            )}
-          </span>
-        </KeptAnswer>
+        <NoAiReceiptWords message={message} receipt={receipt} agents={status.agents} />
       )}
     </div>
   );
+}
+
+function MessageReceiptsCheck({ message }: { message: Message }) {
+  const { t } = useTranslation();
+  const { org } = useOrg();
+  const dir = useDirectory(org.id);
+  const actions = useChannelActions();
+  const held = usePlanHold() !== null;
+  const steerId = useId();
+  const receipt = useLive((s) => s.receipts[message.id]);
+  const steer = useSteerState(org.id, message.channelId, message.id);
+  // Waiting for the agent's next pause: no mark at all. It was sent, and a spinner or a clock beside its time reads as
+  // a message that never arrived; the agent's row says when it reads it.
+  const waits = steer?.state === "waiting";
+  const steerName = steer ? dir.agentById.get(steer.agentId)?.name : undefined;
+  const steered =
+    steer && steerName
+      ? { steer, name: steerName, text: t(`run.steer.${steerWords(steer, receipt)}`, { name: steerName }) }
+      : null;
+  const view = receiptView(receipt);
+  const status = view.status;
+  const worded = isWordedStatus(status, actions !== null, message.author.type === "person");
+  // The mark stays where a line says the rest (a failure, no AI): what became of it in the task is its own news.
+  if (waits || (worded && !steered)) return null;
+  const marked = view.seen.length > 0 || view.picking === true || steered !== null;
+  if (!marked && status?.kind !== "no_ai" && status?.kind !== "platform_cap") return null;
+  return (
+    <div className="ac-receipt">
+      {marked && (
+        <ReceiptCheck message={message} receipt={receipt} view={view} held={held} steered={steered} steerId={steerId} />
+      )}
+      {steered && (
+        <span id={steerId} className="ac-visually-hidden" aria-live="polite">
+          {steered.text}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function MessageReceiptsLine({ message }: { message: Message }) {
+  const { t } = useTranslation();
+  const { org } = useOrg();
+  const dir = useDirectory(org.id);
+  const actions = useChannelActions();
+  const receipt = useLive((s) => s.receipts[message.id]);
+  const view = receiptView(receipt);
+  const status = view.status;
+  const worded = isWordedStatus(status, actions !== null, message.author.type === "person");
+  // An agent's message that called several: one strip says where each stands once they start (`fanShows`).
+  const fanned = message.author.type === "agent" && message.mentionedAgentIds.length > 1;
+  const name = (id: string) => dir.agentById.get(id)?.name ?? t("channel.unknownAgent");
+  // A mention of everyone one agent answered for all: one quiet line under it, never one reply each.
+  const everyone = everyoneLineOf(t, message.meta, view, { agent: name });
+  const everyoneRow = everyone && (
+    <div className="ac-receipt ac-receipt--everyone">
+      <AvatarStack aria-hidden="true">
+        {everyone.faces.slice(0, 5).map((id) => (
+          <AgentAvatar key={id} agentId={id} size="xs" name={name(id)} />
+        ))}
+      </AvatarStack>
+      <span className="ac-receipt__words">
+        <HintLine name={t("common.about", { label: t("receipts.everyone.who") })} hint={everyone.hint}>
+          {everyone.text}
+        </HintLine>
+      </span>
+    </div>
+  );
+  if (!worded && !fanned) return everyoneRow || null;
+  const marked = view.seen.length > 0 || view.picking === true;
+  if (!marked && status?.kind !== "no_ai" && status?.kind !== "platform_cap") return everyoneRow || null;
+  const words = worded ? <ReceiptLineWords message={message} receipt={receipt} view={view} marked={marked} /> : null;
   if (!fanned)
     return everyoneRow ? (
       <>
@@ -419,7 +508,24 @@ export function MessageReceipts({ message, part }: { message: Message; part: "ch
       words
     );
   // The strip says where each agent stands; without it (fewer than two started, all done), the receipt as usual.
-  return <FanOutStrip message={message} otherwise={worded ? words : null} />;
+  return <FanOutStrip message={message} otherwise={words} />;
+}
+
+/**
+ * A person's message's receipt (and an agent's that mentions agents: whom it handed work to, and "Só mencionado"
+ * with "Chamar um agente" for one it only mentioned, ADR 0089): a small muted mark at the end of its first line, or of
+ * the time's line under my own turn (`part="check"`), never a line of its own, so it never changes the message's
+ * height or the room before the next one. Clicking or focusing it opens a popover with each agent and its status, and
+ * the rule that picked them. The mark is the clock, one tick or two (`receiptTicks`). While the author's own plan
+ * picks, and when no agent will answer or every one it was for passed (an agent's reaction counts as acting), "Chamar
+ * um agente" is in its popover: never a line in the timeline, which read as wrong beside an agent's reaction. A
+ * message sent into a task at work wears what became of it there instead of the check ("Ada leu" is the double check,
+ * said in its description), the words said to screen readers as they change. Words only for what you can act on (a
+ * failure, no AI connected) or what nobody can (the AI provider is down, it retries by itself; the plan or budget has to renew): then the whole
+ * receipt is a line under the message (`part="line"`), so the text still follows the name.
+ */
+export function MessageReceipts({ message, part }: { message: Message; part: "check" | "line" }) {
+  return part === "check" ? <MessageReceiptsCheck message={message} /> : <MessageReceiptsLine message={message} />;
 }
 
 /**
