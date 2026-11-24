@@ -121,6 +121,7 @@ import {
   notifyOwnerOnBudget,
   OpencodeBrain,
   officeLiveExporter,
+  PRE_TURN_SYNC_COOLDOWN_MS,
   platformCapJudge,
   prepareAgentCode,
   publishUserEvent,
@@ -760,6 +761,7 @@ export function buildEngine(o: EngineOptions) {
       turn,
       {
         signal,
+        cooldownMs: PRE_TURN_SYNC_COOLDOWN_MS,
       },
     );
   };

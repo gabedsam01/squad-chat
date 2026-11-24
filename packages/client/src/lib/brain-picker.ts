@@ -32,6 +32,7 @@ import {
   brainModelChoices,
   type CodingPlan,
   familyOfModel,
+  isPlanId,
   levelOfModel,
   modelDisplays,
   modelLimitOf,
@@ -644,7 +645,8 @@ export function modelPickerTiles(
         name: planLabel(t, choice),
         kind: kindOf(choice),
         accounts: sorted,
-        current: sorted.some(inUse) && view.brain === kindOf(choice),
+        current:
+          sorted.some(inUse) && (view.brain === kindOf(choice) || (isPlanId(choice) && view.brain === "claude_code")),
       },
     ];
   });

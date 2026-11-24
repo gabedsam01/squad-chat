@@ -156,8 +156,11 @@ function readSetup(input: AgentSetupInput): Setup {
 
 /** Whether a model runs on an account: a coding plan runs its own models (and its aliases), Claude's sign-in Claude's. */
 function modelFits(kind: BrainKind, model: string | null, plan: CodingPlan | undefined) {
-  if (kind !== "claude_code" || model === null || isAutoModel(model)) return true;
-  if (plan) return plan.claudeCode.models.some((m) => m.id === model || m.alias === model);
+  if ((kind !== "claude_code" && !(kind === "opencode" && plan)) || model === null || isAutoModel(model)) return true;
+  if (plan) {
+    const bare = model.includes("/") ? model.slice(model.indexOf("/") + 1) : model;
+    return plan.claudeCode.models.some((m) => m.id === bare || m.alias === bare);
+  }
   return CLAUDE_CODE_MODELS.some((o) => o.value === model) || model.startsWith("claude-");
 }
 
@@ -425,7 +428,7 @@ function planFor(
     takes.status === "skipped" && (takes.reason === "account_owner" || takes.reason === "account_single");
   if (accountOnly && brainOf(t.brain) === kind) {
     const own = t.brainAccountId ? c.ownById.get(t.brainAccountId) : undefined;
-    const ownPlan = kind === "claude_code" ? planOf(own?.provider) : undefined;
+    const ownPlan = kind === "claude_code" || kind === "opencode" ? planOf(own?.provider) : undefined;
     if (!modelFits(kind, how.model, ownPlan)) {
       return skip("model_missing", {
         plan: ownPlan?.label ?? defaultAccountLabel(kind),

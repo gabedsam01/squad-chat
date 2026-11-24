@@ -204,7 +204,8 @@ export const brainMissingHint = (t: TFunction, option: Pick<BrainOption, "missin
  * plan's model: `sonnet`'s); on Claude, another plan's model as Sonnet; `auto` and Codex's as stored.
  */
 export function brainModelChoice(kind: string, plan: CodingPlan | undefined, value: string): string {
-  if (kind !== "claude_code" || isAuto(value)) return value;
+  if ((kind !== "claude_code" && kind !== "opencode") || isAuto(value)) return value;
+  if (kind === "opencode" && !plan) return value;
   return plan ? planModelValue(planModel(plan, value)) : claudeCodeModel(undefined, value);
 }
 

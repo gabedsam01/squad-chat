@@ -3,7 +3,9 @@ import {
   ANTIGRAVITY_PROTOCOL,
   BRAIN_PROFILES_PROTOCOL,
   BRAIN_PROTOCOL,
+  BRAIN_WARM_PROTOCOL,
   type BrainTurnRequest,
+  type BrainWarmRequest,
   brainTopic,
   CODEX_FOLDER_PROTOCOL,
   CODEX_WINDOWS_PROTOCOL,
@@ -126,6 +128,12 @@ export interface ComputerBrainLink {
     target: { runId: string; session: string; agent: AgentScope },
     messages: SteerMessage[],
   ): Promise<SteerReply>;
+  /** Protocol 74: starts the session's app-server ahead of the turn (`brain.warm`). */
+  warm?(
+    machineId: string,
+    request: BrainWarmRequest & { agent?: AgentScope },
+    options?: { timeoutMs?: number },
+  ): Promise<void>;
 }
 
 export interface CodexBrainDeps {
@@ -180,6 +188,8 @@ interface CliBrainSpec {
   protocol: number;
   /** The runner protocol it needs on Windows, where an older runner refuses its turns. */
   windowsProtocol?: number;
+  /** Supports `brain.warm` pre-spawning before the turn. */
+  warmable?: boolean;
   /** The CLI is installed (`hello.executors`) and new enough; else why not. */
   check(executors: {
     codex?: { version: string };
@@ -195,6 +205,7 @@ const CODEX_CLI: CliBrainSpec = {
   name: "Codex",
   protocol: BRAIN_PROTOCOL,
   windowsProtocol: CODEX_WINDOWS_PROTOCOL,
+  warmable: true,
   check({ codex }) {
     if (!codex) {
       return {
@@ -228,6 +239,7 @@ const OPENCODE_CLI: CliBrainSpec = {
   name: "OpenCode",
   protocol: OPENCODE_PROTOCOL,
   windowsProtocol: OPENCODE_ACP_PROTOCOL,
+  warmable: true,
   check: ({ opencode }) =>
     opencode
       ? null
@@ -258,6 +270,7 @@ const ANTIGRAVITY_CLI: CliBrainSpec = {
   kind: "antigravity",
   name: "Antigravity CLI",
   protocol: ANTIGRAVITY_PROTOCOL,
+  warmable: true,
   check: ({ antigravity }) =>
     antigravity
       ? null
@@ -291,6 +304,40 @@ export class CodexBrain implements Brain {
     private readonly cli: CliBrainSpec = CODEX_CLI,
   ) {
     this.kind = cli.kind;
+  }
+
+  async warm(turn: BrainTurn): Promise<void> {
+    const session = turn.session;
+    if (!this.cli.warmable || !session || this.deps.keepAlive === false || !this.deps.link.warm) return;
+    const status = await this.deps.link.status(session.machineId).catch(() => null);
+    if (!status?.online || status.paused || (status.protocol ?? 0) < BRAIN_WARM_PROTOCOL) return;
+    if (!brainRunsOn(this.kind, status.os)) return;
+    const windowsProtocol = this.cli.windowsProtocol;
+    if (status.os === "windows" && windowsProtocol !== undefined && (status.protocol ?? 0) < windowsProtocol) return;
+    if (this.cli.check(status.executors) || accountUnavailable(status, turn.account, this.kind)) return;
+    const freeTier = this.kind === "opencode" && !turn.account && status.pairedByUserId === null;
+    try {
+      const [agent, asked] = await Promise.all([this.deps.agent?.(turn), this.deps.permissions?.(turn)]);
+      const permissions = askingPermissions(asked, false);
+      if (permissions?.mode === "chat") return;
+      await this.deps.link.warm(
+        session.machineId,
+        {
+          kind: this.kind,
+          session: { id: session.id, resume: session.resume },
+          cwd: session.cwd,
+          ...(turn.model ? { model: turn.model } : {}),
+          ...(permissions ? { permissions } : {}),
+          ...accountFields(status.protocol, turn),
+          ...contextFields(status.protocol, turn, this.kind),
+          ...(freeTier ? { freeTier: true } : {}),
+          ...(agent ? { agent } : {}),
+        },
+        { timeoutMs: 5_000 },
+      );
+    } catch {
+      // the turn starts its CLI itself
+    }
   }
 
   async *run(turn: BrainTurn, io: BrainIO): AsyncIterable<BrainEvent> {
@@ -417,7 +464,9 @@ export class CodexBrain implements Brain {
     const [mcp, agent, code] = await Promise.all([
       this.deps.mcp(turn),
       this.deps.agent?.(turn),
-      checkouts && !chat ? (turn.code ?? this.deps.prepare?.(turn, io.signal))?.catch(() => null) : null,
+      checkouts && !chat && !turn.skipCode
+        ? (turn.code ?? this.deps.prepare?.(turn, io.signal))?.catch(() => null)
+        : null,
     ]);
     // A kept-alive Codex lists our tools once, as its thread opens: the runner starts it again when a name is new.
     const toolNames = turn.tools.map((t) => t.name).sort();
@@ -472,7 +521,12 @@ export class CodexBrain implements Brain {
         if (event.type === "answer") text = "";
         if (event.type === "done") {
           ended = true;
-          yield { type: "done", text: event.text, session: { id: session.id } };
+          yield {
+            type: "done",
+            text: event.text,
+            session: { id: session.id },
+            ...(event.timings ? { timings: event.timings } : {}),
+          };
           continue;
         }
         if (event.type === "error") ended = true;
@@ -567,6 +621,13 @@ export function hubBrainLink(deps: {
   return {
     status: (machineId) => deps.hub.status(machineId).catch(() => null),
     steer: (machineId, target, messages) => steerOnMachine(deps.hub, { machineId, ...target }, messages),
+    async warm(machineId, request, options) {
+      await deps.hub.call<"brain.warm">(
+        machineId,
+        { op: "brain.warm", ...request },
+        { timeoutMs: options?.timeoutMs ?? 5_000 },
+      );
+    },
     async turn(machineId, request, options) {
       let streamEnded = false;
       let finalSeen = false;

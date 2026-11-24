@@ -2856,16 +2856,17 @@ export class BrainManager {
     live.idleTimer = null;
     try {
       const ms = this.opts.controlReplyMs ?? CONTROL_REPLY_MS;
-      const said =
-        model === live.model ? "ok" : await live.proc.control({ subtype: "set_model", model: model ?? null }, ms);
-      const appliedEffort =
-        said !== "ok" || effort === live.effort
-          ? said
-          : await live.proc.control({ subtype: "apply_flag_settings", settings: { effortLevel: effort ?? null } }, ms);
+      const [said, appliedEffort] = await Promise.all([
+        model === live.model ? "ok" : live.proc.control({ subtype: "set_model", model: model ?? null }, ms),
+        effort === live.effort
+          ? "ok"
+          : live.proc.control({ subtype: "apply_flag_settings", settings: { effortLevel: effort ?? null } }, ms),
+      ]);
+      const combined = said !== "ok" ? said : appliedEffort;
       // A CLI whose `--effort` outranks the flag layer still says success: only `get_settings` shows the effort in force.
       const saidEffort =
-        appliedEffort !== "ok" || effort === live.effort
-          ? appliedEffort
+        combined !== "ok" || effort === live.effort
+          ? combined
           : await live.proc.control({ subtype: "get_settings" }, ms, (r) =>
               isObj(r.applied) ? r.applied.effort === effort : false,
             );

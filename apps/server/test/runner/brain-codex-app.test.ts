@@ -181,7 +181,12 @@ test.skipIf(!posix)(
         maxContext: 17806,
         lastContext: 17806,
       },
-      { type: "done", text: "pong", session: { id: SESSION } },
+      expect.objectContaining({
+        type: "done",
+        text: "pong",
+        session: { id: SESSION },
+        timings: expect.objectContaining({ warm: false }),
+      }),
     ]);
     const [threadStart] = t.rpcs("thread/start");
     expect(threadStart).toMatchObject({
@@ -220,7 +225,7 @@ test.skipIf(!posix)(
     // Only the app-server says the turn's model requests and the biggest one.
     const steps = (e: (typeof execAll)[number]) =>
       e.type === "usage" ? { ...e, calls: 1, maxContext: 200, lastContext: 200 } : e;
-    expect(notDeltas(second.events)).toEqual(notDeltas(execAll.map(steps)));
+    expect(notDeltas(second.events)).toMatchObject(notDeltas(execAll.map(steps)));
     // Live text: the message that came whole, then the streamed one.
     expect(deltas(second.events)).toBe("I’ll check the folder now.\n\nDone: tests pass.");
     // One process, one thread; model and effort per turn.
@@ -372,7 +377,7 @@ test.skipIf(!posix)(
     const read = turn.events.findIndex((e) => e.type === "steer_read");
     expect(turn.events[read]).toEqual({ type: "steer_read", uuids: [U1] });
     expect(read).toBeLessThan(turn.events.findIndex((e) => e.type === "done"));
-    expect(turn.events.at(-1)).toEqual({
+    expect(turn.events.at(-1)).toMatchObject({
       type: "done",
       text: "Got it: [New message from Ada]: also say bye",
       session: { id: SESSION },
@@ -456,7 +461,12 @@ test.skipIf(!posix)(
       input: [{ type: "text", text: "Stop: ping me", text_elements: [] }],
     });
     expect(turn.events.filter((e) => e.type === "steer_read")).toEqual([{ type: "steer_read", uuids: [U1] }]);
-    expect(turn.events.at(-1)).toEqual({ type: "done", text: "pong", session: { id: SESSION } });
+    expect(turn.events.at(-1)).toMatchObject({
+      type: "done",
+      text: "pong",
+      session: { id: SESSION },
+      timings: { warm: expect.any(Boolean) },
+    });
     expect(turn.events.some((e) => e.type === "error")).toBe(false);
   },
   20_000,
@@ -955,4 +965,22 @@ test("two different messages that read alike are both sent", () => {
     expect(m.completed({ id, type: "agentMessage", text: "Feito." }).text).toBeUndefined();
   }
   expect(sent.join("")).toBe("Feito.\n\nFeito.");
+});
+
+test("the pool: keepAccount closes idle processes of other accounts only", () => {
+  const pool = new CodexAppServers({ runs: new Map() });
+  const mk = (account: string | null, busy = false) => ({
+    key: `a:${account}`,
+    id: `r:${account}`,
+    agentId: "a",
+    account,
+    busy,
+    idleTimer: null,
+    bridge: null,
+    client: { close: () => undefined },
+  });
+  const map = (pool as unknown as { live: Map<string, unknown> }).live;
+  for (const r of [mk("one"), mk("two"), mk("three", true), mk(null)]) map.set(r.key, r);
+  pool.keepAccount("one", []);
+  expect([...map.keys()].sort()).toEqual(["a:null", "a:one", "a:three"]);
 });

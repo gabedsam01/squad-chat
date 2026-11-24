@@ -10,7 +10,7 @@ import { contextSize } from "@agenteschat/client/lib/context-limits";
 import { keyRefusal } from "@agenteschat/client/lib/errors";
 import { namesText, rosterText } from "@agenteschat/client/lib/format";
 import { brainTool, cliCommandWayOut, installableCli } from "@agenteschat/client/lib/machines";
-import { type AiChoice, planMark } from "@agenteschat/client/lib/no-ai";
+import { type AiChoice, kindOf, planMark } from "@agenteschat/client/lib/no-ai";
 import { usageWhen } from "@agenteschat/client/lib/plan-usage";
 import { geminiPersonal, isPlanId, signInProviderOf } from "@agenteschat/client/lib/plans";
 import { AUTO, isAuto, modelOnKey } from "@agenteschat/client/lib/providers";
@@ -586,6 +586,7 @@ function BrainFlow({
             ? (switched?.row.choice ?? s.savedCard)
             : s.savedCard;
   const addAcc = adding?.also ?? adding?.again;
+  const addKind = adding?.also && isPlanId(adding.row.choice) ? kindOf(adding.row.choice) : addAcc?.kind;
   const title =
     screen === "switch"
       ? t("agentPage.work.brain.v2.switchTitle", g)
@@ -602,7 +603,7 @@ function BrainFlow({
                 : screen === "add"
                   ? adding?.again
                     ? t(isPlanId(adding.row.choice) ? "aiAccounts.page.newKey" : "agentPage.work.brain.signInAgain")
-                    : t(`agentPage.work.brain.add.title.${addAcc?.kind ?? "claude_code"}`)
+                    : t(`agentPage.work.brain.add.title.${addKind ?? "claude_code"}`)
                   : screen === "done"
                     ? t("agentPage.work.brain.v2.doneTitle")
                     : t("agentPage.work.brain.v2.title", g);
@@ -876,14 +877,17 @@ function BrainFlow({
           home();
           return;
         }
-        void switchTo({ ...adding.row, id: `account:${a.id}`, account: a, act: "use", current: false }, false);
+        void switchTo(
+          { ...adding.row, id: `account:${a.id}`, brain: a.kind, account: a, act: "use", current: false },
+          false,
+        );
       };
       return (
         <div className="arrival-main__steps">
           <AddAccount
             key={addAcc.id}
             machineId={view.computer.machineId}
-            kind={addAcc.kind}
+            kind={addKind ?? addAcc.kind}
             computer={s.computerName}
             again={adding.again?.id}
             fresh

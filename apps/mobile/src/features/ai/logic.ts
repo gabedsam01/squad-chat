@@ -106,7 +106,7 @@ export const pollsPlan = (gate: PlanGate, edition: Edition | null) =>
 
 /** The kind of account a plan brain thinks with; null on the API. */
 export const accountKindOf = (brain: BrainKind | undefined): MachineAccountKind | null =>
-  brain === "claude_code" || brain === "codex" ? brain : null;
+  brain && brain !== "model" ? brain : null;
 
 /**
  * The accounts the agent's page lists, as the web's picker: its owner's of that kind (a plan thinks only for its

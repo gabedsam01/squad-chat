@@ -6,7 +6,14 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import type { CommandProfile, CommandScope } from "@agenteschat/adapters/command-policy";
-import { type BrainSteerReply, type BrainSteerRequest, isBrainEffort } from "@agenteschat/adapters/machine-protocol";
+import {
+  type BrainColdCause,
+  type BrainSteerReply,
+  type BrainSteerRequest,
+  type BrainTurnTimings,
+  type BrainWarmReply,
+  isBrainEffort,
+} from "@agenteschat/adapters/machine-protocol";
 import { accountEnv, withoutContainers, yieldRoute } from "./accounts";
 import { awakeClock } from "./awake";
 import {
@@ -21,7 +28,9 @@ import {
   codexContextOverride,
   codexEffort,
   codexFileChangeCall,
+  codexHomeOf,
   codexProblem,
+  codexRulesNear,
   codexSandbox,
   codexThreadKey,
   shellScript,
@@ -806,6 +815,7 @@ const canceledEvent: CodexBrainEvent = { type: "error", code: "canceled", messag
 export class CodexAppServers implements CodexAppRunner {
   private readonly live = new Map<string, AppLive>();
   private readonly chains = new Map<string, Promise<unknown>>();
+  private readonly cwds = new Map<string, string>();
   /** Runs on a process now (steering finds them), and runs `codex exec` runs instead. */
   private readonly running = new Map<string, AppLive>();
   /** Runs on `codex exec`, with the account each signs in with (null: the computer's own). */
@@ -840,6 +850,12 @@ export class CodexAppServers implements CodexAppRunner {
   /** The process of an agent's session (tests). */
   process(agentId: string, sessionId: string, account?: string): CodexAppClient | undefined {
     return this.live.get(`${agentId}:${codexThreadKey(sessionId, account)}`)?.client;
+  }
+
+  /** Whether this session has an open `codex app-server` process. */
+  warm(key: string): boolean {
+    const l = this.live.get(key);
+    return l !== undefined && !l.client.exited;
   }
 
   /**
@@ -925,6 +941,71 @@ export class CodexAppServers implements CodexAppRunner {
     });
   }
 
+  /** `brain.warm` (protocol 74): starts the session's `codex app-server` ahead of its turn. */
+  async prewarm(
+    input: Omit<CodexTurnInput, "runId" | "prompt" | "system" | "mcp"> & { version: string },
+    opts: Omit<CodexTurnOptions, "emit" | "signal">,
+  ): Promise<BrainWarmReply> {
+    const no: BrainWarmReply = { open: false, started: false };
+    if (this.closed || !input.agentId || !codexAtLeast(input.version)) return no;
+    if (this.broken.has(`${opts.bin ?? "codex"}@${input.version}`)) return no;
+    const last = input.folder && input.cwd === input.folder ? this.cwds.get(input.agentId) : undefined;
+    const roots = input.folder ? [input.folder, ...(input.writableRoots ?? [])] : [];
+    const cwd = last && roots.some((r) => isInside(r, last)) && existsSync(last) ? last : input.cwd;
+    if (codexRulesNear(codexHomeOf(input.account), cwd)) return no;
+    const threadKey = codexThreadKey(input.sessionId, input.account?.id);
+    const key = `${input.agentId}:${threadKey}`;
+    const prev = this.chains.get(key) ?? Promise.resolve();
+    const run = prev
+      .catch(() => undefined)
+      .then(async (): Promise<BrainWarmReply> => {
+        if (this.closed) return no;
+        const dummyInput: CodexTurnInput & { version: string } = {
+          ...input,
+          cwd,
+          runId: "warm",
+          system: "",
+          prompt: "",
+          mcp: { token: "" },
+        };
+        const dummyOpts: CodexTurnOptions = {
+          ...opts,
+          emit: () => {},
+          signal: new AbortController().signal,
+        };
+        const sig = this.signature(dummyInput, dummyOpts);
+        let existing = this.live.get(key);
+        if (existing && (existing.client.exited || existing.sig !== sig)) {
+          this.drop(existing);
+          existing = undefined;
+        }
+        if (existing) {
+          if (!existing.busy) {
+            existing.lastUsed = Date.now();
+            this.armIdle(existing);
+          }
+          return { open: true, started: false };
+        }
+        const agent = input.agentId ?? "";
+        if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
+        await yieldRoute("codex", input.account?.home);
+        if (this.closed) return no;
+        const lru = this.alive(agent) >= this.max ? this.lruIdle(agent) : undefined;
+        if (this.alive(agent) >= this.max && !lru) return no;
+        if (lru) this.drop(lru);
+        const started = await this.start(key, threadKey, sig, dummyInput, dummyOpts);
+        if (!started) return no;
+        this.armIdle(started);
+        return { open: true, started: true };
+      });
+    this.chains.set(key, run);
+    try {
+      return await run;
+    } finally {
+      if (this.chains.get(key) === run) this.chains.delete(key);
+    }
+  }
+
   private async runTurn(
     key: string,
     threadKey: string,
@@ -935,7 +1016,35 @@ export class CodexAppServers implements CodexAppRunner {
       opts.emit(canceledEvent);
       return true;
     }
-    const sig = this.signature(input, opts);
+    const startedAt = Date.now();
+    let warm = false;
+    let cold: BrainColdCause | undefined;
+    let initMs: number | undefined;
+    let firstEventMs: number | undefined;
+    let firstTokenMs: number | undefined;
+    const emit = opts.emit;
+    const timedOpts: CodexTurnOptions = {
+      ...opts,
+      emit: (e) => {
+        const elapsed = Date.now() - startedAt;
+        firstEventMs ??= elapsed;
+        if (e.type === "text_delta" && e.text) firstTokenMs ??= elapsed;
+        if (e.type === "done") {
+          const timings: BrainTurnTimings = {
+            warm,
+            ...(!warm && cold ? { cold } : {}),
+            ...(initMs !== undefined ? { initMs } : {}),
+            ...(firstEventMs !== undefined ? { firstEventMs } : {}),
+            ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
+          };
+          emit({ ...e, timings });
+          return;
+        }
+        emit(e);
+      },
+    };
+    if (input.agentId) this.cwds.set(input.agentId, input.cwd);
+    const sig = this.signature(input, timedOpts);
     let live = this.live.get(key);
     // Codex lists our tools when its thread opens and never again (codex-cli 0.165.0 doesn't follow
     // `tools/list_changed`: its `mcp_tool_list_changed` feature is under development and off): other tool names
@@ -945,20 +1054,24 @@ export class CodexAppServers implements CodexAppRunner {
     const stale = !!listed && !!input.mcp.tools && input.mcp.tools.split(" ").some((n) => !listed.has(n));
     if (live && (live.client.exited || live.sig !== sig || stale)) {
       if (stale) this.log(`codex app-server for ${input.sessionId.slice(0, 8)}: its tools changed; starting it again`);
+      cold = live.client.exited ? "exited" : "settings";
       this.drop(live);
       live = undefined;
     }
+    warm = Boolean(live);
     if (!live) {
+      cold ??= timedOpts.threads.get(threadKey) ? "restart" : "new_session";
       const agent = input.agentId ?? "";
       const lru = this.alive(agent) >= this.max ? this.lruIdle(agent) : undefined;
       if (lru) this.drop(lru);
       // Over the cap when every app-server is busy: the turn still gets its own (steering reaches it, never exec's
       // `unsupported`); `trim` closes the extra as turns end.
-      const started = await this.start(key, threadKey, sig, input, opts);
+      const started = await this.start(key, threadKey, sig, input, timedOpts);
       if (!started) return false;
+      initMs = Date.now() - startedAt;
       live = started;
     }
-    const out = await this.onLive(live, input, opts);
+    const out = await this.onLive(live, input, timedOpts);
     if (out.died) {
       this.log(`codex app-server for ${input.sessionId.slice(0, 8)} died mid-turn; running it with exec`);
       this.drop(live);
@@ -1060,6 +1173,7 @@ export class CodexAppServers implements CodexAppRunner {
       missionId: "",
       running: false,
       idle: true,
+      ...(input.agentId ? { agentId: input.agentId } : {}),
       cwd: input.cwd,
       folder: input.folder ?? input.cwd,
     };
@@ -1105,6 +1219,7 @@ export class CodexAppServers implements CodexAppRunner {
         token: live.bridge.token,
         missionId: "",
         running: true,
+        ...(live.agentId ? { agentId: live.agentId } : {}),
         cwd: live.bridge.cwd ?? input.cwd,
         folder: live.bridge.folder ?? input.cwd,
         runId: input.runId,
@@ -1530,6 +1645,12 @@ export class CodexAppServers implements CodexAppRunner {
     this.opts.runs.delete(live.id);
     live.bridge = null;
     live.client.close();
+  }
+
+  /** System mode: a pooled process on an account its agent no longer thinks with closes (a busy one stays until it idles out). */
+  keepAccount(account: string | null, also: readonly string[] = []) {
+    const keep = new Set([...(account ? [account] : []), ...also]);
+    for (const l of [...this.live.values()]) if (!l.busy && l.account !== null && !keep.has(l.account)) this.drop(l);
   }
 
   /** The runner is exiting: every process is closed. */

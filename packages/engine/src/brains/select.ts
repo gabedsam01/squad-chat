@@ -19,7 +19,9 @@ import {
   antigravityGroupOfLabel,
   autoPlanModel,
   claudeCodeModel,
+  isPlanId,
   modelLimitOf,
+  opencodePlanModel,
   ownLimitsModel,
   PLAN_FORBIDDEN_TEXT,
   PLAN_INACTIVE_TEXT,
@@ -851,7 +853,11 @@ export async function resolveBrain(
   // A plan's model kept while another account thinks (or none): what that one runs instead, so no turn asks a
   // provider for a model it doesn't have.
   const runs =
-    kind === "claude_code" && model && !isAutoModel(model) ? claudeCodeModel(planOf(account?.provider), model) : model;
+    kind === "claude_code" && model && !isAutoModel(model)
+      ? claudeCodeModel(planOf(account?.provider), model)
+      : kind === "opencode" && isPlanId(account?.provider) && !isAutoModel(model)
+        ? opencodePlanModel(account.provider, model)
+        : model;
   const effort = brainEffortFor(agent, kind);
   const unavailable =
     (isRightHand(agent) && (agent.brainAccountId || agent.machineId)

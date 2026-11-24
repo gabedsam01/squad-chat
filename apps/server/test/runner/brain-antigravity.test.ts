@@ -34,6 +34,7 @@ import {
 import {
   type AntigravityBrainContext,
   type AntigravityBrainTurnRequest,
+  AntigravityServers,
   antigravityChatBreach,
   antigravityChatsFile,
   antigravityProblem,
@@ -428,7 +429,12 @@ test.skipIf(!posix)(
     const log = path.join(root, "agy.log");
     process.env.FAKE_AGY_LOG = log;
     const events = await run(ctx, turn());
-    expect(events.at(-1)).toEqual({ type: "done", text: "Let me check. All good.", session: { id: SESSION } });
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      text: "Let me check. All good.",
+      session: { id: SESSION },
+      timings: { warm: false, cold: "new_session" },
+    });
     expect(
       events
         .filter((e) => e.type === "text_delta")
@@ -901,3 +907,22 @@ test.skipIf(!posix)(
     expect(args).not.toContain(`--add-dir ${ctx.folder}`);
   },
 );
+
+test("the pool: keepAccount closes idle processes of other accounts only", () => {
+  const pool = new AntigravityServers({ runs: new Map() });
+  const mk = (account: string | null, busy = false) => ({
+    key: `a:${account}`,
+    id: `r:${account}`,
+    agentId: "a",
+    account,
+    busy,
+    idleTimer: null,
+    bridge: null,
+    conn: { close: () => undefined },
+    child: { stdin: null, pid: undefined, kill: () => true },
+  });
+  const map = (pool as unknown as { live: Map<string, unknown> }).live;
+  for (const r of [mk("one"), mk("two"), mk("three", true), mk(null)]) map.set(r.key, r);
+  pool.keepAccount("one", []);
+  expect([...map.keys()].sort()).toEqual(["a:null", "a:one", "a:three"]);
+});

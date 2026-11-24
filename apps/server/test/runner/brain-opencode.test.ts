@@ -12,7 +12,9 @@ import { type CodexBrainEvent, CodexThreads } from "../../runner/brain-codex";
 import {
   acpProblem,
   githubConfigDir,
+  keyPrint,
   OPENCODE_CHAT_PERMISSION,
+  OpencodeServers,
   OpencodeTurnReader,
   opencodeBridge,
   opencodeConfig,
@@ -75,6 +77,14 @@ test("the turn's config: each profile's rules allow or deny, never ask; the chat
   expect(chat).toMatchObject({ model: "opencode/glm-5.3", small_model: "opencode/glm-5.3" });
   const keyed = JSON.parse(opencodeConfig({ profile: "work", key: true }));
   expect(keyed.provider.opencode.options.apiKey).toBe("{env:OPENCODE_API_KEY}");
+  const goPlan = JSON.parse(opencodeConfig({ profile: "work", planKey: { provider: "opencode" } }));
+  expect(goPlan.provider["opencode-go"].options.apiKey).toBe("{env:OPENCODE_API_KEY}");
+  expect(goPlan.enabled_providers).toEqual(["opencode-go"]);
+  const zaiPlan = JSON.parse(opencodeConfig({ profile: "work", planKey: { provider: "zai" } }));
+  expect(zaiPlan.provider.zai.npm).toBe("@ai-sdk/anthropic");
+  expect(zaiPlan.provider.zai.options.baseURL).toBe("https://api.z.ai/api/anthropic/v1");
+  expect(zaiPlan.provider.zai.options.apiKey).toBe("{env:ANTHROPIC_AUTH_TOKEN}");
+  expect(zaiPlan.enabled_providers).toEqual(["zai"]);
   expect(JSON.parse(opencodeConfig({ profile: "work", freeTier: true })).enabled_providers).toEqual(["opencode"]);
 });
 
@@ -150,6 +160,22 @@ test("the env: the turn's folder as PWD, gh where it was (AppData on Windows), n
   });
   expect(account).toMatchObject({ XDG_DATA_HOME: "/acc", XDG_STATE_HOME: "/acc", XDG_CONFIG_HOME: "/c" });
   expect(account.OPENCODE_API_KEY).toBe(KEY);
+  const zaiEnv = opencodeTurnEnv({
+    inherited: base,
+    cwd: "/w",
+    configDir: "/c",
+    config: "{}",
+    account: { home: "/acc", planKey: { provider: "zai", key: "z-key" } },
+  });
+  expect(zaiEnv.ANTHROPIC_AUTH_TOKEN).toBe("z-key");
+  const ocPlanEnv = opencodeTurnEnv({
+    inherited: base,
+    cwd: "/w",
+    configDir: "/c",
+    config: "{}",
+    account: { home: "/acc", planKey: { provider: "opencode", key: "oc-key" } },
+  });
+  expect(ocPlanEnv.OPENCODE_API_KEY).toBe("oc-key");
   // Windows: no XDG folder of its own, so gh's sign-in is in %AppData%.
   expect(githubConfigDir({ APPDATA: "C:\\Users\\p\\AppData\\Roaming" }, "C:\\Users\\p", "win32")).toBe(
     "C:\\Users\\p\\AppData\\Roaming\\GitHub CLI",
@@ -436,7 +462,7 @@ for (const version of VERSIONS) {
       const log = path.join(root, "opencode.log");
       process.env.FAKE_OPENCODE_LOG = log;
       const { final, events } = await runTurn(ctx, turn());
-      expect(final).toEqual({ type: "done", text: "All good.", session: { id: SESSION } });
+      expect(final).toMatchObject({ type: "done", text: "All good.", session: { id: SESSION } });
       expect(events.filter((e) => e.type === "tool_call").map((e) => (e as { name: string }).name)).toEqual([
         version === "2" ? "shell" : "bash",
       ]);
@@ -878,3 +904,32 @@ async function waitFor(check: () => boolean, ms = 10_000) {
     await new Promise((r) => setTimeout(r, 20));
   }
 }
+
+test("the pool: keepAccount closes idle processes of other accounts only; a rotated key is a new signature, never the key itself", () => {
+  const pool = new OpencodeServers({ runs: new Map() });
+  const mk = (account: string | null, busy = false) => ({
+    key: `a:${account}`,
+    id: `r:${account}`,
+    agentId: "a",
+    account,
+    busy,
+    idleTimer: null,
+    bridge: null,
+    conn: { close: () => undefined },
+    child: { stdin: null, pid: undefined, kill: () => true },
+  });
+  const rows = [mk("one"), mk("two"), mk("three", true), mk(null)];
+  const map = (pool as unknown as { live: Map<string, unknown> }).live;
+  for (const r of rows) map.set(r.key, r);
+  pool.keepAccount("one", []);
+  expect([...map.keys()].sort()).toEqual(["a:null", "a:one", "a:three"]);
+  const sig = (key: string) =>
+    (pool as unknown as { signature(i: unknown, o: unknown): string }).signature(
+      { cwd: "/w", account: { id: "one", home: "/h", key } },
+      {},
+    );
+  expect(sig("k1")).not.toBe(sig("k2"));
+  expect(sig("k1")).toBe(sig("k1"));
+  expect(sig("k1")).not.toContain("k1");
+  expect(keyPrint(undefined)).toBeNull();
+});

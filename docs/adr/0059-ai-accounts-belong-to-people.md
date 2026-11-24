@@ -182,3 +182,9 @@ Each account's usage comes from the CLIs themselves: the rate-limit events durin
 - **Storing plan keys on the server**, encrypted like workspace keys. The coding plans' terms allow only their coding tools, and a server-held key could be routed anywhere. Rejected.
 
 *Amended 2026-11-15:* paid extra usage is no longer a switch its owner turns on (`brain.extra_owner_only` is gone): long work uses it on the agent owner's own plan where the plan reports it on, never on a plan given to the agent nor for the right hand (`paysExtraUsage`, ADR 0118's addendum of the same day).
+
+*Amended 2026-11-24 (coding plans through OpenCode):* a new agent on a coding plan (GLM, Kimi, MiniMax, OpenCode Go or Zen) runs through OpenCode (`kind: "opencode"`, ADR 0132), not Claude Code. The plan's model is mapped to OpenCode's `provider/model` id (`opencodePlanModel`; OpenCode Go's models under `opencode-go/`) and the key reaches that provider as a Zen key does. Why: OpenCode keeps a warm `opencode acp` process per agent, session, account and folder, which cuts the start of a turn, and one path serves every plan. Custom providers stay on the model brain.
+
+Nothing migrates. An agent already on Claude Code with a plan keeps working unchanged: brain settings and the accounts still accept `claude_code` with a plan. Both coexist until the person changes that agent's AI.
+
+The warm pools (Codex app-server, `agy acp`, `opencode acp`) are kept by the runner's worker per agent, account and folder. A run's claim starts one through `brain.warm` (runner protocol 74; an older runner answers `open: false`). The pools share Codex's limits (10 minutes idle, 3 processes per agent) and are closed on idle, on account change and when the key changes.

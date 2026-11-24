@@ -2479,6 +2479,7 @@ export type BrainWarmRequest = Pick<
   | "account"
   | "effort"
   | "contextTokens"
+  | "freeTier"
   | "codeSession"
 >;
 

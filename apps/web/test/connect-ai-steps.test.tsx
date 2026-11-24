@@ -56,7 +56,7 @@ const MAC: AiComputer = {
   mine: true,
   canAdd: true,
   keys: true,
-  brains: { claude_code: true, codex: true },
+  brains: { claude_code: true, codex: true, opencode: true },
 };
 
 const account = (over: Partial<MachineAccount> = {}): MachineAccount => ({
@@ -166,7 +166,15 @@ async function connect({
     });
   machines?.setAiAccounts({ accounts, computers });
   const viewOf = api.agents.brain;
-  api.agents.brain = async (orgId, agentId) => ({ ...(await viewOf(orgId, agentId)), ownSignIn: false, ...brain });
+  api.agents.brain = async (orgId, agentId) => {
+    const base = await viewOf(orgId, agentId);
+    const options =
+      brain.options ??
+      (base.options.some((o) => o.kind === "opencode")
+        ? base.options
+        : [...base.options, { kind: "opencode" as const, available: true, models: [], defaultModel: null }]);
+    return { ...base, ownSignIn: false, options, ...brain };
+  };
   const { router, services } = await renderApp(path, { api });
   await settle(6);
   if (!path.includes("connect=ai")) await click(screen().getByRole("button", { name: "Conectar uma IA" }));
@@ -215,7 +223,7 @@ function serverMoves(
     return view;
   };
 }
-const GLM: AgentBrainLine = { kind: "claude_code", model: null, provider: "zai" };
+const GLM: AgentBrainLine = { kind: "opencode", model: null, provider: "zai" };
 const GLM_KEY = "0123456789abcdef0123456789abcdef.AbCdEfGhIjKlMnOp";
 
 const LIA_ID = "00000000-0000-4000-8000-0000000000a3";
@@ -229,7 +237,7 @@ const stylesheet = async (path: string) =>
 const ruleOf = (css: string, selector: string) =>
   css.split(new RegExp(`\\n *${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{`))[1]?.split("}")[0] ?? "";
 /** A Claude plan's account, as the computer reports it once the sign-in ends. */
-const claudeMax = account({ id: "acct_max", label: "Claude Max", provider: null, keyHint: null });
+const claudeMax = account({ id: "acct_max", kind: "claude_code", label: "Claude Max", provider: null, keyHint: null });
 /** A ChatGPT plan's account: one per agent, so a sign-in that comes back as it is refused. */
 const chatgptPlus = account({
   id: "acct_plus",
@@ -366,7 +374,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
 
   test("a coding plan's key: its own key page, then the key sealed to the computer (in no request); the agent thinks with it", async () => {
     const { state, machines, dialog, choose } = await connect();
-    machines?.endLogin("login_1", { state: "done", account: account() });
+    machines?.endLogin("login_1", { state: "done", account: account({ kind: "opencode" }) });
     // A plan whose keys have a known start shows it as the field's example.
     await choose("OpenCode Go");
     const opencode = within(dialog).getByRole("region", { name: "OpenCode Go" });
@@ -416,7 +424,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
     expect(calls(state, "machines.beginAccountLogin")[0]?.args).toEqual([
       ORG_ID,
       "machine_1",
-      "claude_code",
+      "opencode",
       { provider: "zai" },
     ]);
     expect(machines?.lastLogin()?.box).not.toBeNull();
@@ -425,7 +433,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
     expect(calls(state, "agents.setBrain")[0]?.args).toEqual([
       ORG_ID,
       ADA_ID,
-      { brain: "claude_code", account: "acct_new" },
+      { brain: "opencode", account: "acct_new" },
     ]);
     expect(calls(state, "machines.renameAccount")).toHaveLength(0);
     expect(dialog.textContent).toContain("Ada agora pensa com GLM Coding.");
@@ -879,7 +887,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
 
   test("a plan its computer can't take: its logo dims, and its panel says why, with the key one click away", async () => {
     const { dialog, choose } = await connect({
-      computers: [{ ...MAC, keys: false, brains: { claude_code: true, codex: false } }],
+      computers: [{ ...MAC, keys: false, brains: { claude_code: true, codex: false, opencode: true } }],
       brain: {
         options: [
           { kind: "model", available: true, models: [], defaultModel: null },
@@ -892,6 +900,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
             models: [],
             defaultModel: null,
           },
+          { kind: "opencode", available: true, models: [], defaultModel: null },
         ],
       },
     });
@@ -1848,7 +1857,7 @@ describe("All agents: one plan for the team, a login per agent", () => {
   test("GLM for all: one paste, the key sealed to one login per agent (in no request), each agent on its own", async () => {
     const { state, machines, dialog, choose } = await connect({ crew: true });
     const acct = (n: number) =>
-      account({ id: `acct_${n}`, label: "GLM Coding", usedBy: [], provider: "zai", keyHint: "MnOp" });
+      account({ id: `acct_${n}`, kind: "opencode", label: "GLM Coding", usedBy: [], provider: "zai", keyHint: "MnOp" });
     for (const n of [1, 2, 3]) machines?.endLogin(`login_${n}`, { state: "done", account: acct(n) });
     await choose("GLM Coding");
     const panel = within(dialog).getByRole("region", { name: "GLM Coding Plan" });
@@ -1860,15 +1869,15 @@ describe("All agents: one plan for the team, a login per agent", () => {
     await click(within(panel).getByRole("button", { name: "Enviar ao MacBook" }));
     await sealed(panel);
     expect(calls(state, "machines.beginAccountLogin").map((c) => c.args)).toEqual(
-      [1, 2, 3].map(() => [ORG_ID, "machine_1", "claude_code", { provider: "zai" }]),
+      [1, 2, 3].map(() => [ORG_ID, "machine_1", "opencode", { provider: "zai" }]),
     );
     const boxes = machines?.logins().map((l) => JSON.stringify(l.box)) ?? [];
     expect(new Set(boxes).size).toBe(3);
     expect(JSON.stringify(state.calls)).not.toContain("0123456789abcdef");
     expect(calls(state, "agents.setBrain").map((c) => c.args)).toEqual([
-      [ORG_ID, ADA_ID, { brain: "claude_code", account: "acct_1" }],
-      [ORG_ID, ATLAS_ID, { brain: "claude_code", account: "acct_2" }],
-      [ORG_ID, LIA_ID, { brain: "claude_code", account: "acct_3" }],
+      [ORG_ID, ADA_ID, { brain: "opencode", account: "acct_1" }],
+      [ORG_ID, ATLAS_ID, { brain: "opencode", account: "acct_2" }],
+      [ORG_ID, LIA_ID, { brain: "opencode", account: "acct_3" }],
     ]);
     // They all woke: the team's words in place of the panel.
     expect(shownText(dialog)).toContain("Eles já pensam com o seu GLM Coding");
@@ -1878,7 +1887,7 @@ describe("All agents: one plan for the team, a login per agent", () => {
 
   test("GLM for all, closed midway: only the logins still running stop", async () => {
     const { state, machines, dialog, choose } = await connect({ crew: true });
-    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1" }) });
+    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1", kind: "opencode" }) });
     await choose("GLM Coding");
     const panel = within(dialog).getByRole("region", { name: "GLM Coding Plan" });
     await type(
@@ -1895,7 +1904,7 @@ describe("All agents: one plan for the team, a login per agent", () => {
     const { state, api, machines, dialog, choose, services } = await connect({ crew: true });
     serverMoves(state, api, GLM);
     const land = (n: number) =>
-      machines?.endLogin(`login_${n}`, { state: "done", account: account({ id: `acct_${n}` }) });
+      machines?.endLogin(`login_${n}`, { state: "done", account: account({ id: `acct_${n}`, kind: "opencode" }) });
     land(1);
     await choose("GLM Coding");
     const panel = within(dialog).getByRole("region", { name: "GLM Coding Plan" });
@@ -1923,8 +1932,8 @@ describe("All agents: one plan for the team, a login per agent", () => {
   test("GLM for all, one login failing: that agent waits, and Try again signs in only that one", async () => {
     const { state, api, machines, dialog, choose } = await connect({ crew: true });
     serverMoves(state, api, GLM);
-    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1" }) });
-    machines?.endLogin("login_2", { state: "done", account: account({ id: "acct_2" }) });
+    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1", kind: "opencode" }) });
+    machines?.endLogin("login_2", { state: "done", account: account({ id: "acct_2", kind: "opencode" }) });
     machines?.endLogin("login_3", { state: "failed" });
     await choose("GLM Coding");
     const panel = within(dialog).getByRole("region", { name: "GLM Coding Plan" });
@@ -1937,7 +1946,7 @@ describe("All agents: one plan for the team, a login per agent", () => {
     expect(shownText(panel)).toContain("Não deu para entrar nessa conta. Tente de novo.");
     // Lia's login ended without her: nothing signs her in until the key goes again.
     expect(calls(state, "agents.setBrain").map((c) => c.args[1])).toEqual([ADA_ID, ATLAS_ID]);
-    machines?.endLogin("login_4", { state: "done", account: account({ id: "acct_4" }) });
+    machines?.endLogin("login_4", { state: "done", account: account({ id: "acct_4", kind: "opencode" }) });
     await click(within(panel).getByRole("button", { name: "Tentar de novo" }));
     await send();
     expect(calls(state, "machines.beginAccountLogin")).toHaveLength(4);
@@ -2352,7 +2361,7 @@ describe("A sign-in through a restart of the server or a reconnect of its comput
   test("GLM for all while the logins can't be read: Reconectando, then each agent on its own login", async () => {
     const { state, api, machines, dialog, choose, ask } = await reconnecting({ crew: true });
     serverMoves(state, api, GLM);
-    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1" }) });
+    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1", kind: "opencode" }) });
     await choose("GLM Coding");
     const panel = within(dialog).getByRole("region", { name: "GLM Coding Plan" });
     // The server restarts right after the key went to the first login.
@@ -2366,7 +2375,8 @@ describe("A sign-in through a restart of the server or a reconnect of its comput
     await sealed(panel);
     expect(shownText(panel)).toContain("Reconectando…");
     expect(shownText(panel)).not.toMatch(/Não deu para entrar|não respondeu/);
-    for (const n of [2, 3]) machines?.endLogin(`login_${n}`, { state: "done", account: account({ id: `acct_${n}` }) });
+    for (const n of [2, 3])
+      machines?.endLogin(`login_${n}`, { state: "done", account: account({ id: `acct_${n}`, kind: "opencode" }) });
     await ask(20_000);
     // They all woke: the team's words in place of the panel.
     expect(shownText(dialog)).toContain("Eles já pensam com o seu GLM Coding");
@@ -2394,7 +2404,7 @@ describe("A sign-in through a restart of the server or a reconnect of its comput
   test("GLM for all: a login unanswered for the whole wait and one whose read fails once, both signed in after: each agent on its own login", async () => {
     const { state, api, machines, dialog, choose, ask } = await reconnecting({ crew: true });
     serverMoves(state, api, GLM);
-    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1" }) });
+    machines?.endLogin("login_1", { state: "done", account: account({ id: "acct_1", kind: "opencode" }) });
     await choose("GLM Coding");
     const panel = within(dialog).getByRole("region", { name: "GLM Coding Plan" });
     // Atlas's login can't be read; Lia's first read gets the server's own error.
@@ -2407,7 +2417,8 @@ describe("A sign-in through a restart of the server or a reconnect of its comput
     await ask(LOGIN_RECONNECT_MS, (loginId) => (loginId === "login_2" ? proxy : undefined));
     expect(shownText(panel)).toContain("O MacBook não respondeu. Tente de novo em instantes.");
     // Both went on on the computer, and an answer picks each up again.
-    for (const n of [2, 3]) machines?.endLogin(`login_${n}`, { state: "done", account: account({ id: `acct_${n}` }) });
+    for (const n of [2, 3])
+      machines?.endLogin(`login_${n}`, { state: "done", account: account({ id: `acct_${n}`, kind: "opencode" }) });
     await ask(LOGIN_RECONNECT_MS + 2_000);
     // They all woke: the team's words in place of the panel.
     expect(shownText(dialog)).toContain("Eles já pensam com o seu GLM Coding");

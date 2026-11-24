@@ -85,7 +85,7 @@ const setup = (patch: Partial<ComputerSetup> = {}) =>
     ...patch,
   });
 
-const option = (kind: "claude_code" | "codex", over: Partial<AgentBrain["options"][number]> = {}) => ({
+const option = (kind: "claude_code" | "codex" | "opencode", over: Partial<AgentBrain["options"][number]> = {}) => ({
   kind,
   available: true,
 
@@ -102,7 +102,7 @@ const brain = (over: Partial<AgentBrain> = {}): AgentBrain => ({
   model: null,
   effectiveModel: null,
   computer: { machineId: "m1", name: "MacBook", online: true },
-  options: [option("claude_code"), option("codex")],
+  options: [option("claude_code"), option("codex"), option("opencode")],
   machines: [],
   canEdit: true,
   account: null,
@@ -124,7 +124,7 @@ const MAC: AiComputer = {
   mine: true,
   canAdd: true,
   keys: true,
-  brains: { claude_code: true, codex: true },
+  brains: { claude_code: true, codex: true, opencode: true },
 };
 
 const gate = (patch: Partial<Parameters<typeof planGate>[0]> = {}) =>
@@ -534,10 +534,10 @@ describe("the agent a plan starts on, and the order of the plans", () => {
       "grok",
       "cursor",
       "opencode",
-      "claude_code",
-      "claude_code",
-      "claude_code",
-      "claude_code",
+      "opencode",
+      "opencode",
+      "opencode",
+      "opencode",
     ]);
   });
 
@@ -663,6 +663,8 @@ describe("All agents: one login per agent, the key pasted once", () => {
   test("what an agent thinks with, from its row and its AI status", () => {
     expect(agentAi({ brain: { kind: "codex", model: null } }, "ready")).toBe("chatgpt");
     expect(agentAi({ brain: { kind: "claude_code", model: null } }, "no_ai")).toBe("claude");
+    expect(agentAi({ brain: { kind: "opencode", model: null, provider: "zai" } }, "ready")).toBe("zai");
+    expect(agentAi({ brain: { kind: "opencode", model: null, provider: "opencode" } }, "ready")).toBe("opencode");
     expect(agentAi({ brain: { kind: "claude_code", model: null, provider: "zai" } }, "ready")).toBe("zai");
     expect(agentAi({ brain: { kind: "model", model: null } }, "ready")).toBe("key");
     expect(agentAi({ brain: { kind: "grok", model: null } }, "ready")).toBe("grok");

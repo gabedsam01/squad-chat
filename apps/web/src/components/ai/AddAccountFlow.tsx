@@ -14,7 +14,7 @@ import {
   loginReadPasses,
   otherThanHint,
 } from "@agenteschat/client/lib/machines";
-import { GEMINI_ENTERPRISE_PROVIDER, planKeyFits, signInKey } from "@agenteschat/client/lib/plans";
+import { GEMINI_ENTERPRISE_PROVIDER, isPlanId, planKeyFits, signInKey } from "@agenteschat/client/lib/plans";
 import { accountCodeAad, INSECURE_CONTEXT, sealSecret } from "@agenteschat/client/lib/secret-box";
 import { AffixInput, Button, cx, Icon, InfoHint, Locked, ProviderLogo, SettingNote, SwapLabel } from "@agenteschat/ui";
 import { useQueryClient } from "@tanstack/react-query";
@@ -820,7 +820,7 @@ function AddAccountFlow({
             hint={
               provider === "zai"
                 ? t("connectAi.zaiTeam")
-                : kind === "opencode"
+                : kind === "opencode" && !isPlanId(provider)
                   ? t("agentPage.work.brain.add.opencodeFree")
                   : undefined
             }

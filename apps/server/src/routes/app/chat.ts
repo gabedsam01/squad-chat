@@ -696,6 +696,7 @@ export function chatRoutes(deps: AppDeps) {
             judge: deps.extras?.context?.judge,
             talker: deps.extras?.talker,
             gifs: adapters.gifs,
+            wakeWorkers: deps.wakeWorkers,
           },
           user.id,
           orgId,
@@ -709,8 +710,6 @@ export function chatRoutes(deps: AppDeps) {
         }
         throw error;
       }
-      // Wake the workers now (router, runs, indexing) instead of waiting for the poll.
-      deps.wakeWorkers?.();
       // post → `message.created` published (the commit and the event happen inside postPersonMessage).
       c.header("server-timing", `created;dur=${(performance.now() - started).toFixed(1)}`);
       return c.json(message, 201);

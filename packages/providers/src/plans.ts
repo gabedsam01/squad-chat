@@ -405,19 +405,36 @@ export function planForTurn(plan: CodingPlan, value: unknown): CodingPlan {
 
 const isAlias = (v: unknown): v is PlanAlias => PLAN_ALIASES.some((a) => a === v);
 
+const stripPlanPrefix = (value: unknown): unknown => {
+  if (typeof value !== "string") return value;
+  const slash = value.indexOf("/");
+  if (slash <= 0) return value;
+  const head = value.slice(0, slash);
+  return head === "opencode-go" || isPlanId(head) ? value.slice(slash + 1) : value;
+};
+
 /**
  * The model a stored value runs on a plan: one of its models by id, the model of an alias, else (`auto`, an alias
  * the plan leaves out, another plan's model, none) `sonnet`'s.
  */
 export function planModel(plan: CodingPlan, value: string | null | undefined): PlanModel {
   const { models } = plan.claudeCode;
-  const byAlias = isAlias(value) ? models.find((m) => m.alias === value) : undefined;
+  const v = stripPlanPrefix(value) as string | null | undefined;
+  const byAlias = isAlias(v) ? models.find((m) => m.alias === v) : undefined;
   return (
-    models.find((m) => m.id === value) ??
-    byAlias ??
-    models.find((m) => m.alias === "sonnet") ??
-    (models[0] as PlanModel)
+    models.find((m) => m.id === v) ?? byAlias ?? models.find((m) => m.alias === "sonnet") ?? (models[0] as PlanModel)
   );
+}
+
+/** Provider prefix OpenCode expects for a coding plan's models (`opencode-go` for OpenCode Go). */
+export const opencodePlanPrefix = (provider: PlanId) => (provider === "opencode" ? "opencode-go" : provider);
+
+/** Model id (`provider/model`) passed to OpenCode for a coding plan (`opencode-go/...` for OpenCode Go). */
+export function opencodePlanModel(provider: string | null | undefined, value: unknown): string | undefined {
+  const plan = planOf(provider);
+  if (!plan || !isPlanId(provider)) return typeof value === "string" && value ? value : undefined;
+  const normalized = typeof value === "string" || value === null || value === undefined ? value : undefined;
+  return `${opencodePlanPrefix(provider)}/${planModel(plan, normalized).id}`;
 }
 
 /** What a plan's model is stored and chosen as: its alias where it has one (portable to Claude), else its id. */
@@ -500,8 +517,8 @@ export function autoPlanModel(
 export const planModelById = (id: string): PlanModel | undefined =>
   PLAN_IDS.flatMap((p) => planOf(p)?.claudeCode.models ?? []).find((m) => m.id === id);
 
-/** Every coding plan's model ids: what an agent on Claude Code may store besides Claude's own. */
-export const isPlanModelId = (v: string) => planModelById(v) !== undefined;
+/** Every coding plan's model ids: what an agent on Claude Code or OpenCode may store besides the CLI's own. */
+export const isPlanModelId = (v: string) => planModelById(String(stripPlanPrefix(v))) !== undefined;
 
 /**
  * The `--model` of a Claude Code turn for a stored value: an alias as is (on a plan, the plan names its model);
@@ -524,10 +541,11 @@ export function claudeCodeModel(plan: CodingPlan | undefined, value: unknown): s
 export function droppedPlanModel(provider: unknown, value: unknown): PlanModel | null {
   const plan = isPlanId(provider) ? learned.get(provider) : undefined;
   if (!isPlanId(provider) || !plan?.modelsUrl) return null;
-  if (typeof value !== "string" || isAlias(value) || /^claude-/.test(value)) return null;
-  if (plan.claudeCode.models.some((m) => m.id === value) || planModelById(value)) return null;
+  const v = stripPlanPrefix(value);
+  if (typeof v !== "string" || isAlias(v) || /^claude-/.test(v)) return null;
+  if (plan.claudeCode.models.some((m) => m.id === v) || planModelById(v)) return null;
   const table: readonly PlanModel[] = CODING_PLANS[provider].claudeCode.models;
-  return table.find((m) => m.id === value) ?? { id: value, label: value };
+  return table.find((m) => m.id === v) ?? { id: v, label: v };
 }
 
 /** A pasted key that fits the plan: one line, the plan's shape. */

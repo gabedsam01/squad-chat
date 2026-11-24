@@ -160,6 +160,8 @@ export interface BrainTurn {
    * starting one (`prepareAgentCode`).
    */
   code?: Promise<CodeSetup | null>;
+  /** Skips per-turn `prepareAgentCode` git sync (used by trivial quick greetings). */
+  skipCode?: boolean;
 }
 
 export interface ToolResult {

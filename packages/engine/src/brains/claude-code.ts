@@ -471,7 +471,8 @@ export function createClaudeCodeBrain(deps: ClaudeCodeBrainDeps): Brain {
           );
           return;
         }
-        const code = chat ? null : await (turn.code ?? deps.prepare?.(turn, io.signal))?.catch(() => null);
+        const code =
+          chat || turn.skipCode ? null : await (turn.code ?? deps.prepare?.(turn, io.signal))?.catch(() => null);
         // A runner that takes the conversation apart reads it at the start of the session: the system text stays the
         // agent's, the same in each of its conversations (and its cached prefix with it).
         const apart = (status?.protocol ?? 0) >= CONVERSATION_PROTOCOL;

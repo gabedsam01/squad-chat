@@ -1,10 +1,18 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import type { EventEmitter } from "node:events";
-import { mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
 import type { CommandProfile } from "@agenteschat/adapters/command-policy";
-import type { AgentScope, BrainEffort } from "@agenteschat/adapters/machine-protocol";
+import type {
+  AgentScope,
+  BrainColdCause,
+  BrainEffort,
+  BrainTurnTimings,
+  BrainWarmReply,
+  BrainWarmRequest,
+} from "@agenteschat/adapters/machine-protocol";
 import { isAccountId } from "@agenteschat/adapters/machine-protocol";
 import {
   ACCOUNT_MISSING_MESSAGE,
@@ -16,14 +24,18 @@ import {
   withoutContainers,
   withoutSignIns,
 } from "./accounts";
+import { ACP_METHOD_NOT_FOUND, ACP_PROTOCOL_VERSION, AcpConnection, AcpError } from "./acp";
 import { AGY_CHAT_AGENT, prepareAgyHome } from "./agy-home";
+import { awakeClock } from "./awake";
 import { LIMIT_TEXT } from "./brain";
 import { type CodexBrainEvent, CodexThreads, chatFolder, codexProfileOf, codexThreadKey } from "./brain-codex";
+import { CODEX_APP_IDLE_MS, CODEX_APP_MAX_PROCESSES } from "./brain-codex-app";
 import { cursorPrompt } from "./brain-cursor";
+import { acpProblem, OpencodeTurnReader, opencodeBridge, opencodePrompt } from "./brain-opencode";
 import { RunnerError } from "./errors";
 import { killTree } from "./exec";
-import { AGY_BIN, resolveCommand } from "./executors";
-import { CODEX_MCP_ENV, CODEX_MCP_SERVER, redactDeep } from "./mcp";
+import { AGY_BIN, envValue, resolveCommand } from "./executors";
+import { CODEX_MCP_ENV, CODEX_MCP_SERVER, type McpTaskInfo, newMcpToken, redactDeep } from "./mcp";
 import { isInside, resolveForAgent } from "./paths";
 import { resetFromWords } from "./plan-usage";
 import type { Spawn } from "./scope-gate";
@@ -230,6 +242,9 @@ export interface AntigravityTurnInput {
   chat?: boolean;
   /** The agent's own folder when the turn starts in a checkout, and its granted folders (`antigravityTurnArgs`). */
   addDirs?: string[];
+  folder?: string;
+  agentId?: string;
+  keepAlive?: boolean;
 }
 
 export interface AntigravityTurnOptions {
@@ -287,6 +302,10 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
 
   // One retry, as a new chat, when the CLI doesn't have the conversation it was to resume.
   for (let attempt = 0; ; attempt++) {
+    const startedAt = Date.now();
+    let initMs: number | undefined;
+    let firstEventMs: number | undefined;
+    let firstTokenMs: number | undefined;
     const chat = opts.chats.get(chatKey);
     const args = antigravityTurnArgs({
       prompt: cursorPrompt(input.system, input.prompt, !chat),
@@ -321,6 +340,9 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
       tail = out.slice(at);
       if (at > 0) {
         streamed = true;
+        const elapsed = Date.now() - startedAt;
+        firstEventMs ??= elapsed;
+        firstTokenMs ??= elapsed;
         opts.emit({ type: "text_delta", text: out.slice(0, at) });
       }
     };
@@ -349,6 +371,7 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
       }
       if (ev.event === "init") {
         sawInit = true;
+        initMs ??= Date.now() - startedAt;
         const id = typeof ev.conversation_id === "string" ? ev.conversation_id : undefined;
         if (isRecord(ev.init) && typeof ev.init.model === "string") model = ev.init.model;
         // A resume the CLI didn't have comes back as a new conversation, without the context.
@@ -386,6 +409,7 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
       flush("", true);
       const error = isRecord(info.error) ? info.error : null;
       const output = error ? String(error.message ?? error.type ?? "failed") : String(info.output ?? "");
+      firstEventMs ??= Date.now() - startedAt;
       opts.emit({
         type: "tool_call",
         id: `${String(step.conversation_id ?? "agy")}:${String(step.step_index ?? used.steps)}`,
@@ -450,8 +474,25 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
     const response = typeof r.response === "string" ? r.response : "";
     if (r.status === "SUCCESS" && exit.code === 0) {
       const text = clean(response.trimEnd());
-      if (text && !streamed) opts.emit({ type: "text_delta", text });
-      opts.emit({ type: "done", text, session: { id: input.sessionId } });
+      if (text && !streamed) {
+        const elapsed = Date.now() - startedAt;
+        firstEventMs ??= elapsed;
+        firstTokenMs ??= elapsed;
+        opts.emit({ type: "text_delta", text });
+      }
+      firstEventMs ??= Date.now() - startedAt;
+      opts.emit({
+        type: "done",
+        text,
+        session: { id: input.sessionId },
+        timings: {
+          warm: false,
+          cold: chat ? "restart" : "new_session",
+          ...(initMs !== undefined ? { initMs } : {}),
+          ...(firstEventMs !== undefined ? { firstEventMs } : {}),
+          ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
+        },
+      });
       return;
     }
     // The CLI replays a conversation's last error on every resume (a quota one included, with its old reset):
@@ -479,6 +520,731 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
 }
 
 /** What the runner's `brain.turn` handler hands the Antigravity branch. */
+const SETUP_TIMEOUT_MS = 120_000;
+const STOP_WAIT_MS = 8000;
+const agyStr = (v: unknown) => (typeof v === "string" ? v : "");
+
+interface AgyLive {
+  key: string;
+  id: string;
+  agentId: string;
+  account: string;
+  chatKey: string;
+  acpSessionId: string;
+  hasContext: boolean;
+  model: string | undefined;
+  effort: string | undefined;
+  mode: string | undefined;
+  modelOptions: Set<string>;
+  thoughtOptions: Set<string>;
+  child: ChildProcess;
+  conn: AcpConnection;
+  exited: boolean;
+  sig: string;
+  busy: boolean;
+  lastUsed: number;
+  idleSince: number;
+  idleTimer: ReturnType<typeof setTimeout> | null;
+  bridge: McpTaskInfo | null;
+  release?: () => void;
+}
+
+export interface AntigravityServersOptions {
+  runs: Map<string, McpTaskInfo>;
+  idleMs?: number;
+  maxProcesses?: number;
+  spawn?: Spawn;
+  log?: (line: string) => void;
+}
+
+function optionValues(configOpts: Record<string, unknown>[], id: string): { current?: string; values: Set<string> } {
+  const opt = configOpts.find((o) => o.id === id);
+  const current = opt ? agyStr(opt.currentValue) || undefined : undefined;
+  const raw = Array.isArray(opt?.options) ? opt.options : [];
+  const values = new Set<string>();
+  for (const entry of raw) {
+    if (isRecord(entry) && typeof entry.value === "string") values.add(entry.value);
+  }
+  return { ...(current ? { current } : {}), values };
+}
+
+function resolveAgyConfig(
+  model: string | undefined,
+  effort: BrainEffort | undefined,
+  modelOptions: Set<string>,
+  thoughtOptions: Set<string>,
+): { model?: string; effort?: string } {
+  let pickedModel = model;
+  let pickedEffort: string | undefined = agyEffort(effort, model);
+  if (pickedModel && modelOptions.size > 0 && !modelOptions.has(pickedModel)) {
+    const m = LEVEL_IN_SLUG.exec(pickedModel);
+    if (m) {
+      const base = pickedModel.slice(0, m.index);
+      const level = m[0].slice(1);
+      if (modelOptions.has(base)) {
+        pickedModel = base;
+        pickedEffort = thoughtOptions.has(level)
+          ? level
+          : level === "max" && thoughtOptions.has("xhigh")
+            ? "xhigh"
+            : undefined;
+      }
+    }
+  } else if (pickedModel && !pickedEffort) {
+    const m = LEVEL_IN_SLUG.exec(pickedModel);
+    if (m && (modelOptions.size === 0 || modelOptions.has(pickedModel.slice(0, m.index)))) {
+      const base = pickedModel.slice(0, m.index);
+      const level = m[0].slice(1);
+      if (thoughtOptions.size > 0) {
+        pickedModel = base;
+        pickedEffort = thoughtOptions.has(level)
+          ? level
+          : level === "max" && thoughtOptions.has("xhigh")
+            ? "xhigh"
+            : undefined;
+      }
+    }
+  }
+  if (pickedEffort && thoughtOptions.size > 0 && !thoughtOptions.has(pickedEffort)) {
+    if (pickedEffort === "max" && thoughtOptions.has("xhigh")) pickedEffort = "xhigh";
+    else pickedEffort = undefined;
+  }
+  return { ...(pickedModel ? { model: pickedModel } : {}), ...(pickedEffort ? { effort: pickedEffort } : {}) };
+}
+
+/** Long-lived `agy acp` processes per `(agent, session, account)`, owning sign-in leases until dropped. */
+export class AntigravityServers {
+  private readonly live = new Map<string, AgyLive>();
+  private readonly chains = new Map<string, Promise<unknown>>();
+  private readonly cwds = new Map<string, string>();
+  private closed = false;
+  private readonly log: (line: string) => void;
+
+  constructor(private readonly opts: AntigravityServersOptions) {
+    this.log = opts.log ?? (() => {});
+  }
+
+  setLimits(limits: { idleMs?: number; maxProcesses?: number }) {
+    if (limits.idleMs !== undefined) this.opts.idleMs = limits.idleMs;
+    if (limits.maxProcesses !== undefined) this.opts.maxProcesses = limits.maxProcesses;
+  }
+
+  warm(key: string): boolean {
+    const l = this.live.get(key);
+    return l !== undefined && !l.exited;
+  }
+
+  private signature(input: AntigravityTurnInput, opts: AntigravityTurnOptions) {
+    return JSON.stringify({
+      cwd: input.cwd,
+      account: input.account.home,
+      addDirs: input.addDirs ?? [],
+      bin: opts.bin ?? AGY_BIN,
+      mcp: opts.mcpCommand ?? null,
+      socket: opts.socketPath ?? null,
+      env: opts.env ?? {},
+    });
+  }
+
+  async prewarm(
+    input: Omit<AntigravityTurnInput, "runId" | "prompt" | "system" | "mcp">,
+    opts: Omit<AntigravityTurnOptions, "emit" | "signal">,
+    release?: () => void,
+  ): Promise<BrainWarmReply> {
+    const no: BrainWarmReply = { open: false, started: false };
+    let owned = release;
+    try {
+      if (this.closed || !input.agentId || input.chat || (opts.platform ?? process.platform) === "win32") {
+        return no;
+      }
+      const last = input.folder && input.cwd === input.folder ? this.cwds.get(input.agentId) : undefined;
+      const roots = input.folder ? [input.folder, ...(input.addDirs ?? [])] : [];
+      const cwd = last && roots.some((r) => isInside(r, last)) && existsSync(last) ? last : input.cwd;
+      const chatKey = codexThreadKey(input.sessionId, input.account.id);
+      const key = `${input.agentId}:${chatKey}`;
+      const prev = this.chains.get(key) ?? Promise.resolve();
+      const run = prev
+        .catch(() => undefined)
+        .then(async (): Promise<BrainWarmReply> => {
+          if (this.closed) return no;
+          const dummyInput: AntigravityTurnInput = {
+            ...input,
+            cwd,
+            runId: "warm",
+            system: "",
+            prompt: "",
+            mcp: { token: "" },
+          };
+          const dummyOpts: AntigravityTurnOptions = {
+            ...opts,
+            emit: () => {},
+            signal: new AbortController().signal,
+          };
+          const sig = this.signature(dummyInput, dummyOpts);
+          let existing = this.live.get(key);
+          if (existing && (existing.exited || existing.sig !== sig)) {
+            this.drop(existing);
+            existing = undefined;
+          }
+          if (existing) {
+            if (!existing.busy) {
+              existing.lastUsed = Date.now();
+              this.armIdle(existing);
+            }
+            return { open: true, started: false };
+          }
+          const agent = input.agentId ?? "";
+          if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
+          const started = await this.start(key, chatKey, sig, dummyInput, dummyOpts, owned);
+          if (!started) return no;
+          owned = undefined;
+          this.armIdle(started);
+          return { open: true, started: true };
+        });
+      this.chains.set(key, run);
+      try {
+        return await run;
+      } finally {
+        if (this.chains.get(key) === run) this.chains.delete(key);
+      }
+    } finally {
+      owned?.();
+    }
+  }
+
+  async turn(input: AntigravityTurnInput, opts: AntigravityTurnOptions, release?: () => void): Promise<void> {
+    let owned = release;
+    try {
+      if (this.closed || input.chat || !input.agentId || (opts.platform ?? process.platform) === "win32") {
+        await runAntigravityTurn(input, opts);
+        return;
+      }
+      this.cwds.set(input.agentId, input.cwd);
+      const chatKey = codexThreadKey(input.sessionId, input.account.id);
+      const key = `${input.agentId}:${chatKey}`;
+      const prev = this.chains.get(key) ?? Promise.resolve();
+      const run = prev
+        .catch(() => undefined)
+        .then(async () => {
+          const res = await this.runPooled(key, chatKey, input, opts, owned);
+          if (res.consumedRelease) owned = undefined;
+          return res.handled;
+        });
+      this.chains.set(key, run);
+      let handled = false;
+      try {
+        handled = await run;
+      } catch (err) {
+        this.log(`antigravity acp turn failed: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        if (this.chains.get(key) === run) this.chains.delete(key);
+      }
+      if (!handled) await runAntigravityTurn(input, opts);
+    } finally {
+      owned?.();
+    }
+  }
+
+  private async runPooled(
+    key: string,
+    chatKey: string,
+    input: AntigravityTurnInput,
+    opts: AntigravityTurnOptions,
+    release?: () => void,
+  ): Promise<{ handled: boolean; consumedRelease: boolean }> {
+    if (opts.signal.aborted) {
+      opts.emit({ type: "error", code: "canceled", message: "The turn was canceled." });
+      return { handled: true, consumedRelease: false };
+    }
+    const startedAt = Date.now();
+    let warm = false;
+    let cold: BrainColdCause | undefined;
+    let initMs: number | undefined;
+    let firstEventMs: number | undefined;
+    let firstTokenMs: number | undefined;
+    let emitted = false;
+    let ended = false;
+    let consumedRelease = false;
+    const emit = (event: CodexBrainEvent) => {
+      if (ended) return;
+      emitted = true;
+      const elapsed = Date.now() - startedAt;
+      firstEventMs ??= elapsed;
+      if (event.type === "text_delta" && event.text) firstTokenMs ??= elapsed;
+      if (event.type === "done" || event.type === "error") ended = true;
+      opts.emit(event);
+    };
+    const sig = this.signature(input, opts);
+    let live = this.live.get(key);
+    if (live && (live.exited || live.sig !== sig)) {
+      cold = live.exited ? "exited" : "settings";
+      this.drop(live);
+      live = undefined;
+    }
+    warm = Boolean(live);
+    if (!live) {
+      cold ??= opts.chats.get(chatKey) ? "restart" : "new_session";
+      const agent = input.agentId ?? "";
+      const lru = this.alive(agent) >= this.max ? this.lruIdle(agent) : undefined;
+      if (lru) this.drop(lru);
+      const started = await this.start(key, chatKey, sig, input, opts, release);
+      if (!started) return { handled: false, consumedRelease: false };
+      consumedRelease = true;
+      initMs = Date.now() - startedAt;
+      live = started;
+    }
+    const outcome = await this.onLive(live, input, opts, {
+      emit,
+      timings: () => ({
+        warm,
+        ...(!warm && cold ? { cold } : {}),
+        ...(initMs !== undefined ? { initMs } : {}),
+        ...(firstEventMs !== undefined ? { firstEventMs } : {}),
+        ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
+      }),
+    });
+    if (outcome.died && !emitted) {
+      this.drop(live);
+      return { handled: false, consumedRelease };
+    }
+    if (outcome.drop || input.keepAlive === false) this.drop(live);
+    return { handled: true, consumedRelease };
+  }
+
+  private async start(
+    key: string,
+    chatKey: string,
+    sig: string,
+    input: AntigravityTurnInput,
+    opts: AntigravityTurnOptions,
+    release?: () => void,
+  ): Promise<AgyLive | null> {
+    try {
+      prepareAgyHome(input.account.home, opts.mcpCommand);
+    } catch {
+      return null;
+    }
+    const base: NodeJS.ProcessEnv = {
+      ...withoutContainers(process.env),
+      ...(opts.env ?? {}),
+    };
+    const env = accountEnv("antigravity", input.account.home, base);
+    const args = ["acp", "--sandbox", ...(input.addDirs?.length ? input.addDirs.flatMap((d) => ["--add-dir", d]) : [])];
+    let child: ChildProcess;
+    try {
+      child = (this.opts.spawn ?? opts.spawn ?? spawn)(
+        resolveCommand(opts.bin ?? AGY_BIN, envValue(env, "PATH")),
+        args,
+        {
+          cwd: input.cwd,
+          env,
+          stdio: ["pipe", "pipe", "pipe"],
+          detached: true,
+        },
+      );
+    } catch {
+      return null;
+    }
+    let stderr = "";
+    child.stderr?.on("data", (c: Buffer) => {
+      stderr = (stderr + c.toString("utf8")).slice(-4000);
+    });
+    const conn = new AcpConnection(
+      child.stdin as NonNullable<ChildProcess["stdin"]>,
+      child.stdout as NonNullable<ChildProcess["stdout"]>,
+      {
+        onRequest(method) {
+          throw new AcpError(ACP_METHOD_NOT_FOUND, `Method not found: ${method}`);
+        },
+      },
+    );
+    let exited = false;
+    const proc = child as unknown as EventEmitter;
+    proc.on("error", (err: Error) => {
+      exited = true;
+      conn.close(err);
+    });
+    proc.on("close", (code: number | null) => {
+      exited = true;
+      conn.close(
+        new Error(
+          `Antigravity exited with code ${code ?? "?"}${stderr.trim() ? `: ${stderr.trim().slice(-300)}` : ""}`,
+        ),
+      );
+    });
+    const within = <T>(p: Promise<T>, label: string) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      return Promise.race([
+        p,
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(label)), SETUP_TIMEOUT_MS);
+        }),
+      ]).finally(() => clearTimeout(timer));
+    };
+    const id = randomUUID();
+    const token = newMcpToken();
+    try {
+      const init = await within(
+        conn.request<Record<string, unknown> | null>("initialize", {
+          protocolVersion: ACP_PROTOCOL_VERSION,
+          clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+          clientInfo: { name: "agentes-runner", version: "1" },
+        }),
+        "Antigravity ACP initialize timed out",
+      );
+      const caps = isRecord(init?.agentCapabilities) ? init.agentCapabilities : {};
+      const sessionCaps = isRecord(caps.sessionCapabilities) ? caps.sessionCapabilities : {};
+      const bridgeServer = opencodeBridge({
+        runId: id,
+        token,
+        ...(opts.mcpCommand ? { command: opts.mcpCommand } : {}),
+        ...(opts.socketPath ? { socketPath: opts.socketPath } : {}),
+        runnerHome: opts.runnerHome ?? "",
+      });
+      const stored = opts.chats.get(chatKey);
+      const resume = isRecord(sessionCaps.resume)
+        ? "session/resume"
+        : caps.loadSession === true
+          ? "session/load"
+          : null;
+      let acpSessionId: string | null = null;
+      let hasContext = false;
+      let opened: Record<string, unknown> | null = null;
+      if (stored && resume) {
+        opened = await within(
+          conn.request<Record<string, unknown> | null>(resume, {
+            sessionId: stored,
+            cwd: input.cwd,
+            mcpServers: [bridgeServer],
+          }),
+          "Antigravity ACP resume timed out",
+        ).then(
+          (r) => r ?? {},
+          () => null,
+        );
+        if (opened) {
+          acpSessionId = stored;
+          hasContext = true;
+        } else {
+          opts.chats.delete(chatKey);
+        }
+      } else if (stored) {
+        opts.chats.delete(chatKey);
+      }
+      if (!acpSessionId) {
+        opened = await within(
+          conn.request<Record<string, unknown> | null>("session/new", { cwd: input.cwd, mcpServers: [bridgeServer] }),
+          "Antigravity ACP session/new timed out",
+        );
+        acpSessionId = agyStr(opened?.sessionId) || null;
+        if (!acpSessionId) throw new Error("Antigravity didn't start a session");
+      }
+      const configOpts = Array.isArray(opened?.configOptions) ? opened.configOptions.filter(isRecord) : [];
+      const modelOpt = optionValues(configOpts, "model");
+      const thoughtOpt = optionValues(configOpts, "thought_level");
+      const modeOpt = optionValues(configOpts, "mode");
+      const wantMode = input.profile === "plan" ? "plan" : "accept-edits";
+      if (modeOpt.current !== wantMode && (!modeOpt.values.size || modeOpt.values.has(wantMode))) {
+        await within(
+          conn.request("session/set_config_option", { sessionId: acpSessionId, configId: "mode", value: wantMode }),
+          "Antigravity ACP set mode timed out",
+        );
+        modeOpt.current = wantMode;
+      }
+      const resolved = resolveAgyConfig(input.model, input.effort, modelOpt.values, thoughtOpt.values);
+      if (resolved.model && modelOpt.current !== resolved.model) {
+        await within(
+          conn.request("session/set_config_option", {
+            sessionId: acpSessionId,
+            configId: "model",
+            value: resolved.model,
+          }),
+          "Antigravity ACP set model timed out",
+        );
+        modelOpt.current = resolved.model;
+      }
+      if (resolved.effort && thoughtOpt.current !== resolved.effort) {
+        await within(
+          conn.request("session/set_config_option", {
+            sessionId: acpSessionId,
+            configId: "thought_level",
+            value: resolved.effort,
+          }),
+          "Antigravity ACP set effort timed out",
+        );
+        thoughtOpt.current = resolved.effort;
+      }
+      if (this.closed || exited) {
+        conn.close();
+        killTree(child, "SIGTERM");
+        return null;
+      }
+      const bridge: McpTaskInfo = {
+        token,
+        missionId: "",
+        running: false,
+        idle: true,
+        ...(input.agentId ? { agentId: input.agentId } : {}),
+        cwd: input.cwd,
+        folder: input.folder ?? input.cwd,
+      };
+      this.opts.runs.set(id, bridge);
+      const live: AgyLive = {
+        key,
+        id,
+        agentId: input.agentId ?? "",
+        account: input.account.id,
+        chatKey,
+        acpSessionId,
+        hasContext,
+        model: modelOpt.current,
+        effort: thoughtOpt.current,
+        mode: modeOpt.current,
+        modelOptions: modelOpt.values,
+        thoughtOptions: thoughtOpt.values,
+        child,
+        conn,
+        exited: false,
+        sig,
+        busy: false,
+        lastUsed: Date.now(),
+        idleSince: awakeClock.read(),
+        idleTimer: null,
+        bridge,
+        ...(release ? { release } : {}),
+      };
+      proc.on("close", () => {
+        live.exited = true;
+        if (!live.busy) this.drop(live);
+      });
+      this.live.set(key, live);
+      return live;
+    } catch {
+      conn.close();
+      killTree(child, "SIGTERM");
+      return null;
+    }
+  }
+
+  private async onLive(
+    live: AgyLive,
+    input: AntigravityTurnInput,
+    opts: AntigravityTurnOptions,
+    turn: { emit: (e: CodexBrainEvent) => void; timings: () => BrainTurnTimings },
+  ): Promise<{ died?: boolean; drop?: boolean }> {
+    live.busy = true;
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.idleTimer = null;
+    const clean = (text: string) => (opts.redact ? opts.redact(text) : text);
+    if (live.bridge) {
+      this.opts.runs.set(live.id, {
+        token: live.bridge.token,
+        missionId: "",
+        running: true,
+        ...(live.agentId ? { agentId: live.agentId } : {}),
+        cwd: live.bridge.cwd ?? input.cwd,
+        folder: live.bridge.folder ?? input.cwd,
+        runId: input.runId,
+        serverToken: input.mcp.token,
+        ...(opts.redact ? { redact: opts.redact } : {}),
+      });
+    }
+    const reader = new OpencodeTurnReader({ isBridgeTool: isOurAgyTool, redact: clean });
+    const s = { stopping: false, killTimer: undefined as ReturnType<typeof setTimeout> | undefined };
+    const admit = () => {
+      if (live.hasContext) return;
+      live.hasContext = true;
+      opts.chats.set(live.chatKey, live.acpSessionId);
+    };
+    const onAbort = () => {
+      if (s.stopping) return;
+      s.stopping = true;
+      live.conn.notify("session/cancel", { sessionId: live.acpSessionId });
+      s.killTimer = setTimeout(() => killTree(live.child, "SIGKILL"), STOP_WAIT_MS);
+    };
+    if (opts.signal.aborted) onAbort();
+    else opts.signal.addEventListener("abort", onAbort, { once: true });
+    live.conn.setHandlers({
+      onNotification(method, params) {
+        if (method !== "session/update" || !isRecord(params) || params.sessionId !== live.acpSessionId) return;
+        admit();
+        for (const event of reader.update(params.update)) turn.emit(event);
+      },
+      onRequest(method, params) {
+        if (method !== "session/request_permission") {
+          throw new AcpError(ACP_METHOD_NOT_FOUND, `Method not found: ${method}`);
+        }
+        const p = isRecord(params) ? params : {};
+        const options = Array.isArray(p.options) ? p.options.filter(isRecord) : [];
+        const reject = options.find((o) => agyStr(o.kind).startsWith("reject"));
+        return reject
+          ? { outcome: { outcome: "selected", optionId: agyStr(reject.optionId) } }
+          : { outcome: { outcome: "cancelled" } };
+      },
+    });
+    const setCfg = async (configId: string, value: string) => {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        live.conn.request("session/set_config_option", { sessionId: live.acpSessionId, configId, value }),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Antigravity ${configId} switch timed out`)), SETUP_TIMEOUT_MS);
+        }),
+      ]).finally(() => clearTimeout(timer));
+    };
+    try {
+      const wantMode = input.profile === "plan" ? "plan" : "accept-edits";
+      if (live.mode !== wantMode && !s.stopping) {
+        await setCfg("mode", wantMode);
+        live.mode = wantMode;
+      }
+      const resolved = resolveAgyConfig(input.model, input.effort, live.modelOptions, live.thoughtOptions);
+      if (resolved.model && live.model !== resolved.model && !s.stopping) {
+        await setCfg("model", resolved.model);
+        live.model = resolved.model;
+      }
+      if (resolved.effort && live.effort !== resolved.effort && !s.stopping) {
+        await setCfg("thought_level", resolved.effort);
+        live.effort = resolved.effort;
+      }
+      if (s.stopping) {
+        turn.emit({ type: "error", code: "canceled", message: "The turn was canceled." });
+        return { drop: true };
+      }
+      const fresh = !live.hasContext;
+      const answer = await live.conn
+        .request<Record<string, unknown> | null>("session/prompt", {
+          sessionId: live.acpSessionId,
+          prompt: [{ type: "text", text: opencodePrompt(input.system, input.prompt, fresh) }],
+        })
+        .then(
+          (result) => ({ ok: true as const, result }),
+          (error: unknown) => ({ ok: false as const, error }),
+        );
+      if (answer.ok) {
+        admit();
+        for (const event of reader.usage(answer.result?.usage, input.model)) turn.emit(event);
+      }
+      if (s.stopping) {
+        turn.emit({ type: "error", code: "canceled", message: "The turn was canceled." });
+        return { drop: true };
+      }
+      if (!answer.ok) {
+        if (live.exited) return { died: true, drop: true };
+        const problem = acpProblem(answer.error);
+        for (const ev of antigravityProblem(clean(problem.message), {
+          worked: reader.worked || reader.streamed.length > 0,
+          auth: problem.auth,
+          ...(opts.now ? { now: opts.now() } : {}),
+        }))
+          turn.emit(ev);
+        return { drop: true };
+      }
+      const stopReason = agyStr(answer.result?.stopReason);
+      if (stopReason === "refusal" && !(reader.answer || reader.streamed).trim()) {
+        turn.emit({ type: "error", code: "antigravity_failed", message: "The model refused to answer." });
+        return {};
+      }
+      const text = clean((reader.answer || reader.streamed).trimEnd());
+      turn.emit({ type: "done", text, session: { id: input.sessionId }, timings: turn.timings() });
+      return {};
+    } catch (err) {
+      if (s.stopping) {
+        turn.emit({ type: "error", code: "canceled", message: "The turn was canceled." });
+        return { drop: true };
+      }
+      if (live.exited) return { died: true, drop: true };
+      const problem = acpProblem(err);
+      for (const ev of antigravityProblem(clean(problem.message), {
+        worked: reader.worked || reader.streamed.length > 0,
+        auth: problem.auth,
+        ...(opts.now ? { now: opts.now() } : {}),
+      }))
+        turn.emit(ev);
+      return { drop: true };
+    } finally {
+      clearTimeout(s.killTimer);
+      opts.signal.removeEventListener("abort", onAbort);
+      live.conn.setHandlers({
+        onRequest(method) {
+          throw new AcpError(ACP_METHOD_NOT_FOUND, `Method not found: ${method}`);
+        },
+      });
+      live.busy = false;
+      live.lastUsed = Date.now();
+      if (live.bridge && this.opts.runs.has(live.id)) this.opts.runs.set(live.id, live.bridge);
+      if (this.live.get(live.key) === live && !live.exited) this.armIdle(live);
+      this.trim(live.agentId);
+    }
+  }
+
+  private armIdle(live: AgyLive) {
+    live.idleSince = awakeClock.read();
+    this.checkIdle(live, this.opts.idleMs ?? CODEX_APP_IDLE_MS);
+  }
+
+  private checkIdle(live: AgyLive, waitMs: number) {
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.idleTimer = setTimeout(() => {
+      live.idleTimer = null;
+      if (live.busy) return;
+      const left = (this.opts.idleMs ?? CODEX_APP_IDLE_MS) - (awakeClock.read() - live.idleSince);
+      if (left > 0) return this.checkIdle(live, left);
+      this.drop(live);
+    }, waitMs);
+    live.idleTimer.unref?.();
+  }
+
+  private get max() {
+    return this.opts.maxProcesses ?? CODEX_APP_MAX_PROCESSES;
+  }
+
+  private alive(agentId: string) {
+    return [...this.live.values()].filter((l) => l.agentId === agentId && !l.exited).length;
+  }
+
+  private lruIdle(agentId: string): AgyLive | undefined {
+    let lru: AgyLive | undefined;
+    for (const l of this.live.values()) {
+      if (l.busy || l.agentId !== agentId) continue;
+      if (!lru || l.lastUsed < lru.lastUsed) lru = l;
+    }
+    return lru;
+  }
+
+  private trim(agentId: string) {
+    while (this.alive(agentId) > this.max) {
+      const l = this.lruIdle(agentId);
+      if (!l) return;
+      this.drop(l);
+    }
+  }
+
+  private drop(live: AgyLive) {
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.idleTimer = null;
+    if (this.live.get(live.key) === live) this.live.delete(live.key);
+    this.opts.runs.delete(live.id);
+    live.bridge = null;
+    live.conn.close();
+    live.child.stdin?.end();
+    killTree(live.child, "SIGTERM");
+    live.release?.();
+    live.release = undefined;
+  }
+
+  /** System mode: a pooled process on an account its agent no longer thinks with closes (a busy one stays until it idles out). */
+  keepAccount(account: string | null, also: readonly string[] = []) {
+    const keep = new Set([...(account ? [account] : []), ...also]);
+    for (const l of [...this.live.values()]) if (!l.busy && l.account !== null && !keep.has(l.account)) this.drop(l);
+  }
+
+  close() {
+    this.closed = true;
+    for (const l of [...this.live.values()]) this.drop(l);
+  }
+}
+
+/** What the runner's `brain.turn` handler hands the Antigravity branch. */
 export interface AntigravityBrainContext {
   folder: string;
   exec: boolean;
@@ -486,6 +1252,7 @@ export interface AntigravityBrainContext {
   secretsDir?: string;
   mcp?: { socketPath: string; command: string[] };
   chats?: CodexThreads;
+  pool?: AntigravityServers;
   bin?: string;
   grants?: string[];
   accounts?: AccountFolders;
@@ -550,6 +1317,7 @@ export async function handleAntigravityBrainTurn(
     });
     return;
   }
+  let release: (() => void) | undefined = signIn.release;
   try {
     // A `chat` turn starts in an empty folder of its own, whatever the request names.
     const chat = req.permissions?.mode === "chat";
@@ -564,28 +1332,93 @@ export async function handleAntigravityBrainTurn(
     const file = antigravityChatsFile(ctx.runnerHome);
     const chats = ctx.chats ?? chatStores.get(file) ?? new CodexThreads(file);
     chatStores.set(file, chats);
-    await runAntigravityTurn(
+    const turnInput: AntigravityTurnInput = {
+      runId: req.runId,
+      sessionId: req.session.id,
+      cwd,
+      folder,
+      ...(typeof req.model === "string" && req.model ? { model: req.model } : {}),
+      ...(req.effort ? { effort: req.effort } : {}),
+      system: typeof req.system === "string" ? req.system : "",
+      prompt: typeof req.prompt === "string" ? req.prompt : "",
+      mcp: { token: req.mcp.token },
+      account: { id: accountId, home: signIn.home },
+      profile: codexProfileOf(req),
+      ...(req.keepAlive === false ? { keepAlive: false } : {}),
+      ...(chat
+        ? { chat }
+        : {
+            addDirs: [...(cwd !== folder ? [folder] : []), ...(ctx.grants ?? []).filter((g) => !isInside(g, cwd))],
+          }),
+    };
+    const turnOpts: AntigravityTurnOptions = {
+      chats,
+      emit: scope.emit,
+      signal: scope.signal,
+      runnerHome: ctx.runnerHome,
+      ...(ctx.mcp ? { mcpCommand: ctx.mcp.command, socketPath: ctx.mcp.socketPath } : {}),
+      ...(secrets ? { env: secrets.env, redact: secrets.redact, redactHold: secrets.hold } : {}),
+      ...(ctx.bin ? { bin: ctx.bin } : {}),
+      ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
+      ...(ctx.platform ? { platform: ctx.platform } : {}),
+    };
+    if (ctx.pool && !chat) {
+      const owned = release;
+      release = undefined;
+      await ctx.pool.turn(turnInput, turnOpts, owned);
+      return;
+    }
+    await runAntigravityTurn(turnInput, turnOpts);
+  } finally {
+    release?.();
+  }
+}
+
+/** `brain.warm` with `kind: "antigravity"`: best-effort pre-spawn of a pooled `agy acp` process. */
+export async function handleAntigravityBrainWarm(
+  ctx: AntigravityBrainContext,
+  req: BrainWarmRequest & { agent?: AgentScope },
+): Promise<BrainWarmReply> {
+  const no: BrainWarmReply = { open: false, started: false };
+  if (!ctx.exec || !ctx.pool || !req.agent) return no;
+  if (typeof req.session?.id !== "string" || !/^[a-zA-Z0-9-]{8,64}$/.test(req.session.id)) return no;
+  if (req.permissions?.mode === "chat") return no;
+  const accountId: unknown = req.account;
+  if (typeof accountId !== "string" || !accountId || !isAccountId(accountId)) return no;
+  const signIn = await accountSignIn(ctx.accounts, "antigravity", accountId, ctx.grant).catch(() => null);
+  if (!signIn || signIn === "signed_out" || signIn === "missing") return no;
+  let release: (() => void) | undefined = signIn.release;
+  try {
+    let cwd = ctx.folder;
+    if (typeof req.cwd === "string" && req.cwd.trim() !== "") {
+      const resolved = await resolveForAgent(ctx.folder, ctx.grants, req.cwd).catch(() => null);
+      if (!resolved?.exists) return no;
+      cwd = resolved.abs;
+    }
+    const secrets = await agentSecrets(ctx.secretsDir, req.agent).catch(() => null);
+    const file = antigravityChatsFile(ctx.runnerHome);
+    const chats = ctx.chats ?? chatStores.get(file) ?? new CodexThreads(file);
+    chatStores.set(file, chats);
+    const addDirs = [
+      ...(cwd !== ctx.folder ? [ctx.folder] : []),
+      ...(ctx.grants ?? []).filter((g) => !isInside(g, cwd)),
+    ];
+    const owned = release;
+    release = undefined;
+    return await ctx.pool.prewarm(
       {
-        runId: req.runId,
         sessionId: req.session.id,
         cwd,
+        folder: ctx.folder,
         ...(typeof req.model === "string" && req.model ? { model: req.model } : {}),
         ...(req.effort ? { effort: req.effort } : {}),
-        system: typeof req.system === "string" ? req.system : "",
-        prompt: typeof req.prompt === "string" ? req.prompt : "",
-        mcp: { token: req.mcp.token },
         account: { id: accountId, home: signIn.home },
         profile: codexProfileOf(req),
-        ...(chat
-          ? { chat }
-          : {
-              addDirs: [...(cwd !== folder ? [folder] : []), ...(ctx.grants ?? []).filter((g) => !isInside(g, cwd))],
-            }),
+        ...(addDirs.length ? { addDirs } : {}),
+        agentId: String(req.agent.id),
       },
       {
         chats,
-        emit: scope.emit,
-        signal: scope.signal,
         runnerHome: ctx.runnerHome,
         ...(ctx.mcp ? { mcpCommand: ctx.mcp.command, socketPath: ctx.mcp.socketPath } : {}),
         ...(secrets ? { env: secrets.env, redact: secrets.redact, redactHold: secrets.hold } : {}),
@@ -593,8 +1426,9 @@ export async function handleAntigravityBrainTurn(
         ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
         ...(ctx.platform ? { platform: ctx.platform } : {}),
       },
+      owned,
     );
   } finally {
-    signIn.release?.();
+    release?.();
   }
 }
