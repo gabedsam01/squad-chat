@@ -422,10 +422,7 @@ export function planModel(plan: CodingPlan, value: string | null | undefined): P
   const v = stripPlanPrefix(value) as string | null | undefined;
   const byAlias = isAlias(v) ? models.find((m) => m.alias === v) : undefined;
   return (
-    models.find((m) => m.id === v) ??
-    byAlias ??
-    models.find((m) => m.alias === "sonnet") ??
-    (models[0] as PlanModel)
+    models.find((m) => m.id === v) ?? byAlias ?? models.find((m) => m.alias === "sonnet") ?? (models[0] as PlanModel)
   );
 }
 

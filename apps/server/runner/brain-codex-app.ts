@@ -16,7 +16,6 @@ import {
 } from "@agenteschat/adapters/machine-protocol";
 import { accountEnv, withoutContainers, yieldRoute } from "./accounts";
 import { awakeClock } from "./awake";
-import { isInside } from "./paths";
 import {
   CODEX_DIRECT_MCP_CONFIG,
   CODEX_NO_NETWORK,
@@ -957,46 +956,48 @@ export class CodexAppServers implements CodexAppRunner {
     const threadKey = codexThreadKey(input.sessionId, input.account?.id);
     const key = `${input.agentId}:${threadKey}`;
     const prev = this.chains.get(key) ?? Promise.resolve();
-    const run = prev.catch(() => undefined).then(async (): Promise<BrainWarmReply> => {
-      if (this.closed) return no;
-      const dummyInput: CodexTurnInput & { version: string } = {
-        ...input,
-        cwd,
-        runId: "warm",
-        system: "",
-        prompt: "",
-        mcp: { token: "" },
-      };
-      const dummyOpts: CodexTurnOptions = {
-        ...opts,
-        emit: () => {},
-        signal: new AbortController().signal,
-      };
-      const sig = this.signature(dummyInput, dummyOpts);
-      let existing = this.live.get(key);
-      if (existing && (existing.client.exited || existing.sig !== sig)) {
-        this.drop(existing);
-        existing = undefined;
-      }
-      if (existing) {
-        if (!existing.busy) {
-          existing.lastUsed = Date.now();
-          this.armIdle(existing);
+    const run = prev
+      .catch(() => undefined)
+      .then(async (): Promise<BrainWarmReply> => {
+        if (this.closed) return no;
+        const dummyInput: CodexTurnInput & { version: string } = {
+          ...input,
+          cwd,
+          runId: "warm",
+          system: "",
+          prompt: "",
+          mcp: { token: "" },
+        };
+        const dummyOpts: CodexTurnOptions = {
+          ...opts,
+          emit: () => {},
+          signal: new AbortController().signal,
+        };
+        const sig = this.signature(dummyInput, dummyOpts);
+        let existing = this.live.get(key);
+        if (existing && (existing.client.exited || existing.sig !== sig)) {
+          this.drop(existing);
+          existing = undefined;
         }
-        return { open: true, started: false };
-      }
-      const agent = input.agentId ?? "";
-      if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
-      await yieldRoute("codex", input.account?.home);
-      if (this.closed) return no;
-      const lru = this.alive(agent) >= this.max ? this.lruIdle(agent) : undefined;
-      if (this.alive(agent) >= this.max && !lru) return no;
-      if (lru) this.drop(lru);
-      const started = await this.start(key, threadKey, sig, dummyInput, dummyOpts);
-      if (!started) return no;
-      this.armIdle(started);
-      return { open: true, started: true };
-    });
+        if (existing) {
+          if (!existing.busy) {
+            existing.lastUsed = Date.now();
+            this.armIdle(existing);
+          }
+          return { open: true, started: false };
+        }
+        const agent = input.agentId ?? "";
+        if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
+        await yieldRoute("codex", input.account?.home);
+        if (this.closed) return no;
+        const lru = this.alive(agent) >= this.max ? this.lruIdle(agent) : undefined;
+        if (this.alive(agent) >= this.max && !lru) return no;
+        if (lru) this.drop(lru);
+        const started = await this.start(key, threadKey, sig, dummyInput, dummyOpts);
+        if (!started) return no;
+        this.armIdle(started);
+        return { open: true, started: true };
+      });
     this.chains.set(key, run);
     try {
       return await run;

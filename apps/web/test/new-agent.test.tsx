@@ -986,7 +986,7 @@ describe("Criar agente: what gets created", () => {
         machineId: "machine_1",
         name: "MacBook",
         online: true,
-        options: [plan("claude_code", true), plan("codex", false)],
+        options: [plan("claude_code", true), plan("codex", false), plan("opencode", true)],
       },
     ];
     const api = createFakeApi(state);
@@ -994,7 +994,7 @@ describe("Criar agente: what gets created", () => {
       accounts: [
         {
           id: "acc-go",
-          kind: "claude_code",
+          kind: "opencode",
           label: "OpenCode Go",
           email: null,
           plan: null,
@@ -1035,7 +1035,7 @@ describe("Criar agente: what gets created", () => {
     expect(state.calls.find((c) => c.method === "agents.setBrain")?.args).toEqual([
       ORG_ID,
       agentId,
-      { brain: "claude_code", account: "acc-go", model: "deepseek-v4.1-flash" },
+      { brain: "opencode", account: "acc-go", model: "deepseek-v4.1-flash" },
     ]);
   });
 

@@ -243,6 +243,7 @@ export interface AntigravityTurnInput {
   /** The agent's own folder when the turn starts in a checkout, and its granted folders (`antigravityTurnArgs`). */
   addDirs?: string[];
   folder?: string;
+  agentId?: string;
   keepAlive?: boolean;
 }
 
@@ -521,7 +522,6 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
 /** What the runner's `brain.turn` handler hands the Antigravity branch. */
 const SETUP_TIMEOUT_MS = 120_000;
 const STOP_WAIT_MS = 8000;
-const KILL_WAIT_MS = 2000;
 const agyStr = (v: unknown) => (typeof v === "string" ? v : "");
 
 interface AgyLive {
@@ -583,7 +583,11 @@ function resolveAgyConfig(
       const level = m[0].slice(1);
       if (modelOptions.has(base)) {
         pickedModel = base;
-        pickedEffort = thoughtOptions.has(level) ? level : level === "max" && thoughtOptions.has("xhigh") ? "xhigh" : undefined;
+        pickedEffort = thoughtOptions.has(level)
+          ? level
+          : level === "max" && thoughtOptions.has("xhigh")
+            ? "xhigh"
+            : undefined;
       }
     }
   } else if (pickedModel && !pickedEffort) {
@@ -593,7 +597,11 @@ function resolveAgyConfig(
       const level = m[0].slice(1);
       if (thoughtOptions.size > 0) {
         pickedModel = base;
-        pickedEffort = thoughtOptions.has(level) ? level : level === "max" && thoughtOptions.has("xhigh") ? "xhigh" : undefined;
+        pickedEffort = thoughtOptions.has(level)
+          ? level
+          : level === "max" && thoughtOptions.has("xhigh")
+            ? "xhigh"
+            : undefined;
       }
     }
   }
@@ -655,42 +663,44 @@ export class AntigravityServers {
       const chatKey = codexThreadKey(input.sessionId, input.account.id);
       const key = `${input.agentId}:${chatKey}`;
       const prev = this.chains.get(key) ?? Promise.resolve();
-      const run = prev.catch(() => undefined).then(async (): Promise<BrainWarmReply> => {
-        if (this.closed) return no;
-        const dummyInput: AntigravityTurnInput = {
-          ...input,
-          cwd,
-          runId: "warm",
-          system: "",
-          prompt: "",
-          mcp: { token: "" },
-        };
-        const dummyOpts: AntigravityTurnOptions = {
-          ...opts,
-          emit: () => {},
-          signal: new AbortController().signal,
-        };
-        const sig = this.signature(dummyInput, dummyOpts);
-        let existing = this.live.get(key);
-        if (existing && (existing.exited || existing.sig !== sig)) {
-          this.drop(existing);
-          existing = undefined;
-        }
-        if (existing) {
-          if (!existing.busy) {
-            existing.lastUsed = Date.now();
-            this.armIdle(existing);
+      const run = prev
+        .catch(() => undefined)
+        .then(async (): Promise<BrainWarmReply> => {
+          if (this.closed) return no;
+          const dummyInput: AntigravityTurnInput = {
+            ...input,
+            cwd,
+            runId: "warm",
+            system: "",
+            prompt: "",
+            mcp: { token: "" },
+          };
+          const dummyOpts: AntigravityTurnOptions = {
+            ...opts,
+            emit: () => {},
+            signal: new AbortController().signal,
+          };
+          const sig = this.signature(dummyInput, dummyOpts);
+          let existing = this.live.get(key);
+          if (existing && (existing.exited || existing.sig !== sig)) {
+            this.drop(existing);
+            existing = undefined;
           }
-          return { open: true, started: false };
-        }
-        const agent = input.agentId ?? "";
-        if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
-        const started = await this.start(key, chatKey, sig, dummyInput, dummyOpts, owned);
-        if (!started) return no;
-        owned = undefined;
-        this.armIdle(started);
-        return { open: true, started: true };
-      });
+          if (existing) {
+            if (!existing.busy) {
+              existing.lastUsed = Date.now();
+              this.armIdle(existing);
+            }
+            return { open: true, started: false };
+          }
+          const agent = input.agentId ?? "";
+          if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
+          const started = await this.start(key, chatKey, sig, dummyInput, dummyOpts, owned);
+          if (!started) return no;
+          owned = undefined;
+          this.armIdle(started);
+          return { open: true, started: true };
+        });
       this.chains.set(key, run);
       try {
         return await run;
@@ -713,11 +723,13 @@ export class AntigravityServers {
       const chatKey = codexThreadKey(input.sessionId, input.account.id);
       const key = `${input.agentId}:${chatKey}`;
       const prev = this.chains.get(key) ?? Promise.resolve();
-      const run = prev.catch(() => undefined).then(async () => {
-        const res = await this.runPooled(key, chatKey, input, opts, owned);
-        if (res.consumedRelease) owned = undefined;
-        return res.handled;
-      });
+      const run = prev
+        .catch(() => undefined)
+        .then(async () => {
+          const res = await this.runPooled(key, chatKey, input, opts, owned);
+          if (res.consumedRelease) owned = undefined;
+          return res.handled;
+        });
       this.chains.set(key, run);
       let handled = false;
       try {
@@ -817,19 +829,19 @@ export class AntigravityServers {
       ...(opts.env ?? {}),
     };
     const env = accountEnv("antigravity", input.account.home, base);
-    const args = [
-      "acp",
-      "--sandbox",
-      ...(input.addDirs?.length ? input.addDirs.flatMap((d) => ["--add-dir", d]) : []),
-    ];
+    const args = ["acp", "--sandbox", ...(input.addDirs?.length ? input.addDirs.flatMap((d) => ["--add-dir", d]) : [])];
     let child: ChildProcess;
     try {
-      child = (this.opts.spawn ?? opts.spawn ?? spawn)(resolveCommand(opts.bin ?? AGY_BIN, envValue(env, "PATH")), args, {
-        cwd: input.cwd,
-        env,
-        stdio: ["pipe", "pipe", "pipe"],
-        detached: true,
-      });
+      child = (this.opts.spawn ?? opts.spawn ?? spawn)(
+        resolveCommand(opts.bin ?? AGY_BIN, envValue(env, "PATH")),
+        args,
+        {
+          cwd: input.cwd,
+          env,
+          stdio: ["pipe", "pipe", "pipe"],
+          detached: true,
+        },
+      );
     } catch {
       return null;
     }
@@ -854,7 +866,11 @@ export class AntigravityServers {
     });
     proc.on("close", (code: number | null) => {
       exited = true;
-      conn.close(new Error(`Antigravity exited with code ${code ?? "?"}${stderr.trim() ? `: ${stderr.trim().slice(-300)}` : ""}`));
+      conn.close(
+        new Error(
+          `Antigravity exited with code ${code ?? "?"}${stderr.trim() ? `: ${stderr.trim().slice(-300)}` : ""}`,
+        ),
+      );
     });
     const within = <T>(p: Promise<T>, label: string) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -886,7 +902,11 @@ export class AntigravityServers {
         runnerHome: opts.runnerHome ?? "",
       });
       const stored = opts.chats.get(chatKey);
-      const resume = isRecord(sessionCaps.resume) ? "session/resume" : caps.loadSession === true ? "session/load" : null;
+      const resume = isRecord(sessionCaps.resume)
+        ? "session/resume"
+        : caps.loadSession === true
+          ? "session/load"
+          : null;
       let acpSessionId: string | null = null;
       let hasContext = false;
       let opened: Record<string, unknown> | null = null;
@@ -934,7 +954,11 @@ export class AntigravityServers {
       const resolved = resolveAgyConfig(input.model, input.effort, modelOpt.values, thoughtOpt.values);
       if (resolved.model && modelOpt.current !== resolved.model) {
         await within(
-          conn.request("session/set_config_option", { sessionId: acpSessionId, configId: "model", value: resolved.model }),
+          conn.request("session/set_config_option", {
+            sessionId: acpSessionId,
+            configId: "model",
+            value: resolved.model,
+          }),
           "Antigravity ACP set model timed out",
         );
         modelOpt.current = resolved.model;
@@ -1369,7 +1393,10 @@ export async function handleAntigravityBrainWarm(
     const file = antigravityChatsFile(ctx.runnerHome);
     const chats = ctx.chats ?? chatStores.get(file) ?? new CodexThreads(file);
     chatStores.set(file, chats);
-    const addDirs = [...(cwd !== ctx.folder ? [ctx.folder] : []), ...(ctx.grants ?? []).filter((g) => !isInside(g, cwd))];
+    const addDirs = [
+      ...(cwd !== ctx.folder ? [ctx.folder] : []),
+      ...(ctx.grants ?? []).filter((g) => !isInside(g, cwd)),
+    ];
     const owned = release;
     release = undefined;
     return await ctx.pool.prewarm(

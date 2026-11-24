@@ -1,7 +1,14 @@
 import type { PlanUsage } from "@agenteschat/adapters";
 import { and, type Executor, eq, inArray, isNull, ne, or, schema, sql } from "@agenteschat/db";
 import { isAutoModel } from "@agenteschat/providers";
-import { autoPlanModel, claudeCodeModel, isPlanId, NEXT_ACCOUNT_KINDS, opencodePlanModel, planOf } from "@agenteschat/providers/plans";
+import {
+  autoPlanModel,
+  claudeCodeModel,
+  isPlanId,
+  NEXT_ACCOUNT_KINDS,
+  opencodePlanModel,
+  planOf,
+} from "@agenteschat/providers/plans";
 import type { Agent } from "./agents";
 import { type BrainPlan, computerBrainUnavailable, NO_AI_CODES, planIsOwners, storedPlanUsage } from "./brains/select";
 import type { BrainAccount, BrainSession } from "./brains/types";

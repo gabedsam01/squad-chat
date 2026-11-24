@@ -64,8 +64,9 @@ const MAC: BrainMachine = {
   machineId: "m1",
   name: "Mac mini",
   online: true,
-  options: [claudeCode, codexOff, opencodeOn],
+  options: [claudeCode, codexOff],
 };
+const MAC_GO: BrainMachine = { ...MAC, options: [claudeCode, codexOff, opencodeOn] };
 const goKey: AiAccounts["accounts"][number] = {
   id: "acc-go",
   kind: "opencode",
@@ -91,7 +92,7 @@ const build = (accounts: AiAccounts["accounts"] = [], withKey = ["anthropic"], o
       withKey.map((provider, i) => ({ id: `k${i}`, provider }) as never),
       false,
     ),
-    machines: [MAC],
+    machines: [accounts.some((a) => a.kind === "opencode") ? MAC_GO : MAC],
     accounts,
     ownerIsMe,
   });
@@ -211,9 +212,9 @@ describe("Quem pensa as one list (the new agent's step)", () => {
     expect(brainPickValue(options, { kind: "model", model: AUTO })).toBe(AUTO);
     expect(brainPickValue(options, { kind: "claude_code", machineId: "m1" })).toBe("claude@m1/auto");
     expect(brainPickValue(options, { kind: "connect", choice: "kimi" })).toBe("connect:kimi");
-    expect(
-      brainPickValue(options, { kind: "opencode", machineId: "m1", accountId: "acc-go", model: "glm-5.3" }),
-    ).toBe("opencode@m1#acc-go/glm-5.3");
+    expect(brainPickValue(options, { kind: "opencode", machineId: "m1", accountId: "acc-go", model: "glm-5.3" })).toBe(
+      "opencode@m1#acc-go/glm-5.3",
+    );
     // A model without a key isn't a choice to show.
     expect(brainPickValue(options, { kind: "model", model: "gpt-6.1-sol" })).toBeUndefined();
     expect(brainPickInput({ kind: "opencode", accountId: "acc-go", model: "glm-5.3" })).toEqual({
@@ -430,16 +431,17 @@ describe("the model picker: the agent's AI changed in place", () => {
   const otherClaude = {
     ...goKey,
     id: "acc-claude",
+    kind: "claude_code" as const,
     label: "Max",
     provider: null,
     usage: { windows: [{ kind: "five_hour" as const, usedPercent: 10 }], source: "probe" as const, at },
   };
   const someoneElses = { ...otherClaude, id: "acc-theirs", mine: false, ownerId: "u9" };
   const view = {
-    brain: "claude_code" as const,
+    brain: "opencode" as const,
     model: "auto",
     effectiveModel: "sonnet",
-    options: [claudeCode, codexOff],
+    options: [claudeCode, codexOff, opencodeOn],
     accounts: [go, otherClaude, someoneElses],
     account: "acc-go",
     ownSignIn: true,
@@ -508,10 +510,10 @@ describe("the model picker: the agent's AI changed in place", () => {
     const [claudeTile, goTile, keys] = tiles;
     if (!claudeTile || !goTile || !keys) throw new Error("missing tiles");
     expect(modelPickerSave(view, goTile, goTile.accounts[0], "glm-5.3")).toEqual({
-      brain: { brain: "claude_code", model: "glm-5.3" },
+      brain: { brain: "opencode", model: "glm-5.3" },
     });
     expect(modelPickerSave(view, goTile, goTile.accounts[0], "auto")).toEqual({
-      brain: { brain: "claude_code", model: "auto", effort: "auto" },
+      brain: { brain: "opencode", model: "auto", effort: "auto" },
     });
     expect(modelPickerSave(view, claudeTile, claudeTile.accounts[1], "opus")).toEqual({
       brain: { brain: "claude_code", account: "acc-claude", model: "opus" },

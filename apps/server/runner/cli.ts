@@ -29,6 +29,7 @@ import {
   TOOL_NAMES,
 } from "./access";
 import { type AgentUser, AgentUsers, agentGid, denySchedulers, systemLauncher } from "./agent-users";
+import { flagString, type Parsed, parseArgs } from "./args";
 import { findChrome } from "./browser";
 import {
   POLICY_NOT_IN_FORCE_EXIT,
@@ -65,7 +66,6 @@ import { DesktopManager } from "./desktop";
 import { runDesktopBrowser } from "./desktop-browser";
 import { DesktopSessions, type DesktopSessionsOptions, runnerUser, systemDesktopUser } from "./desktop-session";
 import { localSources, runDoctor } from "./doctor";
-import { flagString, type Parsed, parseArgs } from "./args";
 import { RUNNER_VERSION } from "./errors";
 import { defaultHostState, HostComputer, readTokenFile, runnerChild } from "./host";
 import { writeJson } from "./json-file";
@@ -194,7 +194,6 @@ Commands run as the user that runs the runner. Consider a dedicated OS user.`;
 
 const stamp = (line: string) => `${new Date().toISOString()} ${line}`;
 const log = (line: string) => console.log(stamp(line));
-
 
 const DESKTOP_MANAGED =
   "This computer's connection is managed by the agentes app. Use the app (it ships the runner and keeps it running).";

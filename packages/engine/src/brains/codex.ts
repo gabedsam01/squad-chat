@@ -464,7 +464,9 @@ export class CodexBrain implements Brain {
     const [mcp, agent, code] = await Promise.all([
       this.deps.mcp(turn),
       this.deps.agent?.(turn),
-      checkouts && !chat && !turn.skipCode ? (turn.code ?? this.deps.prepare?.(turn, io.signal))?.catch(() => null) : null,
+      checkouts && !chat && !turn.skipCode
+        ? (turn.code ?? this.deps.prepare?.(turn, io.signal))?.catch(() => null)
+        : null,
     ]);
     // A kept-alive Codex lists our tools once, as its thread opens: the runner starts it again when a name is new.
     const toolNames = turn.tools.map((t) => t.name).sort();

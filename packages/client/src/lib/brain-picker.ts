@@ -645,7 +645,8 @@ export function modelPickerTiles(
         name: planLabel(t, choice),
         kind: kindOf(choice),
         accounts: sorted,
-        current: sorted.some(inUse) && (view.brain === kindOf(choice) || (isPlanId(choice) && view.brain === "claude_code")),
+        current:
+          sorted.some(inUse) && (view.brain === kindOf(choice) || (isPlanId(choice) && view.brain === "claude_code")),
       },
     ];
   });

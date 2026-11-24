@@ -85,7 +85,7 @@ const setup = (patch: Partial<ComputerSetup> = {}) =>
     ...patch,
   });
 
-const option = (kind: "claude_code" | "codex", over: Partial<AgentBrain["options"][number]> = {}) => ({
+const option = (kind: "claude_code" | "codex" | "opencode", over: Partial<AgentBrain["options"][number]> = {}) => ({
   kind,
   available: true,
 
@@ -102,7 +102,7 @@ const brain = (over: Partial<AgentBrain> = {}): AgentBrain => ({
   model: null,
   effectiveModel: null,
   computer: { machineId: "m1", name: "MacBook", online: true },
-  options: [option("claude_code"), option("codex")],
+  options: [option("claude_code"), option("codex"), option("opencode")],
   machines: [],
   canEdit: true,
   account: null,
@@ -124,7 +124,7 @@ const MAC: AiComputer = {
   mine: true,
   canAdd: true,
   keys: true,
-  brains: { claude_code: true, codex: true },
+  brains: { claude_code: true, codex: true, opencode: true },
 };
 
 const gate = (patch: Partial<Parameters<typeof planGate>[0]> = {}) =>

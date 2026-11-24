@@ -260,7 +260,6 @@ import { type CodeSetup, codeStart } from "./git/machine";
 import { agentRepositoryList, repositoriesPrompt } from "./git/repos";
 import { askVerdict, handOffHolds, repeatedAsk, saysNeedsNothing } from "./hand-off";
 import { announceIntent } from "./intent-line";
-import { isQuickCleanReply, isQuickGreeting } from "./quick-turn";
 import { UPDATE_ISSUE_TOOL } from "./issue-tools";
 import { linkRunToIssue, mirrorReplyToIssue } from "./issues";
 import { type Judge, JudgeGroup, judgeCallOf, TURN_END_CHECK_BUDGET_MS, withJudgeBudget } from "./judge";
@@ -312,6 +311,7 @@ import { type OutsideMemo, personWords, runReadOutside } from "./outside";
 import { assertPersonUnderLimit } from "./person-usage";
 import { createProfiler, type StageTiming } from "./profile";
 import { ASK_USER_TOOL, QUESTION_MAX_CHARS, questionResult } from "./questions";
+import { isQuickCleanReply, isQuickGreeting } from "./quick-turn";
 import {
   endsWithSentinel,
   isSentinelOnly,
@@ -2036,7 +2036,7 @@ async function executeRunInner(
       (kind === "claude_code" || kind === "codex" || kind === "opencode" || kind === "antigravity") &&
       !runMessageMeta(run, trigger).viaRoutine
     ) {
-      void warmAtClaim(deps, agent, run, replyThreadId ?? run.channelId, quickSocial).catch(() => {});
+      void warmAtClaim(deps, agent, run, replyThreadId ?? run.channelId).catch(() => {});
     }
   }
   if (!askingForRoom) await publishChannelEvent(deps.pubsub, event("running"));
@@ -2071,15 +2071,6 @@ async function executeRunInner(
   // choice is applied once the brain is known, before the first model call. Never blocks: no answer in time
   // is medium/medium.
   const askAuto = (): Promise<AutoChoice> => {
-    if (quickSocial) {
-      startGroup?.skip("auto_model");
-      return Promise.resolve({
-        tier: "small",
-        effort: "low",
-        reason: "Quick greeting: small tier, low effort.",
-        source: "judge",
-      });
-    }
     if (!judge) return Promise.resolve(fallbackChoice("none"));
     const message = trigger?.body ?? topTrigger?.body ?? "";
     const computer = brainOf(agent.brain) !== "model";
@@ -2116,11 +2107,12 @@ async function executeRunInner(
   const judging: Promise<void> | null =
     groupsJudged && judge
       ? quickSocial
-        ? (() => {
+        ? (async () => {
             startGroup?.skip("tool_groups");
-            ctx.loadedGroups = [];
+            const previous = await previousHere();
+            const kept = keptToolGroups(previous, granted);
+            ctx.loadedGroups = [...kept.used, ...kept.listed];
             tools = presentTools(granted, isSensitive, ctx.loadedGroups);
-            return null;
           })()
         : (async () => {
             const [recent, live, previous] = await Promise.all([
@@ -2605,7 +2597,8 @@ async function executeRunInner(
           )
         : undefined;
     const personBehind = () => runAuthority(db, run).then((a) => a.personId);
-    const scopeKeysPromise = deps.tools ? grantedScopeKeys(db, run.orgId, agent.id) : Promise.resolve([]);
+    const scopeKeysPromise =
+      deps.tools && brainOf(agent.brain) !== "model" ? grantedScopeKeys(db, run.orgId, agent.id) : Promise.resolve([]);
     const [pending, skillList, repoRows, browserRows, workApplies, choicesApply, sayNowHere] = await Promise.all([
       deps.tools ? pendingConnectors(db, run.orgId, new Set(granted.map((t) => t.name))).catch(() => []) : [],
       // Skills: only names and descriptions here; the body loads with `load_skill` (progressive disclosure).
@@ -2832,12 +2825,7 @@ async function executeRunInner(
           browsers,
           // Per connection (a second database shares `database:read`); the agent's grant rows too, so a tool the
           // requester's policy held back doesn't change the key from one person to the next.
-          [
-            ...new Set([
-              ...granted.map((t) => grantKey(t.connectionId, t.scope)),
-              ...(await scopeKeysPromise),
-            ]),
-          ].sort(),
+          [...new Set([...granted.map((t) => grantKey(t.connectionId, t.scope)), ...(await scopeKeysPromise)])].sort(),
           // A session a person's own connection was offered in holds what it read: only their runs resume it
           // (ADR 0099 addendum). Absent otherwise, so no other session's key changes.
           ...[...new Set(granted.flatMap((t) => (t.ownerUserId ? [`personal:${t.ownerUserId}`] : [])))],
@@ -3492,9 +3480,6 @@ async function executeRunInner(
         t.system = [...t.system, { turn: true, found: true, text: QUICK_TURN_NOTE } as ContextBlock];
       later(() => saveTranscript(db, t));
     }
-  } else if (quickSocial && needsContext && !run.background) {
-    transcript.system = [...transcript.system, { turn: true, found: true, text: QUICK_TURN_NOTE } as ContextBlock];
-    later(() => saveTranscript(db, transcript));
   }
   // The context budget reads the model's window: an OpenRouter model's comes with its list.
   const thinkerModel = await modelInfoFor(db, thinker.model, run.orgId);
@@ -6723,23 +6708,19 @@ async function executeRunInner(
  * its session picked without the prompt key (nothing kept on the run), "Automático" at the medium tier it falls back
  * to. A different launch at the turn only costs that start.
  */
-async function warmAtClaim(
-  deps: EngineDeps,
-  agent: Agent,
-  run: AgentRun,
-  conversation: string,
-  quickSocial = false,
-) {
+async function warmAtClaim(deps: EngineDeps, agent: Agent, run: AgentRun, conversation: string) {
   let plan = await resolveBrain(deps, agent, run, conversation, { peek: true });
   const factory = deps.brains?.[plan.kind];
   if (!factory || plan.unavailable || !plan.session) return;
   if (needsAutoChoice(agent, plan)) {
     // As the turn does: a pinned model stays, only "Automático" gives way to a held plan model's stand-in.
     const autoBrain = isAutoModel(plan.model);
-    const choice: AutoChoice = quickSocial
-      ? { tier: "small", effort: "low", reason: "Quick greeting: small tier, low effort.", source: "judge" }
-      : fallbackChoice("none");
-    plan = withAuto(agent, plan, autoApplied(agent, plan, choice, "anthropic", undefined, undefined, undefined, plan.account?.provider)).plan;
+    const choice: AutoChoice = fallbackChoice("none");
+    plan = withAuto(
+      agent,
+      plan,
+      autoApplied(agent, plan, choice, "anthropic", undefined, undefined, undefined, plan.account?.provider),
+    ).plan;
     const picked = autoBrain ? autoPlanModel(plan.account?.provider, plan.model, plan.usage) : undefined;
     const model =
       plan.kind === "opencode" && isPlanId(plan.account?.provider) && (picked || isAutoModel(plan.model))

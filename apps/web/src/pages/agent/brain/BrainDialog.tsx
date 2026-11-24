@@ -1106,7 +1106,10 @@ function BrainFlow({ view, onClose, at }: { view: AgentBrain; onClose: () => voi
           home();
           return;
         }
-        void switchTo({ ...adding.row, id: `account:${a.id}`, brain: a.kind, account: a, act: "use", current: false }, false);
+        void switchTo(
+          { ...adding.row, id: `account:${a.id}`, brain: a.kind, account: a, act: "use", current: false },
+          false,
+        );
       };
       return (
         <div className="arrival-main__steps">

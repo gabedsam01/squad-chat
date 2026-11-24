@@ -670,7 +670,10 @@ describe("Quem pensa: a plan with a login per agent, and plans on the Cloud", ()
       fakeAgentBrain(ADA_ID, {
         brain: "claude_code",
         effectiveModel: "sonnet",
-        options: [...fakeAgentBrain(ADA_ID).options, { kind: "opencode", available: true, models: [], defaultModel: null }],
+        options: [
+          ...fakeAgentBrain(ADA_ID).options,
+          { kind: "opencode", available: true, models: [], defaultModel: null },
+        ],
         accounts: [glm("acct_theo", ["Theo"]), glm("acct_lia", ["Lia"])],
       });
     fakeMachinesOf.get(api)?.endLogin("login_1", { state: "done", account: glm("acct_ada", []) });

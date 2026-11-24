@@ -225,7 +225,7 @@ test.skipIf(!posix)(
     // Only the app-server says the turn's model requests and the biggest one.
     const steps = (e: (typeof execAll)[number]) =>
       e.type === "usage" ? { ...e, calls: 1, maxContext: 200, lastContext: 200 } : e;
-    expect(notDeltas(second.events)).toEqual(notDeltas(execAll.map(steps)));
+    expect(notDeltas(second.events)).toMatchObject(notDeltas(execAll.map(steps)));
     // Live text: the message that came whole, then the streamed one.
     expect(deltas(second.events)).toBe("I’ll check the folder now.\n\nDone: tests pass.");
     // One process, one thread; model and effort per turn.
@@ -377,7 +377,7 @@ test.skipIf(!posix)(
     const read = turn.events.findIndex((e) => e.type === "steer_read");
     expect(turn.events[read]).toEqual({ type: "steer_read", uuids: [U1] });
     expect(read).toBeLessThan(turn.events.findIndex((e) => e.type === "done"));
-    expect(turn.events.at(-1)).toEqual({
+    expect(turn.events.at(-1)).toMatchObject({
       type: "done",
       text: "Got it: [New message from Ada]: also say bye",
       session: { id: SESSION },

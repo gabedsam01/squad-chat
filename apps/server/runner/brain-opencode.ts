@@ -415,7 +415,9 @@ export class OpencodeTurnReader {
         this.worked = true;
         this.boundary = true;
         // Our bridge's tools: the engine records its own calls.
-        const ownBridge = this.opts.isBridgeTool ? this.opts.isBridgeTool(tool.name) : tool.name.startsWith(BRIDGE_PREFIX);
+        const ownBridge = this.opts.isBridgeTool
+          ? this.opts.isBridgeTool(tool.name)
+          : tool.name.startsWith(BRIDGE_PREFIX);
         if (ownBridge) return [];
         const failed = status === "failed";
         return [
@@ -1003,7 +1005,7 @@ export interface OpencodeServersOptions {
   log?: (line: string) => void;
 }
 
-const modelProvider = (model?: string) => (model && model.includes("/") ? model.slice(0, model.indexOf("/")) : null);
+const modelProvider = (model?: string) => (model?.includes("/") ? model.slice(0, model.indexOf("/")) : null);
 
 /** Long-lived `opencode acp` processes per `(agent, session, account, cwd)`, with `brain.warm` pre-spawning. */
 export class OpencodeServers {
@@ -1063,41 +1065,43 @@ export class OpencodeServers {
         hold = undefined;
         return r;
       };
-      const run = prev.catch(() => undefined).then(async (): Promise<BrainWarmReply> => {
-        if (this.closed) return no;
-        const dummyInput: OpencodeTurnInput = {
-          ...input,
-          cwd,
-          runId: "warm",
-          system: "",
-          prompt: "",
-          mcp: { token: "" },
-        };
-        const dummyOpts: OpencodeTurnOptions = {
-          ...opts,
-          emit: () => {},
-          signal: new AbortController().signal,
-        };
-        const sig = this.signature(dummyInput, dummyOpts);
-        let existing = this.live.get(key);
-        if (existing && (existing.exited || existing.sig !== sig)) {
-          this.drop(existing);
-          existing = undefined;
-        }
-        if (existing) {
-          if (!existing.busy) {
-            existing.lastUsed = Date.now();
-            this.armIdle(existing);
+      const run = prev
+        .catch(() => undefined)
+        .then(async (): Promise<BrainWarmReply> => {
+          if (this.closed) return no;
+          const dummyInput: OpencodeTurnInput = {
+            ...input,
+            cwd,
+            runId: "warm",
+            system: "",
+            prompt: "",
+            mcp: { token: "" },
+          };
+          const dummyOpts: OpencodeTurnOptions = {
+            ...opts,
+            emit: () => {},
+            signal: new AbortController().signal,
+          };
+          const sig = this.signature(dummyInput, dummyOpts);
+          let existing = this.live.get(key);
+          if (existing && (existing.exited || existing.sig !== sig)) {
+            this.drop(existing);
+            existing = undefined;
           }
-          return { open: true, started: false };
-        }
-        const agent = input.agentId ?? "";
-        if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
-        const started = await this.start(key, sessionKey, sig, dummyInput, dummyOpts, consume);
-        if (!started) return no;
-        this.armIdle(started);
-        return { open: true, started: true };
-      });
+          if (existing) {
+            if (!existing.busy) {
+              existing.lastUsed = Date.now();
+              this.armIdle(existing);
+            }
+            return { open: true, started: false };
+          }
+          const agent = input.agentId ?? "";
+          if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
+          const started = await this.start(key, sessionKey, sig, dummyInput, dummyOpts, consume);
+          if (!started) return no;
+          this.armIdle(started);
+          return { open: true, started: true };
+        });
       this.chains.set(key, run);
       try {
         return await run;
@@ -1307,7 +1311,11 @@ export class OpencodeServers {
         runnerHome: opts.runnerHome,
       });
       const stored = opts.sessions.get(sessionKey);
-      const resume = isRecord(sessionCaps.resume) ? "session/resume" : caps.loadSession === true ? "session/load" : null;
+      const resume = isRecord(sessionCaps.resume)
+        ? "session/resume"
+        : caps.loadSession === true
+          ? "session/load"
+          : null;
       let acpSessionId: string | null = null;
       let hasContext = false;
       let opened: Record<string, unknown> | null = null;
@@ -1455,9 +1463,12 @@ export class OpencodeServers {
     if (opts.signal.aborted) onAbort();
     else opts.signal.addEventListener("abort", onAbort, { once: true });
     const silenceMs = opts.silenceMs ?? OPENCODE_SILENCE_MS;
-    const silence = setInterval(() => {
-      if (reader.running.size === 0 && Date.now() - live.conn.lastHeard > silenceMs) stop("silence");
-    }, Math.min(15_000, Math.max(50, silenceMs / 4)));
+    const silence = setInterval(
+      () => {
+        if (reader.running.size === 0 && Date.now() - live.conn.lastHeard > silenceMs) stop("silence");
+      },
+      Math.min(15_000, Math.max(50, silenceMs / 4)),
+    );
     live.conn.setHandlers({
       onNotification(method, params) {
         if (method !== "session/update" || !isRecord(params) || params.sessionId !== live.acpSessionId) return;

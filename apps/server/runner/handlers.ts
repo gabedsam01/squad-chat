@@ -29,7 +29,7 @@ import type { AccountFolders, AccountGrant, AccountManager } from "./accounts";
 import { type BrainManager, brainKey } from "./brain";
 import {
   type AntigravityBrainTurnRequest,
-  AntigravityServers,
+  type AntigravityServers,
   handleAntigravityBrainTurn,
   handleAntigravityBrainWarm,
 } from "./brain-antigravity";
@@ -46,7 +46,7 @@ import {
   handleOpencodeBrainTurn,
   handleOpencodeBrainWarm,
   type OpencodeBrainTurnRequest,
-  OpencodeServers,
+  type OpencodeServers,
   steerOpencodeTurn,
 } from "./brain-opencode";
 import { routeWithPlan } from "./brain-route";
