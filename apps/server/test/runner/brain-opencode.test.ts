@@ -12,9 +12,9 @@ import { type CodexBrainEvent, CodexThreads } from "../../runner/brain-codex";
 import {
   acpProblem,
   githubConfigDir,
+  keyPrint,
   OPENCODE_CHAT_PERMISSION,
   OpencodeServers,
-  keyPrint,
   OpencodeTurnReader,
   opencodeBridge,
   opencodeConfig,

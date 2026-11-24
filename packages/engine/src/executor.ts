@@ -2678,26 +2678,27 @@ async function executeRunInner(
     const personBehind = () => runAuthority(db, run).then((a) => a.personId);
     const scopeKeysPromise =
       deps.tools && brainOf(agent.brain) !== "model" ? grantedScopeKeys(db, run.orgId, agent.id) : Promise.resolve([]);
-    const [pending, skillList, repoRows, browserRows, workApplies, choicesApply, sayNowHere, codeHere] = await Promise.all([
-      deps.tools ? pendingConnectors(db, run.orgId, new Set(granted.map((t) => t.name))).catch(() => []) : [],
-      // Skills: only names and descriptions here; the body loads with `load_skill` (progressive disclosure).
-      tools.some((t) => t.name === "load_skill") ? enabledSkills(db, run.orgId, agent.id, run.id) : [],
-      // Limited to some GitHub repositories: which ones, and where to start.
-      granted.some((t) => t.scope.startsWith("github:"))
-        ? agentRepositoryList(db, run.orgId, agent.id).catch(() => [])
-        : [],
-      // Its shared browser profiles (ADR 0110), by name.
-      granted.some((t) => t.name === "browser_profile") ? agentBrowserProfiles(db, run.orgId, agent.id) : [],
-      // Listed in every run of the agent (`EVERY_TOOL`): the prompt speaks of them only where they apply.
-      every ? workMayStart(ctx) : true,
-      every ? someoneAnswers(ctx) : true,
-      // Listed in every run with an id: the line before slow work is spoken of only where people read it as it goes.
-      tools.some((t) => t.name === SAY_NOW_TOOL) ? sayNowApplies(db, run, sealedAtClaim).catch(() => false) : false,
-      // A session is suggested to a person's request outside one (ADR 0215 §11): spoken of only there.
-      tools.some((t) => t.name === SUGGEST_CODE_SESSION_TOOL)
-        ? codeSuggestionApplies(db, run).catch(() => false)
-        : false,
-    ]);
+    const [pending, skillList, repoRows, browserRows, workApplies, choicesApply, sayNowHere, codeHere] =
+      await Promise.all([
+        deps.tools ? pendingConnectors(db, run.orgId, new Set(granted.map((t) => t.name))).catch(() => []) : [],
+        // Skills: only names and descriptions here; the body loads with `load_skill` (progressive disclosure).
+        tools.some((t) => t.name === "load_skill") ? enabledSkills(db, run.orgId, agent.id, run.id) : [],
+        // Limited to some GitHub repositories: which ones, and where to start.
+        granted.some((t) => t.scope.startsWith("github:"))
+          ? agentRepositoryList(db, run.orgId, agent.id).catch(() => [])
+          : [],
+        // Its shared browser profiles (ADR 0110), by name.
+        granted.some((t) => t.name === "browser_profile") ? agentBrowserProfiles(db, run.orgId, agent.id) : [],
+        // Listed in every run of the agent (`EVERY_TOOL`): the prompt speaks of them only where they apply.
+        every ? workMayStart(ctx) : true,
+        every ? someoneAnswers(ctx) : true,
+        // Listed in every run with an id: the line before slow work is spoken of only where people read it as it goes.
+        tools.some((t) => t.name === SAY_NOW_TOOL) ? sayNowApplies(db, run, sealedAtClaim).catch(() => false) : false,
+        // A session is suggested to a person's request outside one (ADR 0215 §11): spoken of only there.
+        tools.some((t) => t.name === SUGGEST_CODE_SESSION_TOOL)
+          ? codeSuggestionApplies(db, run).catch(() => false)
+          : false,
+      ]);
     const repositories = granted.some((t) => t.scope.startsWith("github:")) ? repositoriesPrompt(repoRows) : "";
     // Granted, not listed: on demand (ADR 0043) the tool is one `use_tool` away, and `promptKey` must not follow tool groups.
     const browsers = granted.some((t) => t.name === "browser_profile")
