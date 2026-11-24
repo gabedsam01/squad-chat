@@ -1,5 +1,6 @@
 import type { AppLocale } from "@agenteschat/i18n/locale";
 import type { PlanModel } from "@agenteschat/providers/plans";
+import type { CodeApi } from "../code/api";
 import type { DashboardsApi } from "../dashboards/api";
 import type { ChatPrefs } from "../lib/chat-look";
 import type { OnboardingStepId } from "../lib/onboarding";
@@ -34,6 +35,7 @@ import type {
   AccountLoginStart,
   AccountLoginStatus,
   AccountOrderGroup,
+  AccountPermissions,
   ActiveRun,
   AdminAsk,
   Agent,
@@ -109,6 +111,7 @@ import type {
   ChannelMember,
   ChannelOverride,
   Choices,
+  ClientVitalsReport,
   CliInstall,
   CodeSent,
   CommandApproval,
@@ -262,6 +265,7 @@ import type {
   OrgPlanUsage,
   OrgRoles,
   OrgSettings,
+  OwnOAuthClient,
   PageTarget,
   PendingReturn,
   PeopleUsage,
@@ -402,6 +406,8 @@ export interface ApiClient {
     /** `null` unless I am the installation's owner (and not on squadchat itself). */
     telemetry(): Promise<ServerTelemetry | null>;
     setTelemetry(enabled: boolean): Promise<ServerTelemetry>;
+    /** How fast this app ran (`ClientVitalsReport`); absent from fakes that don't take it. */
+    reportVitals?(report: ClientVitalsReport): Promise<void>;
     /** By email to whoever runs the server; only where it takes feedback (`AuthConfig.feedback`). */
     sendFeedback(input: FeedbackInput): Promise<void>;
     /** A picture or a video for the feedback being written: kept an hour unless it is sent. */
@@ -1366,8 +1372,24 @@ export interface ApiClient {
       accountId: string,
       serves: PlanServes,
     ): Promise<{ serves: PlanServes; agentIds: string[] }>;
-    /** "Ordem de uso" (ADR 0041 §6): every computer's Claude and ChatGPT accounts in their order, by computer and kind. */
-    accountOrder(orgId: string): Promise<{ groups: AccountOrderGroup[] }>;
+    /**
+     * "Ordem de uso" (ADR 0041 §6): every computer's Claude and ChatGPT accounts in their order, by computer and kind,
+     * and the API-key switch under it (absent: an older server).
+     */
+    accountOrder(
+      orgId: string,
+    ): Promise<{ groups: AccountOrderGroup[]; keyFallback?: boolean; canConfigure?: boolean }>;
+    /**
+     * An account's Gerenciar, Usar em agentes and Atender todos (only those given change): `manage` its owner, `use`
+     * whoever manages it, `reply` its owner or an admin (`account.permission_forbidden`). `agentIds`: agents moved off it.
+     */
+    setAccountPermissions(
+      orgId: string,
+      accountId: string,
+      input: Partial<AccountPermissions>,
+    ): Promise<{ permissions: AccountPermissions; agentIds: string[] }>;
+    /** "Continuar com a chave de API quando todos os planos estiverem no limite" (admins). */
+    setKeyFallback(orgId: string, on: boolean): Promise<{ on: boolean }>;
     /** Moves the account to `index` (0 first) in its order: its owner or an admin (`account.order_forbidden`). */
     moveAccountInOrder(orgId: string, accountId: string, index: number): Promise<AccountOrderGroup>;
     /** Its owner names it (1 to 40 characters). */
@@ -1474,6 +1496,8 @@ export interface ApiClient {
     refuse(orgId: string, proposalId: string): Promise<Proposal>;
     /** "Pedir a um admin" (ADR 0137): the person who asked sends a row they can't decide to whoever may, once. */
     ask(orgId: string, proposalId: string): Promise<Proposal>;
+    /** Undo on a change an agent applied (ADR 0219): 409 `proposal.changed` when it changed since. */
+    undo(orgId: string, proposalId: string): Promise<Proposal>;
   };
   customConnectors: {
     transports?(orgId: string): Promise<{ stdio: boolean }>;
@@ -1512,6 +1536,21 @@ export interface ApiClient {
       input: { label: string; tools: { name: string; access: ToolDecision; label: string; confirmed?: boolean }[] },
     ): Promise<CustomServer>;
     disconnect(orgId: string, serverId: string): Promise<void>;
+    /**
+     * The workspace's own OAuth client for the server at this address, and the redirect URI to register (who manages
+     * connectors). A 400 `connector.no_oauth` when the server doesn't sign in with OAuth.
+     */
+    ownClient(orgId: string, serverUrl: string): Promise<OwnOAuthClient>;
+    /**
+     * Saves it: every sign-in at that authorization server uses it. The same `clientId` keeps the saved secret unless
+     * one is sent; another one while accounts sign in with it is a 409 `connector.oauth_client_in_use`.
+     */
+    setOwnClient(
+      orgId: string,
+      input: { serverUrl: string; clientId: string; clientSecret?: string; scopes?: string },
+    ): Promise<OwnOAuthClient>;
+    /** Removes it; a 409 `connector.oauth_client_in_use` while accounts sign in with it. */
+    removeOwnClient(orgId: string, issuer: string): Promise<void>;
   };
   dms: {
     /** My direct conversations, with unread counts. */
@@ -1614,6 +1653,8 @@ export interface ApiClient {
   dashboards: DashboardsApi;
   /** Spreadsheets, presentations and canvases edited together (ADR 0196), their pictures and Office previews. */
   live: LiveApi;
+  /** Code sessions (ADR 0215): a request in its own worktree on an agent's computer, with its conversation. */
+  code: CodeApi;
   /** Missions (ADR 0029): long work by the agent's executor on a connected computer, in one thread. */
   missions: {
     /** Missions you can see (the Missões tab), most recently changed first, with the counts for the tabs. */
@@ -1956,15 +1997,18 @@ export interface ApiClient {
       id: string,
       options?: { version?: number; format?: "csv" | "patch" | "pdf" | "docx" | "xlsx" | "pptx" | "md" },
     ): string;
+    /** A picture made small (`THUMB_WIDTHS` on the server), as WebP, at a version: the browser keeps it for good. */
+    thumbUrl(orgId: string, id: string, options: { version: number; width: 96 | 480 | 960 }): string;
     create(
       orgId: string,
       input: { title: string; channelId?: string | null; folderId?: string | null; content: ArtifactContent },
     ): Promise<ArtifactDetail>;
-    /** Uploads a file as is (multipart, ≤ 50 MB) to the Drive or to a channel. */
+    /** Uploads a file as is (multipart, ≤ 50 MB) to the Drive or to a channel; `upload` reports the share sent. */
     upload(
       orgId: string,
       file: File,
       options?: { title?: string; channelId?: string | null; threadId?: string | null; folderId?: string | null },
+      upload?: UploadOptions,
     ): Promise<ArtifactDetail>;
     /** A new version of an uploaded file (multipart, ≤ 50 MB). */
     uploadVersion(orgId: string, id: string, file: File, options?: { note?: string }): Promise<ArtifactDetail>;

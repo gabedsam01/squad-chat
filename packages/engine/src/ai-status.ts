@@ -366,7 +366,7 @@ export async function orgRouting(
     apiKey,
   });
   if (!routing) return of("off", "off", null, null);
-  // The switch's model, when on, answers before Jev (ADR 0188).
+  // The switch's model, when on, answers before Jev (ADR 9001).
   const chosen = routing.decision ? await routing.decision().catch(() => null) : null;
   if (chosen) return of("decision", "decision", chosen.model, null, chosen.provider);
   if (await routing.jev()) return of("jev", "jev", null, null);

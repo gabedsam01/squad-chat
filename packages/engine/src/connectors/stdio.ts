@@ -67,7 +67,7 @@ export function isStdioMcp(url: string) {
 }
 
 /**
- * The program in the MCP sandbox (ADR 0190 addendum), over its WebSocket: the first text frame is the program to
+ * The program in the MCP sandbox (ADR 9003), over its WebSocket: the first text frame is the program to
  * start, then each frame is one JSON-RPC message, written to its stdin or read off its stdout. The socket closing
  * stops the program there.
  */

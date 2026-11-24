@@ -192,6 +192,7 @@ export function FileVideo({
             onOpen={onOpen}
             actions={actions}
             onFailed={() => setFailed(true)}
+            handoff={artifactId}
           />
         ) : (
           <span className="ac-video ac-video--tile">
@@ -254,6 +255,7 @@ export function FileView({
             name={content.name}
             labels={videoLabels}
             onFailed={() => setVideoFailed(true)}
+            handoff={artifactId}
           />
         )}
       </div>

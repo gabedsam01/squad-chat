@@ -18,6 +18,7 @@ import {
   placesAgentsIn,
   readableChannelIds,
 } from "./channels";
+import { hasCodeWork } from "./code-sessions";
 import { proposalsWaitingFor } from "./context/proposals";
 import { invalidateDefaults, modelInfoFor } from "./credentials";
 import { ConflictError, ForbiddenError, isUniqueViolation, NotFoundError, ValidationError } from "./errors";
@@ -312,7 +313,10 @@ function mergeAutoModels(
   return out;
 }
 
-/** Counts for the sidebar: people, agents, the workspace's budget use, approvals and proposals waiting for me. */
+/**
+ * Counts for the sidebar: people, agents, the workspace's budget use, approvals and proposals waiting for me; and
+ * whether Code has anything for me (ADR 0215 §12).
+ */
 export async function orgOverview(db: Database, actorId: string, orgId: string, now = new Date()) {
   const membership = await requirePermission(db, actorId, orgId, "read");
   const [people] = await db
@@ -344,6 +348,7 @@ export async function orgOverview(db: Database, actorId: string, orgId: string, 
     budgetUsedPercent: await workspaceBudgetPercent(db, orgId, now),
     approvalsWaitingForMe: pending?.n ?? 0,
     proposalsWaitingForMe: await proposalsWaitingFor(db, actorId, orgId),
+    code: await hasCodeWork(db, actorId, orgId),
   };
 }
 
@@ -357,8 +362,6 @@ export async function agentDetail(db: Database, actorId: string, orgId: string, 
   const since = monthStartUtc(now);
   const [usage] = await db
     .select({
-      // What its budget paid: its own calls and pictures, as `agentBudgetsThisMonth` counts them.
-      cost: sql<string>`coalesce(sum(${usageRecords.costNanoUsd}) filter (where ${usageRecords.kind} in ('agent', 'image')), 0)`,
       tokens: sql<string>`coalesce(sum(${usageRecords.inputTokens} + ${usageRecords.outputTokens} + ${usageRecords.cacheReadTokens} + ${usageRecords.cacheWriteTokens}), 0)`,
     })
     .from(usageRecords)
@@ -379,9 +382,10 @@ export async function agentDetail(db: Database, actorId: string, orgId: string, 
     .from(approvals)
     .where(and(eq(approvals.agentId, agentId), eq(approvals.status, "pending")));
   const channelsOf = await listAgentChannels(db, actorId, orgId, agentId);
+  // What its budget paid (its own calls and pictures): the gateway's counter, as `agentBudgetsThisMonth` reads it.
   const budget = await agentBudgetState(db, orgId, agentId, now);
   const budgetNanoUsd = await effectiveAgentBudget(db, agent);
-  const spentNanoUsd = Number(usage?.cost ?? 0);
+  const spentNanoUsd = budget.spentNanoUsd;
   return {
     agent,
     month: {

@@ -3,6 +3,7 @@ import { and, type Database, eq, gte, isNull, schema, sql } from "@agenteschat/d
 import { type ArtifactDeps, fileBytesOf } from "../../artifacts";
 import { UUID } from "../../authority";
 import { NotFoundError } from "../../errors";
+import { connectorBudgetLeft } from "../../limits";
 import { fireRoutineEvent } from "../../routines";
 import { replyThreadOf } from "../../runs";
 import type { ToolContext, ToolDefinition, ToolOutput, ToolSource } from "../../tools/types";
@@ -122,6 +123,12 @@ export function createNativeConnectorToolSource(
           "connector.capped",
           `This workspace used its ${cap.toLocaleString("en")} ${connection.label} calls for this month (whoever runs this server set that cap). They come back on the 1st (UTC). Nothing was done.`,
         );
+      }
+      const most = tool.most?.(input) ?? 0;
+      if (most > 0) {
+        const vendor = CONNECTOR_CATALOG[connection.connector]?.label ?? connection.label;
+        const refused = await connectorBudgetLeft(ctx.db, ctx.orgId, vendor, most);
+        if (refused) throw new NativeError("connector.capped", refused);
       }
       const secret = await connectionSecret({ ...deps, db: ctx.db }, connection);
       if (!secret)

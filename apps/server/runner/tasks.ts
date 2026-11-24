@@ -42,6 +42,7 @@ import { claudeCodeModel, planForTurn, planOf } from "@agenteschat/providers/pla
 import {
   ACCOUNT_MISSING_MESSAGE,
   ACCOUNT_SIGNED_OUT,
+  ACCOUNT_TRANSCRIPT_DAYS,
   type AccountFolders,
   type AccountGrant,
   accountEnv,
@@ -1186,7 +1187,10 @@ export class TaskManager {
     const input = where ? `${where}\n\n${prompt}` : prompt;
     // On an account, Claude Code's endpoint and proxies are pinned in its own `--settings`, as a turn's: a project's
     // settings never send its sign-in elsewhere.
-    const accountSettings = executor === "claude" && signIn ? { env: accountSettingsEnv(plan, planModel) } : {};
+    const accountSettings =
+      executor === "claude" && signIn
+        ? { cleanupPeriodDays: ACCOUNT_TRANSCRIPT_DAYS, env: accountSettingsEnv(plan, planModel) }
+        : {};
     if (hosted) {
       // Its CLI's files and tools are root's and this worker's bridge's.
     } else if (missionId && this.opts.mcp) {
@@ -1290,6 +1294,10 @@ export class TaskManager {
     }
     // A coding plan serves only its own models: Claude Code asks for one by the alias the plan maps (as a turn).
     if (planModel) extra.push("--model", planModel);
+    const taskDirs = [
+      ...(executor === "codex" && cwd !== folder ? [folder] : []),
+      ...(allowed?.grants ?? []).filter((g) => !isInside(g, cwd)),
+    ];
     const command = hosted
       ? "claude"
       : executorCommand(executor, {
@@ -1299,7 +1307,9 @@ export class TaskManager {
           session,
           resume,
           extra,
-          ...(allowed?.grants?.length ? { addDirs: allowed.grants.filter((g) => !isInside(g, cwd)) } : {}),
+          // Codex starting in a subfolder of the agent's own (a checkout, a code session's worktree, ADR 0215) keeps
+          // the whole folder writable, as its turns do (`brain-codex.ts`): a worktree's git data is in its checkout.
+          ...(taskDirs.length ? { addDirs: taskDirs } : {}),
           ...(executor === "codex"
             ? {
                 codex: {

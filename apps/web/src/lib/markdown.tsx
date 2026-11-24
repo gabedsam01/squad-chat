@@ -3,6 +3,7 @@ import { loneIdRef, splitIdRefs } from "@agenteschat/client/lib/id-refs";
 import { linkPill } from "@agenteschat/client/lib/link-pills";
 import { headingId, INLINE, MENTION, parseMarkdown, parseWikiToken, SAFE_URL } from "@agenteschat/client/lib/markdown";
 import { parseFileLink, parseMessageLink } from "@agenteschat/client/lib/message-links";
+import { BoundedMap } from "@agenteschat/ui";
 import { memo, type ReactNode, useMemo } from "react";
 import { FileRef } from "@/chat/FileRef";
 import { LinkPill } from "@/chat/LinkPill";
@@ -223,6 +224,23 @@ export interface MarkdownProps {
 
 const TASK = /^\[( |x|X)\]\s+(.*)$/;
 const CALLOUT = /^\[!([\w-]+)\][+-]?\s*(.*)$/i;
+/**
+ * Texts parsed already, by source: a row drawn again (the conversation opened again, scrolled back to) shows its
+ * words without parsing them again. Never mutated. Weighed by characters, not texts: the wiki editor's preview parses
+ * its whole page again at every key, and each of those versions would stay.
+ */
+export const PARSED_CHARS = 1_000_000;
+const PARSED = new BoundedMap<string, ReturnType<typeof parseMarkdown>>(PARSED_CHARS, (key) => key.length);
+export function parsedMarkdown(source: string, message: boolean) {
+  const key = `${message ? "m" : "d"}${source}`;
+  let blocks = PARSED.get(key);
+  if (!blocks) {
+    blocks = parseMarkdown(source, { breaks: message, details: true });
+    PARSED.set(key, blocks);
+  }
+  return blocks;
+}
+
 /** Obsidian's callout kinds, in our three looks. */
 const calloutKind = (kind: string) =>
   /^(warning|caution|attention|danger|error|bug|failure|fail|missing|important)$/.test(kind)
@@ -230,38 +248,6 @@ const calloutKind = (kind: string) =>
     : /^(tip|hint|success|check|done)$/.test(kind)
       ? "tip"
       : "note";
-
-function MarkdownDetails({
-  summaryNode,
-  body,
-  variant,
-  mention,
-  channel,
-  wikiLink,
-  embed,
-  idRef,
-  excerpt,
-}: Omit<MarkdownProps, "source" | "title" | "className" | "bare"> & {
-  summaryNode: ReactNode;
-  body: string;
-}) {
-  return (
-    <details className="md__details">
-      <summary>{summaryNode}</summary>
-      <Markdown
-        source={body}
-        variant={variant}
-        mention={mention}
-        channel={channel}
-        wikiLink={wikiLink}
-        embed={embed}
-        idRef={idRef}
-        excerpt={excerpt}
-        bare
-      />
-    </details>
-  );
-}
 
 function MarkdownRenderer({
   source,
@@ -277,92 +263,89 @@ function MarkdownRenderer({
   bare,
 }: MarkdownProps) {
   const message = variant === "message";
+  const inline = (text: string, k: string) =>
+    renderInline(text, k, mention, wikiLink, embed, channel, undefined, idRef);
   // Parsed once per source (a streaming row re-renders every reveal frame); never mutated.
-  const all = useMemo(() => parseMarkdown(source, { breaks: message, details: true }), [source, message]);
-  const blocks = useMemo(() => {
-    const inline = (text: string, k: string) =>
-      renderInline(text, k, mention, wikiLink, embed, channel, undefined, idRef);
-    const [first] = all;
-    const parsed =
-      title && first?.type === "heading" && first.level === 1 && first.text.trim() === title.trim()
-        ? all.slice(1)
-        : all;
-    return parsed.map((b, i) => {
-      const k = `b${i}`;
-      switch (b.type) {
-        case "heading": {
-          if (message) {
-            // Opens a section (more air above), still a bold line rather than a document heading.
-            return (
-              <p key={k} className="md__h">
-                <strong>{inline(b.text, k)}</strong>
-              </p>
-            );
-          }
-          const H = `h${Math.min(6, b.level + 1)}` as "h2";
+  const all = useMemo(() => parsedMarkdown(source, message), [source, message]);
+  const [first] = all;
+  const parsed =
+    title && first?.type === "heading" && first.level === 1 && first.text.trim() === title.trim() ? all.slice(1) : all;
+  const blocks = parsed.map((b, i) => {
+    const k = `b${i}`;
+    switch (b.type) {
+      case "heading": {
+        if (message) {
+          // Opens a section (more air above), still a bold line rather than a document heading.
           return (
-            <H key={k} id={`h-${headingId(b.text)}`}>
-              {inline(b.text, k)}
-            </H>
+            <p key={k} className="md__h">
+              <strong>{inline(b.text, k)}</strong>
+            </p>
           );
         }
-        case "paragraph":
-          return <p key={k}>{inline(b.text, k)}</p>;
-        case "code": {
-          const lang = b.lang.toLowerCase();
-          if (lang === "chart") return <ChartOrCode key={k} text={b.text} />;
-          if (lang === "mermaid" && !excerpt) return <MermaidOrCode key={k} text={b.text} />;
-          return <CodeBlock key={k} lang={b.lang} text={b.text} />;
-        }
-        case "list": {
-          const L = b.ordered ? "ol" : "ul";
+        const H = `h${Math.min(6, b.level + 1)}` as "h2";
+        return (
+          <H key={k} id={`h-${headingId(b.text)}`}>
+            {inline(b.text, k)}
+          </H>
+        );
+      }
+      case "paragraph":
+        return <p key={k}>{inline(b.text, k)}</p>;
+      case "code": {
+        const lang = b.lang.toLowerCase();
+        if (lang === "chart") return <ChartOrCode key={k} text={b.text} />;
+        if (lang === "mermaid" && !excerpt) return <MermaidOrCode key={k} text={b.text} />;
+        return <CodeBlock key={k} lang={b.lang} text={b.text} />;
+      }
+      case "list": {
+        const L = b.ordered ? "ol" : "ul";
+        return (
+          <L key={k}>
+            {b.items.map((item, j) => {
+              // "- [ ] tarefa" / "- [x] feita": a task with our own (read-only) box.
+              const task = item.match(TASK);
+              if (task) {
+                const done = task[1] !== " ";
+                return (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static list
+                  <li key={j} className="md__task" data-done={done || undefined}>
+                    <span className="md__task-box" role="img" aria-label={done ? "✓" : "○"} />
+                    <span>{inline(task[2] ?? "", `${k}-${j}`)}</span>
+                  </li>
+                );
+              }
+              // biome-ignore lint/suspicious/noArrayIndexKey: static list
+              return <li key={j}>{inline(item, `${k}-${j}`)}</li>;
+            })}
+          </L>
+        );
+      }
+      case "quote": {
+        // "> [!note] Título" + lines → a callout (neutral card with an icon), as in Obsidian.
+        const callout = (b.lines[0] ?? "").match(CALLOUT);
+        if (callout && !message) {
+          const kind = calloutKind((callout[1] ?? "note").toLowerCase());
+          const rest = b.lines.slice(1).join(" ").trim();
           return (
-            <L key={k}>
-              {b.items.map((item, j) => {
-                // "- [ ] tarefa" / "- [x] feita": a task with our own (read-only) box.
-                const task = item.match(TASK);
-                if (task) {
-                  const done = task[1] !== " ";
-                  return (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static list
-                    <li key={j} className="md__task" data-done={done || undefined}>
-                      <span className="md__task-box" role="img" aria-label={done ? "✓" : "○"} />
-                      <span>{inline(task[2] ?? "", `${k}-${j}`)}</span>
-                    </li>
-                  );
-                }
-                // biome-ignore lint/suspicious/noArrayIndexKey: static list
-                return <li key={j}>{inline(item, `${k}-${j}`)}</li>;
-              })}
-            </L>
+            <aside key={k} className="md__callout" data-kind={kind}>
+              {callout[2] ? <b className="md__callout-title">{inline(callout[2], `${k}t`)}</b> : null}
+              {rest ? <span className="md__callout-body">{inline(rest, `${k}b`)}</span> : null}
+            </aside>
           );
         }
-        case "quote": {
-          // "> [!note] Título" + lines → a callout (neutral card with an icon), as in Obsidian.
-          const callout = (b.lines[0] ?? "").match(CALLOUT);
-          if (callout && !message) {
-            const kind = calloutKind((callout[1] ?? "note").toLowerCase());
-            const rest = b.lines.slice(1).join(" ").trim();
-            return (
-              <aside key={k} className="md__callout" data-kind={kind}>
-                {callout[2] ? <b className="md__callout-title">{inline(callout[2], `${k}t`)}</b> : null}
-                {rest ? <span className="md__callout-body">{inline(rest, `${k}b`)}</span> : null}
-              </aside>
-            );
-          }
-          return <blockquote key={k}>{inline(b.text, k)}</blockquote>;
-        }
-        case "embed":
-          return embed ? embed(b.target, k, true) : <p key={k}>{inline(`[[${b.target}]]`, k)}</p>;
-        case "rule":
-          return <hr key={k} />;
-        case "details":
-          // Closed until the reader opens it (ADR 0147): what only some want to read.
-          return (
-            <MarkdownDetails
-              key={k}
-              summaryNode={b.summary ? inline(b.summary, `${k}s`) : "…"}
-              body={b.body}
+        return <blockquote key={k}>{inline(b.text, k)}</blockquote>;
+      }
+      case "embed":
+        return embed ? embed(b.target, k, true) : <p key={k}>{inline(`[[${b.target}]]`, k)}</p>;
+      case "rule":
+        return <hr key={k} />;
+      case "details":
+        // Closed until the reader opens it (ADR 0147): what only some want to read.
+        return (
+          <details key={k} className="md__details">
+            <summary>{b.summary ? inline(b.summary, `${k}s`) : "…"}</summary>
+            <Markdown
+              source={b.body}
               variant={variant}
               mention={mention}
               channel={channel}
@@ -370,42 +353,43 @@ function MarkdownRenderer({
               embed={embed}
               idRef={idRef}
               excerpt={excerpt}
+              bare
             />
-          );
-        case "table":
-          return (
-            <TableBox key={k}>
-              <table>
-                <thead>
-                  <tr>
-                    {b.header.map((h, j) => (
+          </details>
+        );
+      case "table":
+        return (
+          <TableBox key={k}>
+            <table>
+              <thead>
+                <tr>
+                  {b.header.map((h, j) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static table
+                    <th key={j} style={{ textAlign: b.align[j] }}>
+                      {inline(h, `${k}-h${j}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {b.rows.map((r, j) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static table
+                  <tr key={j}>
+                    {r.map((c, x) => (
                       // biome-ignore lint/suspicious/noArrayIndexKey: static table
-                      <th key={j} style={{ textAlign: b.align[j] }}>
-                        {inline(h, `${k}-h${j}`)}
-                      </th>
+                      <td key={x} style={{ textAlign: b.align[x] }}>
+                        {inline(c, `${k}-${j}-${x}`)}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {b.rows.map((r, j) => (
-                    // biome-ignore lint/suspicious/noArrayIndexKey: static table
-                    <tr key={j}>
-                      {r.map((c, x) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: static table
-                        <td key={x} style={{ textAlign: b.align[x] }}>
-                          {inline(c, `${k}-${j}-${x}`)}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableBox>
-          );
-      }
-      return null;
-    });
-  }, [all, title, message, mention, wikiLink, embed, channel, idRef, excerpt, variant]);
+                ))}
+              </tbody>
+            </table>
+          </TableBox>
+        );
+    }
+    return null;
+  });
   if (bare) return <>{blocks}</>;
   const extra = className ? ` ${className}` : "";
   return message ? (
