@@ -18,6 +18,7 @@ import { can } from "@agenteschat/client/lib/permissions";
 import { retryAnswer } from "@agenteschat/client/lib/retry-answer";
 import { deciderOf, everyoneLineOf } from "@agenteschat/client/lib/routing";
 import { AvatarStack, HintLine, Icon, type IconName, PixelSpinner, Popover } from "@agenteschat/ui";
+import type { TFunction } from "i18next";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActorAvatar, AgentAvatar } from "@/components/AgentAvatar";
@@ -136,7 +137,7 @@ function isWordedStatus(status: ReceiptView["status"], hasActions: boolean, isPe
 }
 
 function receiptStatusText(
-  t: ReturnType<typeof useTranslation>["t"],
+  t: TFunction,
   status: ReceiptView["status"],
   held: boolean,
   names: (ids: string[]) => string,
