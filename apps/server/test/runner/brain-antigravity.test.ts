@@ -114,7 +114,7 @@ test("command line: the account's listed models decide the level; a listed model
   expect(family).toContain("--model gemini-4-neon-xhigh");
   expect(family).not.toContain("--effort");
   const slug = antigravityTurnArgs({ prompt: "oi", model: "gemini-4-argon-low", effort: "high", listed });
-  expect(slug.join(" ")).toContain("--model gemini-4-argon-low ");
+  expect(slug[slug.indexOf("--model") + 1]).toBe("gemini-4-argon-low");
   expect(slug).not.toContain("--effort");
   // Not listed, no list: today's rule.
   expect(antigravityTurnArgs({ prompt: "oi", model: "gemini-x", effort: "high" }).join(" ")).toContain("--effort high");
