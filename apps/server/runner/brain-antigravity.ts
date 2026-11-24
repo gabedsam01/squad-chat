@@ -113,12 +113,34 @@ const LEVEL_IN_SLUG = /-(?:low|medium|high|xhigh|max)$/;
 /** `--effort`: low, medium, high, xhigh, or max (agy 1.5.9+); a slug that names its level takes none. */
 const agyEffort = (effort?: BrainEffort, model?: string) => (model && LEVEL_IN_SLUG.test(model) ? undefined : effort);
 
+/**
+ * The model and `--effort` for a turn, from the slugs `agy models` lists when they're known: the level is picked by
+ * slug (`gemini-4-neon` + `xhigh` → `gemini-4-neon-xhigh`), and a listed model takes no `--effort` (an Orchestrator
+ * has no level at all and the CLI refuses it). A model that isn't listed keeps the slug rule.
+ */
+function agyPick(
+  model?: string,
+  effort?: BrainEffort,
+  listed?: readonly string[],
+): { model?: string; effort?: BrainEffort } {
+  if (model && listed?.length) {
+    if (effort && listed.includes(`${model}-${effort}`)) return { model: `${model}-${effort}` };
+    if (listed.includes(model)) return { model };
+  }
+  const e = agyEffort(effort, model);
+  return { ...(model ? { model } : {}), ...(e ? { effort: e } : {}) };
+}
+
 /** The `agy` arguments for one turn. */
 export function antigravityTurnArgs(input: {
   prompt: string;
   chat?: string;
   model?: string;
   effort?: BrainEffort;
+  /** The slugs `agy models` lists to the account (`agyPick`). */
+  listed?: readonly string[];
+  /** Retry after the CLI refused `--effort` for the model. */
+  noEffort?: boolean;
   profile?: CommandProfile;
   /** The team's right hand: our server's tools alone. */
   locked?: boolean;
@@ -128,7 +150,8 @@ export function antigravityTurnArgs(input: {
    */
   addDirs?: string[];
 }): string[] {
-  const effort = agyEffort(input.effort, input.model);
+  const picked = agyPick(input.model, input.effort, input.listed);
+  const effort = input.noEffort ? undefined : picked.effort;
   return [
     "-p",
     input.prompt,
@@ -137,7 +160,7 @@ export function antigravityTurnArgs(input: {
     "--sandbox",
     "--disable-slash-commands",
     ...(input.locked ? ["--agent", AGY_CHAT_AGENT] : input.profile === "plan" ? [] : ["--mode", "accept-edits"]),
-    ...(input.model ? ["--model", input.model] : []),
+    ...(picked.model ? ["--model", picked.model] : []),
     ...(effort ? ["--effort", effort] : []),
     ...(input.chat ? ["--conversation", input.chat] : []),
     ...(input.locked ? [] : (input.addDirs ?? []).flatMap((d) => ["--add-dir", d])),
@@ -232,6 +255,8 @@ export interface AntigravityTurnInput {
   cwd: string;
   model?: string;
   effort?: BrainEffort;
+  /** The slugs `agy models` lists to the account, when this runner knows them. */
+  listed?: string[];
   system: string;
   prompt: string;
   mcp: { token: string };
@@ -301,6 +326,7 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
   const hold = opts.redact ? (opts.redactHold ?? 0) : 0;
 
   // One retry, as a new chat, when the CLI doesn't have the conversation it was to resume.
+  let noEffort = false;
   for (let attempt = 0; ; attempt++) {
     const startedAt = Date.now();
     let initMs: number | undefined;
@@ -312,6 +338,8 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
       ...(chat ? { chat } : {}),
       ...(input.model ? { model: input.model } : {}),
       ...(input.effort ? { effort: input.effort } : {}),
+      ...(input.listed ? { listed: input.listed } : {}),
+      ...(noEffort ? { noEffort } : {}),
       profile: input.profile ?? "work",
       ...(input.chat ? { locked: true } : {}),
       ...(input.addDirs?.length ? { addDirs: input.addDirs } : {}),
@@ -458,6 +486,11 @@ export async function runAntigravityTurn(input: AntigravityTurnInput, opts: Anti
       opts.chats.delete(chatKey);
       continue;
     }
+    // Safety net: a model the list didn't tell us about may still refuse `--effort`; once more without it.
+    if (!noEffort && input.effort && /--effort is not supported for model/.test(stderr)) {
+      noEffort = true;
+      continue;
+    }
     flush("", true);
     const r = result ?? {};
     const u = used.steps === 0 && !chat && isRecord(r.usage) ? usageOf(r.usage) : used;
@@ -574,6 +607,7 @@ function resolveAgyConfig(
   modelOptions: Set<string>,
   thoughtOptions: Set<string>,
 ): { model?: string; effort?: string } {
+  if (model && effort && modelOptions.has(`${model}-${effort}`)) return { model: `${model}-${effort}` };
   let pickedModel = model;
   let pickedEffort: string | undefined = agyEffort(effort, model);
   if (pickedModel && modelOptions.size > 0 && !modelOptions.has(pickedModel)) {
@@ -1332,6 +1366,7 @@ export async function handleAntigravityBrainTurn(
     const file = antigravityChatsFile(ctx.runnerHome);
     const chats = ctx.chats ?? chatStores.get(file) ?? new CodexThreads(file);
     chatStores.set(file, chats);
+    const listed = ctx.accounts?.listedModels?.("antigravity")?.map((m) => m.id);
     const turnInput: AntigravityTurnInput = {
       runId: req.runId,
       sessionId: req.session.id,
@@ -1339,6 +1374,7 @@ export async function handleAntigravityBrainTurn(
       folder,
       ...(typeof req.model === "string" && req.model ? { model: req.model } : {}),
       ...(req.effort ? { effort: req.effort } : {}),
+      ...(listed ? { listed } : {}),
       system: typeof req.system === "string" ? req.system : "",
       prompt: typeof req.prompt === "string" ? req.prompt : "",
       mcp: { token: req.mcp.token },
