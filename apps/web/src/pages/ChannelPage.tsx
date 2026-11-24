@@ -4006,49 +4006,60 @@ const Timeline = memo(function Timeline({
 
   const visiblePersisted = persisted.slice(effectiveWin.start, effectiveWin.end);
 
+  // One flat keyed list: an answer seen live is drawn under its block's key, so the final message
+  // takes a drawn block's place without a remount (even across virtualized persisted vs tail rows).
+  const rendered: ReactElement[] = [];
+  if (effectiveWin.topSpacer > 0) {
+    rendered.push(
+      <div
+        key="virt-top"
+        data-virt-spacer="top"
+        aria-hidden="true"
+        style={{ height: effectiveWin.topSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
+      />,
+    );
+  }
+  for (const entry of visiblePersisted) {
+    rendered.push(
+      <ErrorBoundary
+        key={entry.key}
+        resetKey={entry.row.props.message}
+        onError={() => markUnshown(entry.key)}
+        fallback={unshownLine}
+      >
+        {entry.row}
+      </ErrorBoundary>,
+    );
+  }
+  if (effectiveWin.bottomSpacer > 0) {
+    rendered.push(
+      <div
+        key="virt-bottom"
+        data-virt-spacer="bottom"
+        aria-hidden="true"
+        style={{ height: effectiveWin.bottomSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
+      />,
+    );
+  }
+  for (const row of tailRows) {
+    rendered.push(
+      <ErrorBoundary
+        key={row.key}
+        resetKey={row.props.message}
+        onError={() => markUnshown(row.key)}
+        fallback={unshownLine}
+      >
+        {row}
+      </ErrorBoundary>,
+    );
+  }
+
   // A row that fails to draw (data this build doesn't expect) is one quiet line: the rest of the conversation, the
   // sidebar and the composer keep working. Its message changing draws it again: a live block that broke has none,
   // so streaming never retries it, and its final message landing does.
   return (
     <ConsultGroupsProvider value={consultGroups}>
-      <StopsProvider value={stops}>
-        {effectiveWin.topSpacer > 0 && (
-          <div
-            key="virt-top"
-            data-virt-spacer="top"
-            aria-hidden="true"
-            style={{ height: effectiveWin.topSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
-          />
-        )}
-        {visiblePersisted.map((entry) => (
-          <ErrorBoundary
-            key={entry.key}
-            resetKey={entry.row.props.message}
-            onError={() => markUnshown(entry.key)}
-            fallback={unshownLine}
-          >
-            {entry.row}
-          </ErrorBoundary>
-        ))}
-        {effectiveWin.bottomSpacer > 0 && (
-          <div
-            key="virt-bottom"
-            data-virt-spacer="bottom"
-            aria-hidden="true"
-            style={{ height: effectiveWin.bottomSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
-          />
-        )}
-        {tailRows.map((row) => (
-          <ErrorBoundary
-            key={row.key}
-            resetKey={row.props.message}
-            onError={() => markUnshown(row.key)}
-            fallback={unshownLine}
-          >
-            {row}
-          </ErrorBoundary>
-        ))}
-      </StopsProvider>
+      <StopsProvider value={stops}>{rendered}</StopsProvider>
     </ConsultGroupsProvider>
   );
 });

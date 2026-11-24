@@ -142,7 +142,8 @@ function receiptStatusText(
   names: (ids: string[]) => string,
 ) {
   if (status === null) return "";
-  if (status.kind === "nobody") return t(status.mentionNeeded === true ? "receipts.mentionNeeded" : "receipts.nobody");
+  if (status.kind === "nobody")
+    return status.mentionNeeded === true ? t("receipts.mentionNeeded") : t("receipts.nobody");
   if (status.kind === "no_ai") return held ? t("noAi.kept.receipt") : t("noAi.receipt");
   if (status.kind === "platform_cap") return t("receipts.platformCap");
   return t(`receipts.${status.kind}`, { count: status.agents.length, names: names(status.agents) });
