@@ -181,7 +181,12 @@ test.skipIf(!posix)(
         maxContext: 17806,
         lastContext: 17806,
       },
-      { type: "done", text: "pong", session: { id: SESSION } },
+      expect.objectContaining({
+        type: "done",
+        text: "pong",
+        session: { id: SESSION },
+        timings: expect.objectContaining({ warm: false }),
+      }),
     ]);
     const [threadStart] = t.rpcs("thread/start");
     expect(threadStart).toMatchObject({
@@ -456,7 +461,12 @@ test.skipIf(!posix)(
       input: [{ type: "text", text: "Stop: ping me", text_elements: [] }],
     });
     expect(turn.events.filter((e) => e.type === "steer_read")).toEqual([{ type: "steer_read", uuids: [U1] }]);
-    expect(turn.events.at(-1)).toEqual({ type: "done", text: "pong", session: { id: SESSION } });
+    expect(turn.events.at(-1)).toMatchObject({
+      type: "done",
+      text: "pong",
+      session: { id: SESSION },
+      timings: { warm: expect.any(Boolean) },
+    });
     expect(turn.events.some((e) => e.type === "error")).toBe(false);
   },
   20_000,

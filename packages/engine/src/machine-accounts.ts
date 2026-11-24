@@ -1527,10 +1527,15 @@ export async function beginAccountLogin(
     (kind === "opencode" && provider === OPENCODE_KEY_PROVIDER);
   // Not a key: Gemini Enterprise's sign-in (ADR 0143), kept as the account's provider.
   const enterprise = kind === "antigravity" && provider === GEMINI_ENTERPRISE_PROVIDER;
-  if (provider !== undefined && !cliKey && !enterprise && (kind !== "claude_code" || !isPlanId(provider))) {
+  if (
+    provider !== undefined &&
+    !cliKey &&
+    !enterprise &&
+    ((kind !== "claude_code" && kind !== "opencode") || !isPlanId(provider))
+  ) {
     throw new ValidationError("Choose one of the coding plans", "account.invalid_plan");
   }
-  if (kind === "opencode" && !cliKey) {
+  if (kind === "opencode" && !cliKey && !isPlanId(provider)) {
     throw new ValidationError("OpenCode signs in with its API key", "account.invalid_plan");
   }
   const plan = planOf(provider);

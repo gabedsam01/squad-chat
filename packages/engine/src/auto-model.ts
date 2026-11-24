@@ -9,6 +9,7 @@ import {
   nearestTier,
   parseCustomModel,
 } from "@agenteschat/providers";
+import { isPlanId, opencodePlanModel, planOf } from "@agenteschat/providers/plans";
 import type { Agent } from "./agents";
 import { agentBrainSummaries, brainOf, claudeCodeModels } from "./brain-settings";
 import type { BrainPlan } from "./brains/select";
@@ -273,11 +274,25 @@ export const autoWanted = (agent: AutoAgent) =>
 export const needsAutoChoice = (agent: AutoAgent, plan: Pick<BrainPlan, "kind" | "model">) =>
   autoApiModelFor(agent, plan.kind) || isAutoModel(plan.model) || autoEffortFor(agent, plan.kind);
 
-/** A computer brain's model for a tier: Claude Code's alias (`haiku`, `sonnet`, `opus`), a Codex model. */
-export function brainModelForTier(kind: BrainKind, tier: ModelTier): string | undefined {
+/** A computer brain's model for a tier: Claude Code's alias, a coding plan's OpenCode id, or a Codex model. */
+export function brainModelForTier(kind: BrainKind, tier: ModelTier, planProvider?: string | null): string | undefined {
   if (kind === "claude_code") {
     const id = modelForTier("anthropic", tier);
     return claudeCodeModels().find((o) => o.modelId === id)?.value ?? "sonnet";
+  }
+  if (kind === "opencode" && isPlanId(planProvider)) {
+    const models = planOf(planProvider)?.claudeCode.models ?? [];
+    const pick =
+      tier === "small"
+        ? (models.find((m) => m.tag === "cheap" || m.alias === "haiku" || m.tag === "fast") ??
+          models.find((m) => m.alias === "sonnet") ??
+          models[0])
+        : tier === "large"
+          ? (models.find((m) => m.tag === "smart" || m.alias === "opus") ??
+            models.find((m) => m.alias === "sonnet") ??
+            models[0])
+          : (models.find((m) => m.alias === "sonnet") ?? models[0]);
+    return pick ? opencodePlanModel(planProvider, pick.id) : undefined;
   }
   if (kind === "codex") return modelForTier("openai", tier) ?? undefined;
   return undefined;
@@ -369,6 +384,7 @@ export function autoApplied(
   tiers?: Partial<Record<ModelTier, string>>,
   endpoint?: AutoEndpoint | null,
   allowed?: readonly string[] | null,
+  planProvider?: string | null,
 ): AutoApplied {
   const out: AutoApplied = {};
   if (autoApiModelFor(agent, plan.kind)) {
@@ -380,7 +396,7 @@ export function autoApplied(
     return out;
   }
   if (isAutoModel(plan.model)) {
-    const model = brainModelForTier(plan.kind, choice.tier);
+    const model = brainModelForTier(plan.kind, choice.tier, planProvider);
     if (model) out.brainModel = model;
   }
   if (autoEffortFor(agent, plan.kind)) out.effort = choice.effort;

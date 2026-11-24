@@ -59,9 +59,11 @@ import {
   cliVersionAtLeast,
   GROK_BUILD_MODELS,
   isAntigravityGemini,
+  isPlanId,
   isPlanModelId,
   learnFastModels,
   OPENCODE_FREE_MODELS,
+  PLAN_ALIASES,
   planModel,
   planModelById,
   planOf,
@@ -491,8 +493,10 @@ export function normalizeBrainModel(kind: BrainKind, value: unknown, stored?: st
     });
   }
   if (!FREE_MODEL.test(v)) throw new ValidationError("That isn't a model name", "brain.invalid_model", { brain: kind });
-  // OpenCode runs `--model provider/model` (its runner refuses anything else).
-  if (kind === "opencode" && !/^[\w.-]{1,40}\/[\w.:-]{1,79}$/.test(v)) {
+  // OpenCode runs `--model provider/model`; a coding plan also stores aliases or plan ids resolved to `provider/model` at runtime.
+  if (kind === "opencode") {
+    if (PLAN_ALIASES.some((a) => a === v.toLowerCase())) return v.toLowerCase();
+    if (/^[\w.-]{1,40}\/[\w.:[\]-]{1,79}$/.test(v) || isPlanModelId(v)) return v;
     throw new ValidationError("OpenCode's models are provider/model, like opencode/big-pickle", "brain.invalid_model", {
       brain: kind,
     });
@@ -2105,7 +2109,7 @@ export function brainModelLabel(
   provider?: string | null,
 ): string | null {
   if (kind === "model") return null;
-  const plan = kind === "claude_code" ? planOf(provider) : undefined;
+  const plan = kind === "claude_code" || kind === "opencode" ? planOf(provider) : undefined;
   if (plan) return planModel(plan, isAutoModel(model) ? null : model).label;
   const stored = model ?? defaultBrainModel(kind);
   if (!stored) return null;
@@ -2182,7 +2186,12 @@ export async function agentBrainSummaries(
     const computer =
       machine && (manages || ownsAgent(a, viewerId, membership?.roleIds ?? [])) ? machine.name : undefined;
     const row = kind !== "model" && a.brainAccountId ? accountById.get(a.brainAccountId) : undefined;
-    const provider = kind === "claude_code" ? (row?.provider ?? undefined) : undefined;
+    const provider =
+      kind === "claude_code"
+        ? (row?.provider ?? undefined)
+        : kind === "opencode" && isPlanId(row?.provider)
+          ? row?.provider
+          : undefined;
     const ownPlan = kind === "claude_code" ? machine?.executors?.claude?.plan : undefined;
     // With no account, the computer's own sign-in thinks only for its pairer's agents (ADR 0059 §3).
     const own =

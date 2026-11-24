@@ -201,7 +201,7 @@ export function createJevRouterStrategy(options: {
         body: { state, model: options.model ?? "jev-latest", questions },
         timeoutMs: options.timeoutMs ?? 2000,
       });
-      await options
+      void options
         .recordUsage({
           orgId: input.orgId,
           model: body.model ?? options.model ?? "jev-latest",

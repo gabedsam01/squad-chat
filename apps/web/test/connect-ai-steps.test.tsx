@@ -56,12 +56,12 @@ const MAC: AiComputer = {
   mine: true,
   canAdd: true,
   keys: true,
-  brains: { claude_code: true, codex: true },
+  brains: { claude_code: true, codex: true, opencode: true },
 };
 
 const account = (over: Partial<MachineAccount> = {}): MachineAccount => ({
   id: "acct_new",
-  kind: "claude_code",
+  kind: "opencode",
   label: "GLM Coding",
   email: null,
   plan: null,
@@ -215,7 +215,7 @@ function serverMoves(
     return view;
   };
 }
-const GLM: AgentBrainLine = { kind: "claude_code", model: null, provider: "zai" };
+const GLM: AgentBrainLine = { kind: "opencode", model: null, provider: "zai" };
 const GLM_KEY = "0123456789abcdef0123456789abcdef.AbCdEfGhIjKlMnOp";
 
 const LIA_ID = "00000000-0000-4000-8000-0000000000a3";
@@ -229,7 +229,7 @@ const stylesheet = async (path: string) =>
 const ruleOf = (css: string, selector: string) =>
   css.split(new RegExp(`\\n *${selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{`))[1]?.split("}")[0] ?? "";
 /** A Claude plan's account, as the computer reports it once the sign-in ends. */
-const claudeMax = account({ id: "acct_max", label: "Claude Max", provider: null, keyHint: null });
+const claudeMax = account({ id: "acct_max", kind: "claude_code", label: "Claude Max", provider: null, keyHint: null });
 /** A ChatGPT plan's account: one per agent, so a sign-in that comes back as it is refused. */
 const chatgptPlus = account({
   id: "acct_plus",
@@ -416,7 +416,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
     expect(calls(state, "machines.beginAccountLogin")[0]?.args).toEqual([
       ORG_ID,
       "machine_1",
-      "claude_code",
+      "opencode",
       { provider: "zai" },
     ]);
     expect(machines?.lastLogin()?.box).not.toBeNull();
@@ -425,7 +425,7 @@ describe("Conectar uma IA: one picker, plans first", () => {
     expect(calls(state, "agents.setBrain")[0]?.args).toEqual([
       ORG_ID,
       ADA_ID,
-      { brain: "claude_code", account: "acct_new" },
+      { brain: "opencode", account: "acct_new" },
     ]);
     expect(calls(state, "machines.renameAccount")).toHaveLength(0);
     expect(dialog.textContent).toContain("Ada agora pensa com GLM Coding.");
@@ -1839,15 +1839,15 @@ describe("All agents: one plan for the team, a login per agent", () => {
     await click(within(panel).getByRole("button", { name: "Enviar ao MacBook" }));
     await sealed(panel);
     expect(calls(state, "machines.beginAccountLogin").map((c) => c.args)).toEqual(
-      [1, 2, 3].map(() => [ORG_ID, "machine_1", "claude_code", { provider: "zai" }]),
+      [1, 2, 3].map(() => [ORG_ID, "machine_1", "opencode", { provider: "zai" }]),
     );
     const boxes = machines?.logins().map((l) => JSON.stringify(l.box)) ?? [];
     expect(new Set(boxes).size).toBe(3);
     expect(JSON.stringify(state.calls)).not.toContain("0123456789abcdef");
     expect(calls(state, "agents.setBrain").map((c) => c.args)).toEqual([
-      [ORG_ID, ADA_ID, { brain: "claude_code", account: "acct_1" }],
-      [ORG_ID, ATLAS_ID, { brain: "claude_code", account: "acct_2" }],
-      [ORG_ID, LIA_ID, { brain: "claude_code", account: "acct_3" }],
+      [ORG_ID, ADA_ID, { brain: "opencode", account: "acct_1" }],
+      [ORG_ID, ATLAS_ID, { brain: "opencode", account: "acct_2" }],
+      [ORG_ID, LIA_ID, { brain: "opencode", account: "acct_3" }],
     ]);
     // They all woke: the team's words in place of the panel.
     expect(shownText(dialog)).toContain("Eles já pensam com o seu GLM Coding");

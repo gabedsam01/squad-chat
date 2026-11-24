@@ -116,18 +116,19 @@ export function useBrainState(view: AgentBrain, opts: { added: readonly MachineA
   const nameOf = (name: string) => computerNameOf(t, org.name, name, isPersonal(org));
   const computerName = nameOf(view.computer?.name ?? "");
 
-  // A coding plan thinks through Claude Code on the agent's computer, where its key is: it never moves.
-  const homeOf = (c: AiChoice) => {
+  // A coding plan thinks through OpenCode (or its stored CLI) on the agent's computer, where its key is: it never moves.
+  const homeOf = (c: AiChoice, brainKind?: MachineAccountKind) => {
     if (c === "key") return null;
-    if (!isPlanId(c)) return homeFor(kindOf(c), work.machineId, machines);
+    const k = brainKind ?? kindOf(c);
+    if (!isPlanId(c)) return homeFor(k, work.machineId, machines);
     const here = machines.find((m) => m.machineId === work.machineId);
-    return here?.options.some((o) => o.kind === "claude_code" && o.available) ? here : null;
+    return here?.options.some((o) => o.kind === k && o.available) ? here : null;
   };
   const movesOf = (c: AiChoice) => {
     const where = homeOf(c);
     return where && where.machineId !== work.machineId ? where : null;
   };
-  const runsHere = (c: AiChoice) => homeOf(c)?.machineId === work.machineId;
+  const runsHere = (c: AiChoice, brainKind?: MachineAccountKind) => homeOf(c, brainKind)?.machineId === work.machineId;
   // Accounts live on the agent's computer: none for a plan that would move it elsewhere, or where the app is old.
   const accountsOn = (c: AiChoice) => c !== "key" && view.accountsSupported && view.computer !== null && !movesOf(c);
   // While a sign-in is under way on the agent's computer, no brain there reads as offline.
@@ -253,7 +254,7 @@ export function useBrainState(view: AgentBrain, opts: { added: readonly MachineA
       mark: <ProviderLogo id={a.provider ?? a.kind} size="xs" />,
       usage: a.usage,
       // An account lives on the agent's computer: it thinks there only if its plan runs there.
-      off: act === "locked" || (!current && !runsHere(plan)),
+      off: act === "locked" || (!current && !runsHere(plan, a.kind)),
       signIn: act === "also" || act === "again",
       lends: !a.mine && a.ownerId !== agent.ownerUserId,
       ownerName: firstName(a.ownerName ?? ""),

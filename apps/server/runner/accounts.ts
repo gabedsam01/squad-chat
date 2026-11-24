@@ -1781,10 +1781,15 @@ export class AccountManager {
           ? OPENCODE_KEY_PROVIDER
           : null;
     const enterprise = kind === "antigravity" && provider === GEMINI_ENTERPRISE_PROVIDER;
-    if (provider !== undefined && !cliKey && !enterprise && (kind !== "claude_code" || !isPlanId(provider))) {
+    if (
+      provider !== undefined &&
+      !cliKey &&
+      !enterprise &&
+      ((kind !== "claude_code" && kind !== "opencode") || !isPlanId(provider))
+    ) {
       throw new RunnerError("bad_request", "This computer doesn't know that plan");
     }
-    if (kind === "opencode" && !cliKey) {
+    if (kind === "opencode" && !cliKey && !isPlanId(provider)) {
       throw new RunnerError("bad_request", "OpenCode signs in with its API key");
     }
     // ADR 0143: Windows keeps every sign-in in the one Credential Manager of the computer's user, so two accounts
@@ -1807,7 +1812,11 @@ export class AccountManager {
     const forAll =
       this.opts.lending !== undefined &&
       shared &&
-      (kind === "claude_code" || kind === "codex" || kind === "antigravity" || kind === "grok");
+      (kind === "claude_code" ||
+        kind === "codex" ||
+        kind === "antigravity" ||
+        kind === "grok" ||
+        (kind === "opencode" && isPlanId(provider)));
     const cliShared = forAll && canCliShare && (method === "cli_login" || keepsCliShare);
     const dir = this.dirOf(kind, loginId);
     if (again) {
@@ -2109,7 +2118,13 @@ export class AccountManager {
   async code(loginId: string, aad: string, box: WireSecretBox): Promise<void> {
     const login = this.waiting(loginId);
     const cliKey = login.provider === CURSOR_KEY_PROVIDER || login.provider === OPENCODE_KEY_PROVIDER;
-    if ((login.kind !== "claude_code" && login.kind !== "antigravity" && !cliKey) || !login.privateKey) {
+    if (
+      (login.kind !== "claude_code" &&
+        login.kind !== "antigravity" &&
+        !cliKey &&
+        !(login.kind === "opencode" && isPlanId(login.provider))) ||
+      !login.privateKey
+    ) {
       throw new RunnerError("bad_request", "This sign-in doesn't take a code");
     }
     const org = this.opts.orgId?.();
@@ -2527,7 +2542,7 @@ export class AccountManager {
     const dir = this.dirOf(kind, id);
     const refused = existsSync(this.marker(kind, id, "invalid"));
     const shared = this.sharedFlag(kind, id);
-    const plan = kind === "claude_code" ? await planKeyOf(dir) : null;
+    const plan = kind === "claude_code" || kind === "opencode" ? await planKeyOf(dir) : null;
     if (plan) return { id, kind, loggedIn: !refused, provider: plan.provider, keyHint: plan.key.slice(-4), ...shared };
     const cursorKey = kind === "cursor" ? await cursorKeyOf(dir) : null;
     if (cursorKey) {
@@ -2756,7 +2771,7 @@ export class AccountManager {
     else if (lent) await this.serial(id, () => this.reclaimNow(kind, id));
     else if (
       !this.isShared(kind, id) &&
-      !(kind === "claude_code" && (await planKeyOf(dir))) &&
+      !((kind === "claude_code" || kind === "opencode") && (await planKeyOf(dir))) &&
       !(kind === "cursor" && (await cursorKeyOf(dir))) &&
       kind !== "opencode"
     ) {
@@ -3099,7 +3114,8 @@ export class AccountManager {
         ? this.answered(target.kind, id, await probeClaudeUsage({ ...this.sharedCli(id), ...limits }))
         : null;
     }
-    const plan = own || target.kind !== "claude_code" ? null : await planKeyOf(target.cwd);
+    const plan =
+      own || (target.kind !== "claude_code" && target.kind !== "opencode") ? null : await planKeyOf(target.cwd);
     if (plan) {
       return fetchPlanKeyUsage(plan.provider, plan.key, {
         ...limits,

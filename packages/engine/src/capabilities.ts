@@ -183,13 +183,13 @@ export function describeCapabilities(
     // An agent with GitHub (git through our proxy, or the connector's tools).
     if (names.has("git_clone") || [...names].some((n) => n.startsWith("github_")))
       lines.push(noComputer ? GITHUB_TOOLS_GUIDANCE : GITHUB_GUIDANCE);
-    if (names.has("browser_read")) {
+    if (loaded.has("browser_read")) {
       lines.push(BROWSER_GUIDANCE);
     }
-    if (names.has("desktop_do")) {
+    if (loaded.has("desktop_do")) {
       lines.push(DESKTOP_GUIDANCE);
     }
-    if (names.has("vault_list")) lines.push(noComputer ? VAULT_LIST_GUIDANCE : VAULT_GUIDANCE);
+    if (loaded.has("vault_list")) lines.push(noComputer ? VAULT_LIST_GUIDANCE : VAULT_GUIDANCE);
     if (loaded.has("schedule_reminder")) {
       lines.push(
         "- You can schedule reminders and routines: `schedule_reminder` (once, in the time zone of whoever asked) and `create_routine` (recurring; with `channel` it posts straight to that channel, not to this conversation). To change a routine that already exists (instructions, time, where it answers), use `list_routines` and `update_routine`, also when the person describes the change as how you handle something a routine does ('quando entrar um erro…'); never say it can't be changed. Confirm the time with the words the tool returns; if the time is ambiguous, ask first with `ask_user`. A routine works while nobody watches, with everything you can use, and speaks only when there is news (`report` when_new); set `report` always when people want a report every time.",

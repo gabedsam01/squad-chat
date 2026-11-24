@@ -13,7 +13,7 @@ import {
   loginReadPasses,
   otherThanHint,
 } from "@agenteschat/client/lib/machines";
-import { GEMINI_ENTERPRISE_PROVIDER, planKeyFits, signInKey } from "@agenteschat/client/lib/plans";
+import { GEMINI_ENTERPRISE_PROVIDER, isPlanId, planKeyFits, signInKey } from "@agenteschat/client/lib/plans";
 import { accountCodeAad } from "@agenteschat/client/lib/secret-box";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -456,7 +456,9 @@ function AddAccountFlow({
           }
         >
           {provider === "zai" ? <StepText>{t("connectAi.zaiTeam")}</StepText> : null}
-          {kind === "opencode" ? <StepText>{t("agentPage.work.brain.add.opencodeFree")}</StepText> : null}
+          {kind === "opencode" && !isPlanId(provider) ? (
+            <StepText>{t("agentPage.work.brain.add.opencodeFree")}</StepText>
+          ) : null}
         </Step>
         <Step n={2} divider title={t("aiAccounts.add.keyTitle")} side={read === "reconnecting" ? waiting : undefined}>
           {busy

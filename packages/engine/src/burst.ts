@@ -1,6 +1,7 @@
 import { type PubSub, typingTopic } from "@agenteschat/adapters";
 import { and, type Database, eq, gte, isNull, schema, sql } from "@agenteschat/db";
 import type { Message } from "./messages";
+import { isQuickGreeting } from "./quick-turn";
 
 const { messages } = schema;
 
@@ -59,13 +60,25 @@ export const typesInApp = (m: Pick<Message, "meta">) => !m.meta?.via;
  * joined its inbox meanwhile are read with the first one (ADR 0112). Measured from the messages' own times: a
  * run that starts late (a busy worker, the router's own wait) waits only what is left, usually nothing.
  */
+const END_PUNCTUATION = /[.!?…]\s*$/;
+
+/** True when a person's message looks complete on its own (no burst wait needed unless they're typing). */
+export function isCompleteMessage(body: string): boolean {
+  const trimmed = body.trim();
+  if (!trimmed) return false;
+  return trimmed.length >= 30 || END_PUNCTUATION.test(trimmed) || isQuickGreeting(trimmed);
+}
+
 export async function waitForBurst(
   db: Database,
-  trigger: Pick<Message, "orgId" | "channelId" | "threadId" | "authorUserId" | "createdAt" | "meta">,
+  trigger: Pick<Message, "orgId" | "channelId" | "threadId" | "authorUserId" | "createdAt" | "meta"> & {
+    body?: string;
+  },
   quietMs: number,
   signal?: AbortSignal,
   /** With it, the wait ends after `TYPING_GRACE_MS` when the person hasn't typed since their message (`typingLogFor`). */
   typing?: TypingLog,
+  options?: { skipIfComplete?: boolean },
 ): Promise<void> {
   const author = trigger.authorUserId;
   if (!author || quietMs <= 0) return;
@@ -75,6 +88,9 @@ export async function waitForBurst(
       ? (offset: number) =>
           (typing.lastTyped(where) ?? Number.NEGATIVE_INFINITY) + offset >= trigger.createdAt.getTime()
       : null;
+  if (options?.skipIfComplete && trigger.body && isCompleteMessage(trigger.body) && typed && !typed(0)) {
+    return;
+  }
   await waitQuiet(db, { ...trigger, authorUserId: author }, quietMs, signal, typed);
 }
 

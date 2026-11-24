@@ -62,6 +62,7 @@ describe("the agent's AI", () => {
   test("only a plan brain has accounts to pick", () => {
     expect(accountKindOf("claude_code")).toBe("claude_code");
     expect(accountKindOf("codex")).toBe("codex");
+    expect(accountKindOf("opencode")).toBe("opencode");
     expect(accountKindOf("model")).toBeNull();
     expect(accountKindOf(undefined)).toBeNull();
   });

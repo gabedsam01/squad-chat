@@ -85,7 +85,9 @@ import {
 } from "./agent-users";
 import { AgyCopy, type AgyCopyOptions } from "./agy-copy";
 import { BrainManager, readyRoom } from "./brain";
+import { AntigravityServers } from "./brain-antigravity";
 import { CodexAppServers } from "./brain-codex-app";
+import { OpencodeServers } from "./brain-opencode";
 import { BrowserManager } from "./browser";
 import { ensureBrowserBindPolicy, prepareAgents } from "./browser-bind-policy";
 import { BrowserViews } from "./browser-views";
@@ -360,6 +362,8 @@ interface Session {
   /** System mode: the CLIs of Claude sign-ins several agents share, run by root. */
   accountBrains: AccountBrains | null;
   codexApp: CodexAppServers;
+  opencodePool: OpencodeServers;
+  antigravityPool: AntigravityServers;
   mcp: McpBridge;
   browser: BrowserManager;
   /** Desktop and terminal streams (ADR 0058): they end with the session. */
@@ -1095,6 +1099,8 @@ export class RunnerDaemon implements RequestObserver {
       this.session.brains.setLimits(brainLimits);
       this.session.accountBrains?.brains.setLimits(brainLimits);
       this.session.codexApp.setLimits(codexLimits(paired));
+      this.session.opencodePool.setLimits(codexLimits(paired));
+      this.session.antigravityPool.setLimits(codexLimits(paired));
       this.session.supervisor?.stateChanged();
     }
     this.queueStatus();
@@ -1322,6 +1328,16 @@ export class RunnerDaemon implements RequestObserver {
       ...codexLimits(config),
       onRateLimits: (account, rateLimits) =>
         this.accounts.noteCodexRateLimits(account ?? OWN_USAGE_ID.codex, rateLimits),
+      log,
+    });
+    const opencodePool = new OpencodeServers({
+      runs: codexRuns,
+      ...codexLimits(config),
+      log,
+    });
+    const antigravityPool = new AntigravityServers({
+      runs: codexRuns,
+      ...codexLimits(config),
       log,
     });
     const mcp = new McpBridge({
@@ -1604,8 +1620,16 @@ export class RunnerDaemon implements RequestObserver {
         : async (spare) => (await brains.reclaimIdle(spare)) || browser.reclaimIdle(),
       warmBrain: supervisor
         ? async (spare) => accountBrains?.warm(spare) || supervisor.warmBrain(spare)
-        : async (spare) => brains.warm(spare),
-      codex: { runnerHome: home, mcp: mcpCommand, runs: codexRuns, app: codexApp },
+        : async (spare) =>
+            brains.warm(spare) || codexApp.warm(spare) || opencodePool.warm(spare) || antigravityPool.warm(spare),
+      codex: {
+        runnerHome: home,
+        mcp: mcpCommand,
+        runs: codexRuns,
+        app: codexApp,
+        opencode: opencodePool,
+        antigravity: antigravityPool,
+      },
       paused: () => this.stopping || this.pauseState().paused,
       setPause: (paused, until, by) => (paused ? this.pause(until, by) : this.resume()),
       setTaskLimit: (maxTasks) => this.configSet({ maxConcurrentTasks: maxTasks }).maxConcurrentTasks,
@@ -1739,6 +1763,8 @@ export class RunnerDaemon implements RequestObserver {
       brains,
       accountBrains,
       codexApp,
+      opencodePool,
+      antigravityPool,
       mcp,
       browser,
       streams,
@@ -2000,6 +2026,8 @@ export class RunnerDaemon implements RequestObserver {
     s.brains.close();
     s.accountBrains?.brains.close();
     s.codexApp.close();
+    s.opencodePool.close();
+    s.antigravityPool.close();
     await s.browser.close().catch(() => undefined);
     await s.mcp.close().catch(() => undefined);
   }

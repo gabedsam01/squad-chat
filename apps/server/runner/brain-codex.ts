@@ -9,6 +9,9 @@ import {
   type AgentScope,
   type BrainEffort,
   type BrainSpeed,
+  type BrainTurnTimings,
+  type BrainWarmReply,
+  type BrainWarmRequest,
   isAccountId,
   isBrainEffort,
   isContextTokens,
@@ -116,7 +119,7 @@ export type CodexBrainEvent =
       lastContext?: number;
     }
   | { type: "limit"; resetsAt?: string }
-  | { type: "done"; text: string; session?: { id: string } }
+  | { type: "done"; text: string; session?: { id: string }; timings?: BrainTurnTimings }
   | { type: "error"; code: string; message: string; retryable?: boolean; worked?: boolean }
   /** Protocol 15 (app-server only): messages handed with `brain.steer` that the turn read. */
   | { type: "steer_read"; uuids: string[] }
@@ -844,6 +847,11 @@ export interface CodexTurnInput {
 export interface CodexAppRunner {
   /** Runs the turn on an app-server, or with `exec` (`codex exec`) when it can't there. */
   turn(input: CodexTurnInput & { version: string }, opts: CodexTurnOptions, exec: () => Promise<void>): Promise<void>;
+  /** Protocol 74: starts the session's app-server ahead of the turn (`brain.warm`). */
+  prewarm?(
+    input: Omit<CodexTurnInput, "runId" | "prompt" | "system" | "mcp"> & { version: string },
+    opts: Omit<CodexTurnOptions, "emit" | "signal">,
+  ): Promise<BrainWarmReply>;
 }
 
 const codexVersion = cachedCodexVersion();
@@ -1197,6 +1205,70 @@ export async function handleCodexBrainTurn(
         ...(ctx.codexVersion ? { codexVersion: ctx.codexVersion } : {}),
         ...(ctx.bin ? { bin: ctx.bin } : {}),
         ...(ctx.app ? { app: ctx.app } : {}),
+        ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
+      },
+    );
+  } finally {
+    release?.();
+  }
+}
+
+/** `brain.warm` with `kind: "codex"`: best-effort pre-spawn of the session's `codex app-server`. */
+export async function handleCodexBrainWarm(
+  ctx: CodexBrainContext,
+  req: BrainWarmRequest & { agent?: AgentScope },
+): Promise<BrainWarmReply> {
+  const no: BrainWarmReply = { open: false, started: false };
+  if (!ctx.exec || !ctx.app?.prewarm || !req.agent) return no;
+  if (typeof req.session?.id !== "string" || !/^[a-zA-Z0-9-]{8,64}$/.test(req.session.id)) return no;
+  if (req.permissions?.mode === "chat") return no;
+  const version = await (ctx.codexVersion ?? codexVersion)();
+  if (!version) return no;
+  const folder = ctx.folder;
+  let cwd = folder;
+  if (typeof req.cwd === "string" && req.cwd.trim() !== "") {
+    const resolved = await resolveForAgent(folder, ctx.grants, req.cwd).catch(() => null);
+    if (!resolved?.exists) return no;
+    cwd = resolved.abs;
+  }
+  let account: { id: string; home: string } | undefined;
+  let release: (() => void) | undefined;
+  const accountId: unknown = req.account;
+  if (accountId !== undefined && accountId !== null && accountId !== "") {
+    if (!isAccountId(accountId)) return no;
+    const signIn = await accountSignIn(ctx.accounts, "codex", accountId, ctx.grant);
+    if (signIn === "signed_out" || signIn === "missing") return no;
+    account = { id: accountId, home: signIn.home };
+    release = signIn.release;
+  }
+  const writableRoots = [...(cwd !== folder ? [folder] : []), ...(ctx.grants ?? []).filter((g) => !isInside(g, cwd))];
+  const secrets = await agentSecrets(ctx.secretsDir, req.agent).catch(() => null);
+  const file = codexThreadsFile(ctx.runnerHome);
+  const threads = ctx.threads ?? threadStores.get(file) ?? new CodexThreads(file);
+  threadStores.set(file, threads);
+  try {
+    return await ctx.app.prewarm(
+      {
+        sessionId: req.session.id,
+        cwd,
+        version,
+        ...(typeof req.model === "string" && req.model ? { model: req.model } : {}),
+        ...(writableRoots.length ? { writableRoots } : {}),
+        ...(account ? { account } : {}),
+        ...(isBrainEffort(req.effort) ? { effort: req.effort } : {}),
+        ...(isContextTokens(req.contextTokens) ? { contextTokens: req.contextTokens } : {}),
+        agentId: String(req.agent.id),
+        folder,
+        profile: codexProfileOf(req),
+      },
+      {
+        threads,
+        workDir: path.join(ctx.runnerHome, "brain", "turns", "warm"),
+        runnerHome: ctx.runnerHome,
+        ...(ctx.mcp ? { mcpCommand: ctx.mcp.command, socketPath: ctx.mcp.socketPath } : {}),
+        ...(secrets ? { env: secrets.env, redact: secrets.redact, redactHold: secrets.hold } : {}),
+        ...(ctx.codexVersion ? { codexVersion: ctx.codexVersion } : {}),
+        ...(ctx.bin ? { bin: ctx.bin } : {}),
         ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
       },
     );

@@ -349,11 +349,13 @@ export const PLAN_CHOICES: readonly PlanChoice[] = [
 ];
 /** The plans whose marks stand on the scene over "Conectar uma IA": the three most used. */
 export const SCENE_PLANS = ["claude", "chatgpt", "gemini"] as const satisfies readonly PlanChoice[];
-/** The account a plan signs in as: ChatGPT's through Codex, Cursor's and OpenCode's through their CLIs; the rest through Claude Code. */
+/** The account a plan signs in as: ChatGPT's through Codex, Cursor's and OpenCode's (plus coding plans) through OpenCode; Claude's through Claude Code. */
 export const kindOf = (choice: PlanChoice): MachineAccountKind =>
   choice === "chatgpt" || choice === "cursor" || choice === "zen" || choice === "grok" || choice === "gemini"
     ? PLAN_BRAIN[choice]
-    : PLAN_BRAIN.claude;
+    : isPlanId(choice)
+      ? PLAN_BRAIN.zen
+      : PLAN_BRAIN.claude;
 /** The plan an account signs in with: a coding plan's key, ChatGPT's through Codex, Cursor's, else Claude's. */
 export const planOfAccount = (a: Pick<MachineAccount, "kind" | "provider">): PlanChoice =>
   isPlanId(a.provider) ? a.provider : planOfKind(a.kind);
@@ -791,7 +793,7 @@ export function agentAi(agent: Pick<Agent, "brain"> | undefined, state: AiState 
   const brain = agent?.brain;
   if (brain?.kind === "codex") return "chatgpt";
   if (brain?.kind === "cursor") return "cursor";
-  if (brain?.kind === "opencode") return "zen";
+  if (brain?.kind === "opencode") return isPlanId(brain.provider) ? brain.provider : "zen";
   if (brain?.kind === "grok") return "grok";
   if (brain?.kind === "antigravity") return "gemini";
   if (brain?.kind === "claude_code") return isPlanId(brain.provider) ? brain.provider : "claude";

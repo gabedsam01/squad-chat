@@ -397,7 +397,12 @@ test.skipIf(!posix)(
     const log = path.join(root, "agy.log");
     process.env.FAKE_AGY_LOG = log;
     const events = await run(ctx, turn());
-    expect(events.at(-1)).toEqual({ type: "done", text: "Let me check. All good.", session: { id: SESSION } });
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      text: "Let me check. All good.",
+      session: { id: SESSION },
+      timings: { warm: false, cold: "new_session" },
+    });
     expect(
       events
         .filter((e) => e.type === "text_delta")

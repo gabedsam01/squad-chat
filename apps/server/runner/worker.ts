@@ -18,7 +18,9 @@ import { realFoldersFor } from "./access";
 import { agentAccountHome, agentAccountsDir, grantOf, lentAccounts } from "./accounts";
 import { dropAgySignIns } from "./agy-home";
 import { BrainManager, readyRoom, turnContext } from "./brain";
+import { AntigravityServers } from "./brain-antigravity";
 import { CodexAppServers } from "./brain-codex-app";
+import { OpencodeServers } from "./brain-opencode";
 import { BrowserManager, type BrowserManagerOptions, launchChrome } from "./browser";
 import type { BrowserPorts } from "./browser-ports";
 import { type Dial, RunnerConnection, type SocketHandlers } from "./connection";
@@ -620,6 +622,18 @@ export async function runWorker(o: WorkerOptions): Promise<number> {
     },
     log,
   });
+  const opencodePool = new OpencodeServers({
+    runs: codexRuns,
+    ...codexLimits(),
+    ...(cli ? { spawn: cli } : {}),
+    log,
+  });
+  const antigravityPool = new AntigravityServers({
+    runs: codexRuns,
+    ...codexLimits(),
+    ...(cli ? { spawn: cli } : {}),
+    log,
+  });
   // Claude Code's own tools for a CLI root runs on a shared sign-in: nothing here until root opens a bridge.
   const delegatedRuns = new Map<string, McpTaskInfo>();
   const delegated = new DelegatedTools({
@@ -795,6 +809,8 @@ export async function runWorker(o: WorkerOptions): Promise<number> {
       mcp: mcpCommand,
       runs: codexRuns,
       app: codexApp,
+      opencode: opencodePool,
+      antigravity: antigravityPool,
       accounts,
       ...(cli ? { spawn: cli } : {}),
     },
@@ -848,6 +864,8 @@ export async function runWorker(o: WorkerOptions): Promise<number> {
     tasks.setLimits({ maxConcurrent: next.limits.maxConcurrentTasks, defaultMaxSeconds: next.limits.taskMaxSeconds });
     brains.setLimits(brainLimits());
     codexApp.setLimits(codexLimits());
+    opencodePool.setLimits(codexLimits());
+    antigravityPool.setLimits(codexLimits());
     if (next.account !== undefined) {
       brains.keepAccount(next.account, next.accounts);
       tasks.keepAccount(next.account, next.accounts);
@@ -864,6 +882,8 @@ export async function runWorker(o: WorkerOptions): Promise<number> {
   tasks.close();
   brains.close();
   codexApp.close();
+  opencodePool.close();
+  antigravityPool.close();
   delegated.close();
   await browser.close().catch(() => undefined);
   link.traffic(browser.takeTraffic());

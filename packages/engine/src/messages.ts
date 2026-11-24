@@ -1301,7 +1301,14 @@ export async function postPersonMessage(
    * `talker`: the agents' conversation layer, for fast replies while they work (none = no fast replies).
    * `gifs`: the server's GIF provider (ADR 0091; none = no GIFs).
    */
-  deps: { db: Database; pubsub: PubSub; judge?: Judge; talker?: Talker; gifs?: GifProvider | null },
+  deps: {
+    db: Database;
+    pubsub: PubSub;
+    judge?: Judge;
+    talker?: Talker;
+    gifs?: GifProvider | null;
+    wakeWorkers?: () => void;
+  },
   userId: string,
   orgId: string,
   channelId: string,
@@ -1426,6 +1433,7 @@ export async function postPersonMessage(
     { startRuns: true },
   );
   if (duplicate) return resendView(deps, orgId, message);
+  deps.wakeWorkers?.();
   const [view] = (await withWikiLinks(deps.db, orgId, [messageView(message)])) as [MessageView];
   // Right after the commit, before any routing: the sender's optimistic copy reconciles by `clientId`.
   await publishMessageCreated(deps.pubsub, view, orgId);
@@ -1433,14 +1441,18 @@ export async function postPersonMessage(
   const decision = addressees ?? (message.meta.mentionsEveryone === true ? everyone : null);
   if (decision) await recordAddressees(deps.db, message, decision);
   // People mentioned by handle hear about it on their own topic (notifications).
-  for (const mentioned of message.mentionedUserIds) {
-    await publishUserEvent(deps.pubsub, orgId, mentioned, {
-      type: "mention",
-      channelId,
-      messageId: message.id,
-      threadId: message.threadId,
-      byUserId: userId,
-    });
+  if (message.mentionedUserIds.length > 0) {
+    await Promise.all(
+      message.mentionedUserIds.map((mentioned) =>
+        publishUserEvent(deps.pubsub, orgId, mentioned, {
+          type: "mention",
+          channelId,
+          messageId: message.id,
+          threadId: message.threadId,
+          byUserId: userId,
+        }),
+      ),
+    );
   }
   if (input.openThread && message.threadId && (await markOpenedByReply(deps.db, message, userId))) {
     await publishChannelEvent(deps.pubsub, {
@@ -1509,14 +1521,18 @@ export async function postPersonMessage(
     });
   }
   // The runs answer where the message is, or under it when its channel replies in threads (ADR 0214).
-  for (const run of runs) {
-    await publishChannelEvent(deps.pubsub, {
-      type: "agent.thinking",
-      channelId,
-      threadId: run.replyInThread ? message.id : message.threadId,
-      agentId: run.agentId,
-      runId: run.id,
-    });
+  if (runs.length > 0) {
+    await Promise.all(
+      runs.map((run) =>
+        publishChannelEvent(deps.pubsub, {
+          type: "agent.thinking",
+          channelId,
+          threadId: run.replyInThread ? message.id : message.threadId,
+          agentId: run.agentId,
+          runId: run.id,
+        }),
+      ),
+    );
   }
   return view;
 }

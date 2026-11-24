@@ -52,7 +52,7 @@ export class AcpConnection {
   constructor(
     private readonly input: Writable,
     output: Readable,
-    private readonly handlers: AcpHandlers = {},
+    private handlers: AcpHandlers = {},
   ) {
     output.setEncoding("utf8");
     output.on("data", (chunk: string) => this.read(chunk));
@@ -60,6 +60,11 @@ export class AcpConnection {
     output.on("error", (err: Error) => this.close(err));
     // A child gone before it read what we wrote ends the connection by its exit, not by a broken pipe.
     input.on("error", () => undefined);
+  }
+
+  /** Replaces notification/request handlers when handing a pooled connection to a new turn. */
+  setHandlers(handlers: AcpHandlers) {
+    this.handlers = handlers;
   }
 
   /** Whether the connection ended (and why). */

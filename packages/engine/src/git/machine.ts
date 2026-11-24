@@ -58,7 +58,33 @@ export const MACHINE_CLONE_SECONDS = 1800;
 /** A runner on protocol 35 answers `cloning` after this long and the download goes on there. */
 export const MACHINE_CLONE_WAIT_SECONDS = 600;
 /** Before a chat turn: every fetch of the agent's checkouts together, at most this long. */
-export const PRE_TURN_SYNC_SECONDS = 20;
+export const PRE_TURN_SYNC_SECONDS = 8;
+/** How long `prepareAgentCode` reuses recent sync results per hub, org, agent, machine and repo list. */
+export const PRE_TURN_SYNC_COOLDOWN_MS = 120_000;
+const CODE_PREP_CACHE_MAX = 500;
+
+interface CachedCodePrep {
+  at: number;
+  present: CodeStartRepo[];
+  primary?: string;
+  prompt: string;
+}
+
+let recentCodePrepByHub = new WeakMap<MachineCaller, Map<string, CachedCodePrep>>();
+
+/** Clears cached pre-turn git sync entries across all hubs (used by tests when needed). */
+export function clearCodePrepCache() {
+  recentCodePrepByHub = new WeakMap<MachineCaller, Map<string, CachedCodePrep>>();
+}
+
+function hubCodePrepCache(hub: MachineCaller): Map<string, CachedCodePrep> {
+  let cache = recentCodePrepByHub.get(hub);
+  if (!cache) {
+    cache = new Map();
+    recentCodePrepByHub.set(hub, cache);
+  }
+  return cache;
+}
 
 /** Why git can't run on the machine now (said to the agent), or null. */
 export function machineGitUnavailable(status: MachineStatus | null, orgId: string): Error | null {
@@ -325,7 +351,7 @@ export interface CodeTurn {
 export async function prepareAgentCode(
   deps: MachineGitDeps,
   turn: CodeTurn,
-  options: { signal?: AbortSignal } = {},
+  options: { signal?: AbortSignal; cooldownMs?: number } = {},
 ): Promise<CodeSetup | null> {
   const machineId = turn.session?.machineId;
   if (!machineId) return null;
@@ -361,6 +387,22 @@ export async function prepareAgentCode(
     }
     const credit = await creditLine(deps, turn);
     const list = await agentRepositoryList(deps.db, turn.orgId, turn.agentId);
+    const cooldownMs = options.cooldownMs ?? 0;
+    const nowMs = (deps.now?.() ?? new Date()).getTime();
+    const cache = cooldownMs > 0 ? hubCodePrepCache(deps.hub) : null;
+    const cacheKey = cache ? `${turn.orgId}:${turn.agentId}:${machineId}:${list.join(",")}` : "";
+    const cached = cache?.get(cacheKey);
+    if (cached && nowMs - cached.at < cooldownMs) {
+      if (cached.present.length === 0 && !cached.prompt) {
+        return credit ? { cwd: "", prompt: "", start: credit, pick: { present: [], credit } } : null;
+      }
+      const pick = {
+        present: cached.present,
+        ...(cached.primary ? { primary: cached.primary } : {}),
+        ...(credit ? { credit } : {}),
+      };
+      return { ...codeStart(pick, turn), prompt: cached.prompt, pick };
+    }
     const explicit = list.filter((r) => !r.endsWith("/*"));
     // An `owner/*` (or all) grant names no repository: its checkouts are found on the computer, so they fetch
     // straight from GitHub too instead of going back to the proxy.
@@ -399,15 +441,12 @@ export async function prepareAgentCode(
     const lower = new Set(present.map((r) => r.repo.toLowerCase()));
     const coming = new Set(downloading.map((r) => r.toLowerCase()));
     const notCloned = explicit.filter((r) => !lower.has(r.toLowerCase()) && !coming.has(r.toLowerCase()));
-    if (present.length === 0 && notCloned.length === 0 && downloading.length === 0) {
-      return credit ? { cwd: "", prompt: "", start: credit, pick: { present: [], credit } } : null;
-    }
     const primary = explicit.find((r) => lower.has(r.toLowerCase()));
-    const pick = {
-      present: present.map((r) => ({ repo: r.repo, dir: r.dir, ...(r.path ? { path: r.path } : {}) })),
-      ...(primary ? { primary } : {}),
-      ...(credit ? { credit } : {}),
-    };
+    const cachedPresent: CodeStartRepo[] = present.map((r) => ({
+      repo: r.repo,
+      dir: r.dir,
+      ...(r.path ? { path: r.path } : {}),
+    }));
     const checkouts: CodeCheckout[] = present.map((r) => ({
       repo: r.repo,
       path: r.path ?? r.dir,
@@ -415,6 +454,26 @@ export async function prepareAgentCode(
       ...(r.status === "failed" ? { stale: r.message || "the update failed" } : {}),
     }));
     const prompt = codePrompt({ handle: agent.handle, checkouts, notCloned, downloading });
+    if (cache) {
+      if (cache.size >= CODE_PREP_CACHE_MAX) {
+        const oldest = cache.keys().next().value;
+        if (oldest !== undefined) cache.delete(oldest);
+      }
+      cache.set(cacheKey, {
+        at: nowMs,
+        present: cachedPresent,
+        ...(primary ? { primary } : {}),
+        prompt,
+      });
+    }
+    if (present.length === 0 && notCloned.length === 0 && downloading.length === 0) {
+      return credit ? { cwd: "", prompt: "", start: credit, pick: { present: [], credit } } : null;
+    }
+    const pick = {
+      present: cachedPresent,
+      ...(primary ? { primary } : {}),
+      ...(credit ? { credit } : {}),
+    };
     return { ...codeStart(pick, turn), prompt, pick };
   } catch {
     // Offline, slow, refused: the turn goes on in the agent's folder, as before.

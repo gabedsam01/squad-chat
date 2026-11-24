@@ -44,6 +44,8 @@ import {
   antigravityGroupOf,
   autoPlanModel,
   droppedPlanModel,
+  isPlanId,
+  opencodePlanModel,
   ownLimitsModel,
   planModel,
   planOf,
@@ -194,7 +196,7 @@ import { recordContextUse } from "./context/feedback";
 import { afterTurnDone, learnTags, reportLearnFailure } from "./context/learn";
 import { rulesForRun } from "./context/rules";
 import { memoryArmOf } from "./context/scorecard";
-import { type ContextDeps, ensureThreadSummary } from "./context/summaries";
+import { type ContextDeps, currentThreadSummary, ensureThreadSummary } from "./context/summaries";
 import { EXPAND_TOOL, itemLabel, retrieveForRun } from "./context/tools";
 import {
   compactToolResults,
@@ -258,6 +260,7 @@ import { type CodeSetup, codeStart } from "./git/machine";
 import { agentRepositoryList, repositoriesPrompt } from "./git/repos";
 import { askVerdict, handOffHolds, repeatedAsk, saysNeedsNothing } from "./hand-off";
 import { announceIntent } from "./intent-line";
+import { isQuickCleanReply, isQuickGreeting } from "./quick-turn";
 import { UPDATE_ISSUE_TOOL } from "./issue-tools";
 import { linkRunToIssue, mirrorReplyToIssue } from "./issues";
 import { type Judge, JudgeGroup, judgeCallOf, TURN_END_CHECK_BUDGET_MS, withJudgeBudget } from "./judge";
@@ -2006,6 +2009,16 @@ async function executeRunInner(
   const trigger = triggerRows[0];
   if (fresh && trigger)
     deps.onTiming?.("trigger_to_claim_ms", claimedAt - trigger.createdAt.getTime(), { runId: run.id });
+  const quickSocial =
+    needsContext &&
+    fresh &&
+    !run.background &&
+    !run.workId &&
+    trigger?.authorType === "person" &&
+    !runMessageMeta(run, trigger).viaRoutine &&
+    !Array.isArray(trigger.meta?.artifacts) &&
+    !Array.isArray(trigger.meta?.attachments) &&
+    isQuickGreeting(trigger.body ?? "");
   if (!agent || agent.archivedAt) return fail("agent_archived");
   // A new run that can't think (no key, a computer brain signed out or missing) fails here,
   // before the judges below, any context or a model call.
@@ -2015,14 +2028,15 @@ async function executeRunInner(
     prof.part("ai_state");
     // Somebody waits on a conversation's run: its CLI starts while the turn is built. Not for a routine's or
     // background work, which nobody waits on.
+    const kind = brainOf(agent.brain);
     if (
       fresh &&
       !run.background &&
       !isRightHand(agent) &&
-      brainOf(agent.brain) === "claude_code" &&
+      (kind === "claude_code" || kind === "codex" || kind === "opencode" || kind === "antigravity") &&
       !runMessageMeta(run, trigger).viaRoutine
     ) {
-      void warmAtClaim(deps, agent, run, replyThreadId ?? run.channelId).catch(() => {});
+      void warmAtClaim(deps, agent, run, replyThreadId ?? run.channelId, quickSocial).catch(() => {});
     }
   }
   if (!askingForRoom) await publishChannelEvent(deps.pubsub, event("running"));
@@ -2057,6 +2071,15 @@ async function executeRunInner(
   // choice is applied once the brain is known, before the first model call. Never blocks: no answer in time
   // is medium/medium.
   const askAuto = (): Promise<AutoChoice> => {
+    if (quickSocial) {
+      startGroup?.skip("auto_model");
+      return Promise.resolve({
+        tier: "small",
+        effort: "low",
+        reason: "Quick greeting: small tier, low effort.",
+        source: "judge",
+      });
+    }
     if (!judge) return Promise.resolve(fallbackChoice("none"));
     const message = trigger?.body ?? topTrigger?.body ?? "";
     const computer = brainOf(agent.brain) !== "model";
@@ -2092,45 +2115,52 @@ async function executeRunInner(
   // The judge's answer is awaited where the tools are needed: the context is read meanwhile (`CONTEXT_TOOLS`).
   const judging: Promise<void> | null =
     groupsJudged && judge
-      ? (async () => {
-          const [recent, live, previous] = await Promise.all([
-            recentMessages(),
-            // Asked from inside a live file, one attached, or in a file's own conversation: its own tools come with
-            // it (ADR 0196 §6, ADR 0199).
-            carriesLiveFile(db, run.orgId, trigger?.meta, run.channelId).catch(() => false),
-            previousHere(),
-          ]);
-          const kept = keptToolGroups(previous, granted);
-          // A picture's, a video's or a PDF's conversation sees the file with the Drive's tools too (ADR 0208).
-          const media = live && (await isMediaConversation(db, run.orgId, run.channelId).catch(() => false));
-          const keep = [
-            ...kept.used,
-            ...kept.listed,
-            ...(live ? [LIVE_FILES_GROUP, ...(media ? [toolGroupKey({ scope: "drive:read" })] : [])] : []),
-          ];
-          const choice = await chooseToolGroups(judge, {
-            orgId: run.orgId,
-            agentId: agent.id,
-            runId: run.id,
-            agent: { name: agent.name, role: agent.role, instructions: agent.instructions },
-            message: trigger?.body ?? "",
-            recent,
-            tools: granted,
-            // The message's words may not mention its file (it may have none), and the agent has to open it.
-            keep: Array.isArray(trigger?.meta.artifacts) ? [...keep, toolGroupKey({ scope: "drive:read" })] : keep,
-            previous: previous?.toolGroups,
-            group: startGroup,
-            lean: Boolean(channelRow && isAgentOnlyDm(channelRow)),
-          });
-          toolChoice = choice;
-          ctx.loadedGroups = choice.groups;
-          tools = presentTools(granted, isSensitive, ctx.loadedGroups);
-          // Listed only to keep the prompt cache: nothing says this message needs the browser.
-          const browser = toolGroupKey({ scope: BROWSER_SCOPE });
-          if (choice.groups.includes(browser) && !kept.listed.includes(browser)) {
-            deps.warmBrowser?.({ orgId: run.orgId, agentId: agent.id, threadRootId: run.threadRootId });
-          }
-        })()
+      ? quickSocial
+        ? (() => {
+            startGroup?.skip("tool_groups");
+            ctx.loadedGroups = [];
+            tools = presentTools(granted, isSensitive, ctx.loadedGroups);
+            return null;
+          })()
+        : (async () => {
+            const [recent, live, previous] = await Promise.all([
+              recentMessages(),
+              // Asked from inside a live file, one attached, or in a file's own conversation: its own tools come with
+              // it (ADR 0196 §6, ADR 0199).
+              carriesLiveFile(db, run.orgId, trigger?.meta, run.channelId).catch(() => false),
+              previousHere(),
+            ]);
+            const kept = keptToolGroups(previous, granted);
+            // A picture's, a video's or a PDF's conversation sees the file with the Drive's tools too (ADR 0208).
+            const media = live && (await isMediaConversation(db, run.orgId, run.channelId).catch(() => false));
+            const keep = [
+              ...kept.used,
+              ...kept.listed,
+              ...(live ? [LIVE_FILES_GROUP, ...(media ? [toolGroupKey({ scope: "drive:read" })] : [])] : []),
+            ];
+            const choice = await chooseToolGroups(judge, {
+              orgId: run.orgId,
+              agentId: agent.id,
+              runId: run.id,
+              agent: { name: agent.name, role: agent.role, instructions: agent.instructions },
+              message: trigger?.body ?? "",
+              recent,
+              tools: granted,
+              // The message's words may not mention its file (it may have none), and the agent has to open it.
+              keep: Array.isArray(trigger?.meta.artifacts) ? [...keep, toolGroupKey({ scope: "drive:read" })] : keep,
+              previous: previous?.toolGroups,
+              group: startGroup,
+              lean: Boolean(channelRow && isAgentOnlyDm(channelRow)),
+            });
+            toolChoice = choice;
+            ctx.loadedGroups = choice.groups;
+            tools = presentTools(granted, isSensitive, ctx.loadedGroups);
+            // Listed only to keep the prompt cache: nothing says this message needs the browser.
+            const browser = toolGroupKey({ scope: BROWSER_SCOPE });
+            if (choice.groups.includes(browser) && !kept.listed.includes(browser)) {
+              deps.warmBrowser?.({ orgId: run.orgId, agentId: agent.id, threadRootId: run.threadRootId });
+            }
+          })()
       : null;
   // Read only when the context is built; a failure surfaces there.
   judging?.catch(() => {});
@@ -2562,41 +2592,41 @@ async function executeRunInner(
     // The tools the context names are core ones: listed whatever groups the judge loads, so it needn't wait for it.
     // A connector's tool of the same name could come with a group: then it waits.
     if (judging && !granted.every((t) => isCore(t) || !CONTEXT_TOOLS.includes(t.name))) await judging;
-    const pending: { label: string; reason: string }[] = deps.tools
-      ? await pendingConnectors(db, run.orgId, new Set(granted.map((t) => t.name))).catch(() => [])
-      : [];
-    // Skills: only names and descriptions here; the body loads with `load_skill` (progressive disclosure).
-    const skillList = tools.some((t) => t.name === "load_skill")
-      ? await enabledSkills(db, run.orgId, agent.id, run.id)
-      : [];
     // A routine's instructions name what it checks; the wiki stays one `read_wiki_page` away.
     const searchesWiki = tools.some((t) => t.name === "read_wiki_page") && !viaRoutine;
     // Only the kinds searched below: with vectors for the wiki alone, a run that doesn't search it pays for none.
-    const queryEmbedding = contextDeps
-      ? sharedQueryEmbedding(
-          contextDeps,
-          run.orgId,
-          (trigger?.body ?? "").trim().slice(0, 500),
-          searchesWiki ? ["context_item", "wiki"] : ["context_item"],
-        )
-      : undefined;
+    const queryEmbedding =
+      contextDeps && !quickSocial
+        ? sharedQueryEmbedding(
+            contextDeps,
+            run.orgId,
+            (trigger?.body ?? "").trim().slice(0, 500),
+            searchesWiki ? ["context_item", "wiki"] : ["context_item"],
+          )
+        : undefined;
     const personBehind = () => runAuthority(db, run).then((a) => a.personId);
-    // Limited to some GitHub repositories: which ones, and where to start.
-    const repositories = granted.some((t) => t.scope.startsWith("github:"))
-      ? repositoriesPrompt(await agentRepositoryList(db, run.orgId, agent.id).catch(() => []))
-      : "";
-    // Its shared browser profiles (ADR 0110), by name.
-    // Granted, not listed: on demand (ADR 0043) the tool is one `use_tool` away, and `promptKey` must not follow tool groups.
-    const browsers = granted.some((t) => t.name === "browser_profile")
-      ? browsersPrompt(await agentBrowserProfiles(db, run.orgId, agent.id), agent.browserProfileId)
-      : "";
-    // Listed in every run of the agent (`EVERY_TOOL`): the prompt speaks of them only where they apply.
-    const [workApplies, choicesApply, sayNowHere] = await Promise.all([
+    const scopeKeysPromise = deps.tools ? grantedScopeKeys(db, run.orgId, agent.id) : Promise.resolve([]);
+    const [pending, skillList, repoRows, browserRows, workApplies, choicesApply, sayNowHere] = await Promise.all([
+      deps.tools ? pendingConnectors(db, run.orgId, new Set(granted.map((t) => t.name))).catch(() => []) : [],
+      // Skills: only names and descriptions here; the body loads with `load_skill` (progressive disclosure).
+      tools.some((t) => t.name === "load_skill") ? enabledSkills(db, run.orgId, agent.id, run.id) : [],
+      // Limited to some GitHub repositories: which ones, and where to start.
+      granted.some((t) => t.scope.startsWith("github:"))
+        ? agentRepositoryList(db, run.orgId, agent.id).catch(() => [])
+        : [],
+      // Its shared browser profiles (ADR 0110), by name.
+      granted.some((t) => t.name === "browser_profile") ? agentBrowserProfiles(db, run.orgId, agent.id) : [],
+      // Listed in every run of the agent (`EVERY_TOOL`): the prompt speaks of them only where they apply.
       every ? workMayStart(ctx) : true,
       every ? someoneAnswers(ctx) : true,
       // Listed in every run with an id: the line before slow work is spoken of only where people read it as it goes.
       tools.some((t) => t.name === SAY_NOW_TOOL) ? sayNowApplies(db, run, sealedAtClaim).catch(() => false) : false,
     ]);
+    const repositories = granted.some((t) => t.scope.startsWith("github:")) ? repositoriesPrompt(repoRows) : "";
+    // Granted, not listed: on demand (ADR 0043) the tool is one `use_tool` away, and `promptKey` must not follow tool groups.
+    const browsers = granted.some((t) => t.name === "browser_profile")
+      ? browsersPrompt(browserRows, agent.browserProfileId)
+      : "";
     const [context, memory, wikiPages, rules] = await Promise.all([
       buildRunContext(db, run, agent, {
         maxMessages: deps.contextMessages,
@@ -2690,10 +2720,13 @@ async function executeRunInner(
     if (issueId) later(() => linkRunToIssue({ db, pubsub: deps.pubsub }, run, issueId));
     const system: ContextBlock[] = [...context.system];
     if (contextDeps && context.stats.truncated) {
-      // Long thread: the summary stands in for what didn't fit.
-      const found = await ensureThreadSummary(contextDeps, run.orgId, run.threadRootId, { force: true }).catch(
-        () => null,
-      );
+      // Long thread: use the cached summary without blocking on an LLM summary call; refresh it in the background.
+      const found = await currentThreadSummary(db, run.orgId, run.threadRootId).catch(() => null);
+      if (!found) {
+        later(() => ensureThreadSummary(contextDeps, run.orgId, run.threadRootId, { force: true }).catch(() => null));
+      } else {
+        later(() => ensureThreadSummary(contextDeps, run.orgId, run.threadRootId).catch(() => null));
+      }
       const dm = found
         ? await agentsDmReads(db, run.orgId, run.channelId, () => readerOfRun(db, run.orgId, run.id))
         : null;
@@ -2802,7 +2835,7 @@ async function executeRunInner(
           [
             ...new Set([
               ...granted.map((t) => grantKey(t.connectionId, t.scope)),
-              ...(deps.tools ? await grantedScopeKeys(db, run.orgId, agent.id) : []),
+              ...(await scopeKeysPromise),
             ]),
           ].sort(),
           // A session a person's own connection was offered in holds what it read: only their runs resume it
@@ -3297,7 +3330,9 @@ async function executeRunInner(
   }
   // The agent's model left its plan's live list, so this turn runs another: its owner hears it, never silently.
   const dropped =
-    brainPlan.kind === "claude_code" && !brainPlan.missionId && agent.brain === "claude_code"
+    (brainPlan.kind === "claude_code" || (brainPlan.kind === "opencode" && isPlanId(brainPlan.account?.provider))) &&
+    !brainPlan.missionId &&
+    brainOf(agent.brain) === brainPlan.kind
       ? droppedPlanModel(brainPlan.account?.provider, agent.brainModel)
       : null;
   const droppedFrom = dropped ? planOf(brainPlan.account?.provider) : undefined;
@@ -3412,7 +3447,16 @@ async function executeRunInner(
     const tiers = (await orgAutoModels(db, run.orgId).catch((): AutoModels => ({})))[provider];
     // OpenRouter: Automático picks among the models the workspace chose, never the rest of the list (ADR 9005).
     const allowed = provider === "openrouter" ? await openRouterSelection(db, run.orgId).catch(() => null) : null;
-    const applied = autoApplied(agent, brainPlan, choice, provider, tiers, endpoint, allowed);
+    const applied = autoApplied(
+      agent,
+      brainPlan,
+      choice,
+      provider,
+      tiers,
+      endpoint,
+      allowed,
+      brainPlan.account?.provider,
+    );
     // No model for the tier: OpenRouter's list couldn't be read, or an endpoint offers none (never a call on the
     // wrong provider's line). Waited out like a provider outage, with the choice kept for the next attempt.
     if (brainPlan.kind === "model" && isAutoModel(agent.model) && !applied.apiModel) {
@@ -3426,7 +3470,11 @@ async function executeRunInner(
     }
     ({ agent: thinker, plan: brainPlan } = withAuto(agent, brainPlan, applied));
     if (autoBrain) {
-      const model = autoPlanModel(brainPlan.account?.provider, brainPlan.model, brainPlan.usage);
+      const picked = autoPlanModel(brainPlan.account?.provider, brainPlan.model, brainPlan.usage);
+      const model =
+        brainPlan.kind === "opencode" && isPlanId(brainPlan.account?.provider)
+          ? opencodePlanModel(brainPlan.account.provider, picked)
+          : picked;
       if (model) brainPlan = { ...brainPlan, model };
     }
     if (!kept) {
@@ -3444,6 +3492,9 @@ async function executeRunInner(
         t.system = [...t.system, { turn: true, found: true, text: QUICK_TURN_NOTE } as ContextBlock];
       later(() => saveTranscript(db, t));
     }
+  } else if (quickSocial && needsContext && !run.background) {
+    transcript.system = [...transcript.system, { turn: true, found: true, text: QUICK_TURN_NOTE } as ContextBlock];
+    later(() => saveTranscript(db, transcript));
   }
   // The context budget reads the model's window: an OpenRouter model's comes with its list.
   const thinkerModel = await modelInfoFor(db, thinker.model, run.orgId);
@@ -5050,7 +5101,14 @@ async function executeRunInner(
       triggerMessage?.authorType === "person"
     ) {
       // Meanwhile a computer brain's checkouts get synced for its first turn (used only if that turn is the same).
-      if (plan.kind !== "model" && plan.session && deps.prepareCode && computerTurns === 0 && !nextPrompt) {
+      if (
+        !quickSocial &&
+        plan.kind !== "model" &&
+        plan.session &&
+        deps.prepareCode &&
+        computerTurns === 0 &&
+        !nextPrompt
+      ) {
         const early = brainTurnOf(run, thinker, transcript, tools, triggerText, plan, { unattended });
         const prepare = deps.prepareCode;
         const machineId = plan.session.machineId;
@@ -5070,6 +5128,7 @@ async function executeRunInner(
         deps.quietMs,
         signal,
         deps.quietByTyping ? typingLogFor(deps.pubsub) : undefined,
+        { skipIfComplete: true },
       );
       // A window already over (the context took it) gets no pre-warm: it would only delay the first call.
       const over = await Promise.race([waiting.then(() => true), Bun.sleep(PREWARM_PROBE_MS).then(() => false)]);
@@ -5384,9 +5443,10 @@ async function executeRunInner(
             found: computerTurns === 0 || !turnPlan.session?.resume,
             personId,
             personWaiting,
+            ...(quickSocial && computerTurns === 0 ? { skipCode: true } : {}),
             // Synced during the quiet window for this very turn; where it starts is picked again from its words now
             // (what came in meanwhile may name another repository).
-            ...(earlyCode?.plan === turnPlan && computerTurns === 0
+            ...(!quickSocial && earlyCode?.plan === turnPlan && computerTurns === 0
               ? {
                   code: startAgain(earlyCode.code, {
                     trigger: prompt,
@@ -5706,7 +5766,11 @@ async function executeRunInner(
               () => null,
             );
             const from = turnPlan.model;
-            const to = autoPlanModel(turnPlan.account?.provider, from, stored);
+            const picked = autoPlanModel(turnPlan.account?.provider, from, stored);
+            const to =
+              turnPlan.kind === "opencode" && isPlanId(turnPlan.account?.provider)
+                ? opencodePlanModel(turnPlan.account.provider, picked)
+                : picked;
             const provider = turnPlan.account?.provider;
             if (to && to !== from) {
               plan = { ...plan, model: to };
@@ -6355,6 +6419,17 @@ async function executeRunInner(
       const localPaths = theirs ? [] : cited;
       const work = await workDone(t);
       const checker = turnEndJudge();
+      const skipTurnEndJudge =
+        work === 0 &&
+        !plan.missionId &&
+        !betweenAgents &&
+        !unreached &&
+        !openRequest &&
+        namedTools.length === 0 &&
+        localPaths.length === 0 &&
+        !t.request &&
+        (quickSocial || (t.autoModel?.tier === "small" && t.autoModel?.effort === "low")) &&
+        isQuickCleanReply(judged);
       let decision = await decideTurnEnd({
         state,
         kind: betweenAgents ? "agents_dm" : "conversation",
@@ -6375,31 +6450,32 @@ async function executeRunInner(
           wakesLater(db, run, (t as { detachedWaits?: { waitId: string }[] }).detachedWaits),
         comesBack: () => comesBackHere(db, run),
         prepare: () => void judging.gather().catch(() => {}),
-        verdict: checker
-          ? async () => {
-              const [gathered, personal, backgroundWork] = await Promise.all([
-                judging.gather(),
-                isPersonalWorkspace(db, run.orgId),
-                backgroundWorkHere(),
-              ]);
-              return continuationVerdict(checker, {
-                orgId: run.orgId,
-                agentId: run.agentId,
-                runId: run.id,
-                request,
-                reply: judged,
-                ...gathered,
-                runKind: betweenAgents ? "agents_dm" : "conversation",
-                unreached,
-                personal,
-                backgroundWork,
-                onLearn: (signal) => {
-                  learned = signal;
-                },
-                onLearnFailed: (error) => reportJudgeLearn(checker, error),
-              });
-            }
-          : null,
+        verdict:
+          checker && !skipTurnEndJudge
+            ? async () => {
+                const [gathered, personal, backgroundWork] = await Promise.all([
+                  judging.gather(),
+                  isPersonalWorkspace(db, run.orgId),
+                  backgroundWorkHere(),
+                ]);
+                return continuationVerdict(checker, {
+                  orgId: run.orgId,
+                  agentId: run.agentId,
+                  runId: run.id,
+                  request,
+                  reply: judged,
+                  ...gathered,
+                  runKind: betweenAgents ? "agents_dm" : "conversation",
+                  unreached,
+                  personal,
+                  backgroundWork,
+                  onLearn: (signal) => {
+                    learned = signal;
+                  },
+                  onLearnFailed: (error) => reportJudgeLearn(checker, error),
+                });
+              }
+            : null,
         evidence: judging.evidence,
       });
       // A card holds a question: a reply with no question mark asks nothing (the card has no choices), so it is its
@@ -6647,16 +6723,28 @@ async function executeRunInner(
  * its session picked without the prompt key (nothing kept on the run), "Automático" at the medium tier it falls back
  * to. A different launch at the turn only costs that start.
  */
-async function warmAtClaim(deps: EngineDeps, agent: Agent, run: AgentRun, conversation: string) {
-  const factory = deps.brains?.claude_code;
-  if (!factory) return;
+async function warmAtClaim(
+  deps: EngineDeps,
+  agent: Agent,
+  run: AgentRun,
+  conversation: string,
+  quickSocial = false,
+) {
   let plan = await resolveBrain(deps, agent, run, conversation, { peek: true });
-  if (plan.kind !== "claude_code" || plan.unavailable || !plan.session) return;
+  const factory = deps.brains?.[plan.kind];
+  if (!factory || plan.unavailable || !plan.session) return;
   if (needsAutoChoice(agent, plan)) {
     // As the turn does: a pinned model stays, only "Automático" gives way to a held plan model's stand-in.
     const autoBrain = isAutoModel(plan.model);
-    plan = withAuto(agent, plan, autoApplied(agent, plan, fallbackChoice("none"), "anthropic")).plan;
-    const model = autoBrain ? autoPlanModel(plan.account?.provider, plan.model, plan.usage) : undefined;
+    const choice: AutoChoice = quickSocial
+      ? { tier: "small", effort: "low", reason: "Quick greeting: small tier, low effort.", source: "judge" }
+      : fallbackChoice("none");
+    plan = withAuto(agent, plan, autoApplied(agent, plan, choice, "anthropic", undefined, undefined, undefined, plan.account?.provider)).plan;
+    const picked = autoBrain ? autoPlanModel(plan.account?.provider, plan.model, plan.usage) : undefined;
+    const model =
+      plan.kind === "opencode" && isPlanId(plan.account?.provider) && (picked || isAutoModel(plan.model))
+        ? opencodePlanModel(plan.account.provider, picked ?? plan.model)
+        : picked;
     if (model) plan = { ...plan, model };
   }
   await factory(agent, run, { mcpToken: () => "" }).warm?.({
@@ -6751,6 +6839,7 @@ function brainTurnOf(
   options: {
     found?: boolean;
     code?: Promise<CodeSetup | null>;
+    skipCode?: boolean;
     personId?: string | null;
     personWaiting?: boolean;
     unattended?: boolean;
@@ -6815,6 +6904,7 @@ function brainTurnOf(
     ...(agent.contextTokens ? { contextTokens: agent.contextTokens } : {}),
     trigger,
     ...(options.code ? { code: options.code } : {}),
+    ...(options.skipCode ? { skipCode: true } : {}),
     ...(options.personId ? { personId: options.personId } : {}),
     ...(options.personWaiting ? { personWaiting: true } : {}),
   };

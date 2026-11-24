@@ -2371,7 +2371,16 @@ export const TASK_LIMIT_BOUNDS = [1, 20] as const;
 /** What `brain.turn` would start its CLI with, without the turn's own words (no prompt, system text or run). */
 export type BrainWarmRequest = Pick<
   BrainTurnRequest,
-  "kind" | "session" | "cwd" | "model" | "personalMcp" | "permissions" | "account" | "effort" | "contextTokens"
+  | "kind"
+  | "session"
+  | "cwd"
+  | "model"
+  | "personalMcp"
+  | "permissions"
+  | "account"
+  | "effort"
+  | "contextTokens"
+  | "freeTier"
 >;
 
 /** `open`: the session has a CLI now; `started`: this request started it. */

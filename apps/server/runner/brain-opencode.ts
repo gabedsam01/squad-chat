@@ -1,14 +1,34 @@
 import { type ChildProcess, spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import type { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import type { CommandProfile } from "@agenteschat/adapters/command-policy";
-import type { AgentScope, BrainSteerReply } from "@agenteschat/adapters/machine-protocol";
+import type {
+  AgentScope,
+  BrainColdCause,
+  BrainSteerReply,
+  BrainTurnTimings,
+  BrainWarmReply,
+  BrainWarmRequest,
+} from "@agenteschat/adapters/machine-protocol";
 import { isAccountId } from "@agenteschat/adapters/machine-protocol";
 import { redactSecrets } from "@agenteschat/adapters/secret-box";
-import { ACCOUNT_MISSING_MESSAGE, accountEnv, opencodeKeyOf, withoutSignIns } from "./accounts";
+import { type PlanId, planOf } from "@agenteschat/providers/plans";
+import {
+  ACCOUNT_MISSING_MESSAGE,
+  ACCOUNT_SIGNED_OUT,
+  type AccountFolders,
+  type AccountGrant,
+  accountEnv,
+  accountSignIn,
+  opencodeKeyOf,
+  planKeyOf,
+  withoutSignIns,
+} from "./accounts";
 import { ACP_METHOD_NOT_FOUND, ACP_PROTOCOL_VERSION, AcpConnection, AcpError } from "./acp";
+import { awakeClock } from "./awake";
 import {
   CODEX_TOOL_OUTPUT_MAX,
   type CodexBrainEvent,
@@ -16,11 +36,12 @@ import {
   codexProfileOf,
   codexThreadKey,
 } from "./brain-codex";
+import { CODEX_APP_IDLE_MS, CODEX_APP_MAX_PROCESSES } from "./brain-codex-app";
 import { RunnerError } from "./errors";
 import { killTree } from "./exec";
 import { cliSpawn, envValue, OPENCODE_BIN } from "./executors";
-import { CODEX_MCP_ENV, CODEX_MCP_SERVER, redactDeep } from "./mcp";
-import { resolveForAgent } from "./paths";
+import { CODEX_MCP_ENV, CODEX_MCP_SERVER, type McpTaskInfo, newMcpToken, redactDeep } from "./mcp";
+import { isInside, resolveForAgent } from "./paths";
 import type { Spawn } from "./scope-gate";
 import { agentSecrets } from "./secrets";
 
@@ -166,16 +187,41 @@ export function opencodeConfig(input: {
   model?: string;
   /** The account has a key: the `opencode` provider reads it from `OPENCODE_API_KEY`. */
   key?: boolean;
+  /** The account is a coding plan key (Zen/Go, GLM, Kimi, MiniMax): configures its provider and allows it alone. */
+  planKey?: { provider: PlanId };
   /** OpenCode's own provider alone. */
   freeTier?: boolean;
 }): string {
+  let provider: Record<string, unknown> | undefined;
+  let enabled: string[] | undefined = input.freeTier ? ["opencode"] : undefined;
+  if (input.planKey?.provider === "opencode") {
+    provider = { "opencode-go": { options: { apiKey: `{env:${OPENCODE_KEY_ENV}}` } } };
+    enabled = ["opencode-go"];
+  } else if (input.planKey) {
+    const plan = planOf(input.planKey.provider);
+    if (plan) {
+      const p = input.planKey.provider;
+      const baseURL = `${plan.claudeCode.baseUrl.replace(/\/+$/, "")}/v1`;
+      provider = {
+        [p]: {
+          name: plan.name,
+          npm: "@ai-sdk/anthropic",
+          options: { baseURL, apiKey: `{env:${plan.claudeCode.tokenEnv}}` },
+          models: Object.fromEntries(plan.claudeCode.models.map((m) => [m.id, { name: m.label }])),
+        },
+      };
+      enabled = [p];
+    }
+  } else if (input.key) {
+    provider = { opencode: { options: { apiKey: `{env:${OPENCODE_KEY_ENV}}` } } };
+  }
   return JSON.stringify({
     permission: input.chat ? OPENCODE_CHAT_PERMISSION : opencodePermissions(input.profile),
     ...(input.model ? { model: input.model, small_model: input.model } : {}),
     share: "disabled",
     autoupdate: false,
-    ...(input.key ? { provider: { opencode: { options: { apiKey: `{env:${OPENCODE_KEY_ENV}}` } } } } : {}),
-    ...(input.freeTier ? { enabled_providers: ["opencode"] } : {}),
+    ...(provider ? { provider } : {}),
+    ...(enabled ? { enabled_providers: enabled } : {}),
   });
 }
 
@@ -302,7 +348,13 @@ export class OpencodeTurnReader {
   private boundary = false;
   private afterTool = false;
 
-  constructor(private readonly opts: { chat?: boolean; redact?: (text: string) => string } = {}) {}
+  constructor(
+    private readonly opts: {
+      chat?: boolean;
+      redact?: (text: string) => string;
+      isBridgeTool?: (name: string) => boolean;
+    } = {},
+  ) {}
 
   private clean(text: string) {
     return this.opts.redact ? this.opts.redact(text) : text;
@@ -345,7 +397,8 @@ export class OpencodeTurnReader {
         this.running.add(id);
         this.answer = "";
         this.afterTool = true;
-        if (this.opts.chat && !name.startsWith(BRIDGE_PREFIX) && !this.breach) {
+        const ownBridge = this.opts.isBridgeTool ? this.opts.isBridgeTool(name) : name.startsWith(BRIDGE_PREFIX);
+        if (this.opts.chat && !ownBridge && !this.breach) {
           this.breach = `OpenCode called a tool of its own (${name}), so the turn stopped.`;
         }
         return [];
@@ -362,7 +415,8 @@ export class OpencodeTurnReader {
         this.worked = true;
         this.boundary = true;
         // Our bridge's tools: the engine records its own calls.
-        if (tool.name.startsWith(BRIDGE_PREFIX)) return [];
+        const ownBridge = this.opts.isBridgeTool ? this.opts.isBridgeTool(tool.name) : tool.name.startsWith(BRIDGE_PREFIX);
+        if (ownBridge) return [];
         const failed = status === "failed";
         return [
           {
@@ -433,14 +487,17 @@ export interface OpencodeTurnInput {
   system: string;
   prompt: string;
   mcp: { token: string; url?: string };
-  /** The account (its sessions are its own): its folder, and its key. */
-  account?: { id: string; home: string; key?: string };
+  /** The account (its sessions are its own): its folder, and its key (OpenCode or Coding Plan). */
+  account?: { id: string; home: string; key?: string; planKey?: { provider: PlanId; key: string } };
   profile?: CommandProfile;
   freeTier?: boolean;
   /** Protocol 41: the team's right hand, OpenCode's tools all off, stopped at the first one it calls anyway. */
   chat?: boolean;
   /** The turn's agent (for `brain.steer`). */
   agentId?: string;
+  /** The agent's own folder (for matching `brain.warm` checkout fallback). */
+  folder?: string;
+  keepAlive?: boolean;
 }
 
 export interface OpencodeTurnOptions {
@@ -464,13 +521,26 @@ export interface OpencodeTurnOptions {
 export const opencodeSessionKey = (sessionId: string, account: string | undefined, cwd: string) =>
   `${codexThreadKey(sessionId, account)}|${cwd}`;
 
+function accountKeySecrets(account: { key?: string; planKey?: { provider: PlanId; key: string } } | undefined) {
+  const out: { name: string; value: string }[] = [];
+  if (account?.key) out.push({ name: OPENCODE_KEY_ENV, value: account.key });
+  if (account?.planKey) {
+    const name =
+      account.planKey.provider === "opencode"
+        ? OPENCODE_KEY_ENV
+        : (planOf(account.planKey.provider)?.claudeCode.tokenEnv ?? "PLAN_KEY");
+    out.push({ name, value: account.planKey.key });
+  }
+  return out;
+}
+
 /** The env one turn's `opencode acp` runs with (see the header). */
 export function opencodeTurnEnv(input: {
   inherited: NodeJS.ProcessEnv;
   cwd: string;
   configDir: string;
   config: string;
-  account?: { home: string; key?: string };
+  account?: { home: string; key?: string; planKey?: { provider: PlanId; key: string } };
   freeTier?: boolean;
   chat?: boolean;
   platform?: NodeJS.Platform;
@@ -493,6 +563,15 @@ export function opencodeTurnEnv(input: {
   env.OPENCODE_CONFIG_DIR = input.configDir;
   env.OPENCODE_CONFIG_CONTENT = input.config;
   if (input.account?.key) env[OPENCODE_KEY_ENV] = input.account.key;
+  if (input.account?.planKey) {
+    const { provider, key } = input.account.planKey;
+    const plan = planOf(provider);
+    if (provider === "opencode") env[OPENCODE_KEY_ENV] = key;
+    else if (plan) {
+      if (plan.claudeCode.env) Object.assign(env, plan.claudeCode.env);
+      env[plan.claudeCode.tokenEnv] = key;
+    }
+  }
   env.OPENCODE_DISABLE_PROJECT_CONFIG = "1";
   env.OPENCODE_DISABLE_AUTOUPDATE = "1";
   // Language servers would be downloaded, unpinned, into each agent's home.
@@ -530,9 +609,16 @@ type ExitError = Error & { exit?: { code: number | null; error?: Error } };
 export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTurnOptions): Promise<void> {
   const platform = opts.platform ?? process.platform;
   const windows = platform === "win32";
+  const startedAt = Date.now();
+  let initMs: number | undefined;
+  let firstEventMs: number | undefined;
+  let firstTokenMs: number | undefined;
   let ended = false;
   const emit = (event: CodexBrainEvent) => {
     if (ended) return;
+    const elapsed = Date.now() - startedAt;
+    firstEventMs ??= elapsed;
+    if (event.type === "text_delta" && event.text) firstTokenMs ??= elapsed;
     if (event.type === "done" || event.type === "error") ended = true;
     opts.emit(event);
   };
@@ -555,6 +641,7 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
     return fail("opencode_failed", err instanceof Error ? err.message : String(err), true);
   }
   const key = input.account?.key;
+  const planKey = input.account?.planKey;
   const freeTier = Boolean(input.freeTier && !input.account);
   const env = opencodeTurnEnv({
     inherited,
@@ -565,6 +652,7 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
       ...(input.chat ? { chat: true } : {}),
       ...(input.model ? { model: input.model } : {}),
       key: Boolean(key),
+      ...(planKey ? { planKey: { provider: planKey.provider } } : {}),
       freeTier,
     }),
     ...(input.account ? { account: input.account } : {}),
@@ -573,8 +661,9 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
     platform,
   });
   // The agent's shell could print the key (its env, its file in the lent folder).
-  const redact = key
-    ? (text: string) => redactSecrets(opts.redact ? opts.redact(text) : text, [{ name: OPENCODE_KEY_ENV, value: key }])
+  const secrets = accountKeySecrets(input.account);
+  const redact = secrets.length
+    ? (text: string) => redactSecrets(opts.redact ? opts.redact(text) : text, secrets)
     : opts.redact;
 
   const run = cliSpawn([opts.bin ?? OPENCODE_BIN], ["acp"], envValue(env, "PATH", platform), platform);
@@ -803,6 +892,7 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
     }
 
     if (stopped()) return;
+    initMs = Date.now() - startedAt;
     const answer = await conn
       .request<Record<string, unknown> | null>("session/prompt", {
         sessionId,
@@ -838,7 +928,19 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
     const text = reader.answer || reader.streamed;
     if (stopReason === "refusal" && !text.trim()) return fail("model_refused", "The model refused to answer.");
     readSteered(true);
-    emit({ type: "done", text, session: { id: input.sessionId } });
+    firstEventMs ??= Date.now() - startedAt;
+    emit({
+      type: "done",
+      text,
+      session: { id: input.sessionId },
+      timings: {
+        warm: false,
+        cold: fresh ? "new_session" : "restart",
+        ...(initMs !== undefined ? { initMs } : {}),
+        ...(firstEventMs !== undefined ? { firstEventMs } : {}),
+        ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
+      },
+    });
   } catch (err) {
     if (stopped()) return;
     const exit = (err as ExitError).exit;
@@ -868,6 +970,703 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
 }
 
 /** What the runner's `brain.turn` handler hands the OpenCode branch. */
+interface OpencodeLive {
+  key: string;
+  id: string;
+  agentId: string;
+  account: string | null;
+  sessionKey: string;
+  acpSessionId: string;
+  hasContext: boolean;
+  model: string | undefined;
+  version: string;
+  steering: boolean;
+  child: ChildProcess;
+  conn: AcpConnection;
+  exited: boolean;
+  exitedPromise: Promise<{ code: number | null; error?: Error }>;
+  stderr: () => string;
+  sig: string;
+  busy: boolean;
+  lastUsed: number;
+  idleSince: number;
+  idleTimer: ReturnType<typeof setTimeout> | null;
+  bridge: McpTaskInfo | null;
+  release?: () => void;
+}
+
+export interface OpencodeServersOptions {
+  runs: Map<string, McpTaskInfo>;
+  idleMs?: number;
+  maxProcesses?: number;
+  spawn?: Spawn;
+  log?: (line: string) => void;
+}
+
+const modelProvider = (model?: string) => (model && model.includes("/") ? model.slice(0, model.indexOf("/")) : null);
+
+/** Long-lived `opencode acp` processes per `(agent, session, account, cwd)`, with `brain.warm` pre-spawning. */
+export class OpencodeServers {
+  private readonly live = new Map<string, OpencodeLive>();
+  private readonly chains = new Map<string, Promise<unknown>>();
+  private readonly cwds = new Map<string, string>();
+  private closed = false;
+  private readonly log: (line: string) => void;
+
+  constructor(private readonly opts: OpencodeServersOptions) {
+    this.log = opts.log ?? (() => {});
+  }
+
+  setLimits(limits: { idleMs?: number; maxProcesses?: number }) {
+    if (limits.idleMs !== undefined) this.opts.idleMs = limits.idleMs;
+    if (limits.maxProcesses !== undefined) this.opts.maxProcesses = limits.maxProcesses;
+  }
+
+  warm(key: string): boolean {
+    const l = this.live.get(key);
+    return l !== undefined && !l.exited;
+  }
+
+  private signature(input: OpencodeTurnInput, opts: OpencodeTurnOptions) {
+    return JSON.stringify({
+      cwd: input.cwd,
+      account: input.account?.home ?? null,
+      key: Boolean(input.account?.key),
+      planProvider: input.account?.planKey?.provider ?? null,
+      provider: modelProvider(input.model),
+      profile: input.profile ?? "work",
+      freeTier: Boolean(input.freeTier && !input.account),
+      chat: Boolean(input.chat),
+      bin: opts.bin ?? OPENCODE_BIN,
+      mcp: opts.mcpCommand ?? null,
+      socket: opts.socketPath ?? null,
+      env: opts.env ?? {},
+    });
+  }
+
+  async prewarm(
+    input: Omit<OpencodeTurnInput, "runId" | "prompt" | "system" | "mcp">,
+    opts: Omit<OpencodeTurnOptions, "emit" | "signal">,
+    release?: () => void,
+  ): Promise<BrainWarmReply> {
+    const no: BrainWarmReply = { open: false, started: false };
+    let hold = release;
+    try {
+      if (this.closed || !input.agentId) return no;
+      const last = input.folder && input.cwd === input.folder ? this.cwds.get(input.agentId) : undefined;
+      const cwd = last && isInside(input.folder as string, last) && existsSync(last) ? last : input.cwd;
+      const sessionKey = opencodeSessionKey(input.sessionId, input.account?.id, cwd);
+      const key = `${input.agentId}:${sessionKey}`;
+      const prev = this.chains.get(key) ?? Promise.resolve();
+      const consume = () => {
+        const r = hold;
+        hold = undefined;
+        return r;
+      };
+      const run = prev.catch(() => undefined).then(async (): Promise<BrainWarmReply> => {
+        if (this.closed) return no;
+        const dummyInput: OpencodeTurnInput = {
+          ...input,
+          cwd,
+          runId: "warm",
+          system: "",
+          prompt: "",
+          mcp: { token: "" },
+        };
+        const dummyOpts: OpencodeTurnOptions = {
+          ...opts,
+          emit: () => {},
+          signal: new AbortController().signal,
+        };
+        const sig = this.signature(dummyInput, dummyOpts);
+        let existing = this.live.get(key);
+        if (existing && (existing.exited || existing.sig !== sig)) {
+          this.drop(existing);
+          existing = undefined;
+        }
+        if (existing) {
+          if (!existing.busy) {
+            existing.lastUsed = Date.now();
+            this.armIdle(existing);
+          }
+          return { open: true, started: false };
+        }
+        const agent = input.agentId ?? "";
+        if (this.alive(agent) >= this.max && !this.lruIdle(agent)) return no;
+        const started = await this.start(key, sessionKey, sig, dummyInput, dummyOpts, consume);
+        if (!started) return no;
+        this.armIdle(started);
+        return { open: true, started: true };
+      });
+      this.chains.set(key, run);
+      try {
+        return await run;
+      } finally {
+        if (this.chains.get(key) === run) this.chains.delete(key);
+      }
+    } finally {
+      hold?.();
+    }
+  }
+
+  async turn(input: OpencodeTurnInput, opts: OpencodeTurnOptions, release?: () => void): Promise<void> {
+    let hold = release;
+    try {
+      if (this.closed || input.mcp.url || !input.agentId) return await runOpencodeTurn(input, opts);
+      this.cwds.set(input.agentId, input.cwd);
+      const sessionKey = opencodeSessionKey(input.sessionId, input.account?.id, input.cwd);
+      const key = `${input.agentId}:${sessionKey}`;
+      const prev = this.chains.get(key) ?? Promise.resolve();
+      const consume = () => {
+        const r = hold;
+        hold = undefined;
+        return r;
+      };
+      const run = prev.catch(() => undefined).then(() => this.runPooled(key, sessionKey, input, opts, consume));
+      this.chains.set(key, run);
+      let handled = false;
+      try {
+        handled = await run;
+      } catch (err) {
+        this.log(`opencode pool turn failed: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        if (this.chains.get(key) === run) this.chains.delete(key);
+      }
+      if (!handled) await runOpencodeTurn(input, opts);
+    } finally {
+      hold?.();
+    }
+  }
+
+  private async runPooled(
+    key: string,
+    sessionKey: string,
+    input: OpencodeTurnInput,
+    opts: OpencodeTurnOptions,
+    acquireRelease?: () => (() => void) | undefined,
+  ): Promise<boolean> {
+    if (opts.signal.aborted) {
+      opts.emit({ type: "error", code: "canceled", message: "The turn was canceled." });
+      return true;
+    }
+    const startedAt = Date.now();
+    let warm = false;
+    let cold: BrainColdCause | undefined;
+    let initMs: number | undefined;
+    let firstEventMs: number | undefined;
+    let firstTokenMs: number | undefined;
+    let emitted = false;
+    let ended = false;
+    const emit = (event: CodexBrainEvent) => {
+      if (ended) return;
+      emitted = true;
+      const elapsed = Date.now() - startedAt;
+      firstEventMs ??= elapsed;
+      if (event.type === "text_delta" && event.text) firstTokenMs ??= elapsed;
+      if (event.type === "done" || event.type === "error") ended = true;
+      opts.emit(event);
+    };
+    const sig = this.signature(input, opts);
+    let live = this.live.get(key);
+    if (live && (live.exited || live.sig !== sig)) {
+      cold = live.exited ? "exited" : "settings";
+      this.drop(live);
+      live = undefined;
+    }
+    warm = Boolean(live);
+    if (!live) {
+      cold ??= opts.sessions.get(sessionKey) ? "restart" : "new_session";
+      const agent = input.agentId ?? "";
+      const lru = this.alive(agent) >= this.max ? this.lruIdle(agent) : undefined;
+      if (lru) this.drop(lru);
+      const started = await this.start(key, sessionKey, sig, input, opts, acquireRelease);
+      if (!started) return false;
+      initMs = Date.now() - startedAt;
+      live = started;
+    }
+    const outcome = await this.onLive(live, input, opts, {
+      emit,
+      hasEnded: () => ended,
+      timings: () => ({
+        warm,
+        ...(!warm && cold ? { cold } : {}),
+        ...(initMs !== undefined ? { initMs } : {}),
+        ...(firstEventMs !== undefined ? { firstEventMs } : {}),
+        ...(firstTokenMs !== undefined ? { firstTokenMs } : {}),
+      }),
+    });
+    if (outcome.died && !emitted) {
+      this.drop(live);
+      return false;
+    }
+    if (outcome.drop || input.keepAlive === false) this.drop(live);
+    return true;
+  }
+
+  private async start(
+    key: string,
+    sessionKey: string,
+    sig: string,
+    input: OpencodeTurnInput,
+    opts: OpencodeTurnOptions,
+    acquireRelease?: () => (() => void) | undefined,
+  ): Promise<OpencodeLive | null> {
+    const platform = opts.platform ?? process.platform;
+    const windows = platform === "win32";
+    const inherited: NodeJS.ProcessEnv = { ...process.env, ...(opts.env ?? {}) };
+    const home = envValue(inherited, "HOME", platform) || envValue(inherited, "USERPROFILE", platform) || os.homedir();
+    if (opencodeHomePlanted(home).length) return null;
+    const configDir = opencodeConfigDir(opts.runnerHome);
+    try {
+      resetOpencodeConfig(configDir);
+    } catch {
+      return null;
+    }
+    const id = randomUUID();
+    const token = newMcpToken();
+    const apiKey = input.account?.key;
+    const planKey = input.account?.planKey;
+    const freeTier = Boolean(input.freeTier && !input.account);
+    const env = opencodeTurnEnv({
+      inherited,
+      cwd: input.cwd,
+      configDir,
+      config: opencodeConfig({
+        profile: input.profile ?? "work",
+        ...(input.chat ? { chat: true } : {}),
+        ...(input.model ? { model: input.model } : {}),
+        key: Boolean(apiKey),
+        ...(planKey ? { planKey: { provider: planKey.provider } } : {}),
+        freeTier,
+      }),
+      ...(input.account ? { account: input.account } : {}),
+      freeTier,
+      ...(input.chat ? { chat: true } : {}),
+      platform,
+    });
+    const run = cliSpawn([opts.bin ?? OPENCODE_BIN], ["acp"], envValue(env, "PATH", platform), platform);
+    let child: ChildProcess;
+    try {
+      child = (this.opts.spawn ?? opts.spawn ?? spawn)(run.file, run.args, {
+        cwd: input.cwd,
+        env: run.env ? { ...env, ...run.env } : env,
+        stdio: ["pipe", "pipe", "pipe"],
+        detached: !windows,
+        windowsHide: true,
+        ...(run.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
+      });
+    } catch {
+      return null;
+    }
+    let stderr = "";
+    child.stderr?.on("data", (c: Buffer) => {
+      stderr = (stderr + c.toString("utf8")).slice(-2000);
+    });
+    const conn = new AcpConnection(
+      child.stdin as NonNullable<ChildProcess["stdin"]>,
+      child.stdout as NonNullable<ChildProcess["stdout"]>,
+      {
+        onRequest(method) {
+          throw new AcpError(ACP_METHOD_NOT_FOUND, `Method not found: ${method}`);
+        },
+      },
+    );
+    let exited = false;
+    const exitedPromise = new Promise<{ code: number | null; error?: Error }>((resolve) => {
+      const proc = child as unknown as EventEmitter;
+      proc.on("error", (error: Error) => {
+        exited = true;
+        conn.close(error);
+        resolve({ code: null, error });
+      });
+      proc.on("close", (code: number | null) => {
+        exited = true;
+        conn.close(new Error(`OpenCode exited with code ${code ?? "?"}${stderr.trim() ? `: ${stderr.trim()}` : ""}`));
+        resolve({ code });
+      });
+    });
+    const setup = <T>(p: Promise<T>) => within(p, SETUP_TIMEOUT_MS, "OpenCode took too long to start");
+    try {
+      const init = await setup(
+        conn.request<Record<string, unknown> | null>("initialize", {
+          protocolVersion: ACP_PROTOCOL_VERSION,
+          clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+          clientInfo: { name: "agentes-runner", version: "1" },
+        }),
+      );
+      const caps = isRecord(init?.agentCapabilities) ? init.agentCapabilities : {};
+      const sessionCaps = isRecord(caps.sessionCapabilities) ? caps.sessionCapabilities : {};
+      const version = isRecord(init?.agentInfo) ? str(init.agentInfo.version) : "";
+      const meta = isRecord(init?._meta) ? init._meta : {};
+      const steering = isRecord(meta.steering) && meta.steering.supported === true;
+      const bridgeServer = opencodeBridge({
+        runId: id,
+        token,
+        ...(opts.mcpCommand ? { command: opts.mcpCommand } : {}),
+        ...(opts.socketPath ? { socketPath: opts.socketPath } : {}),
+        runnerHome: opts.runnerHome,
+      });
+      const stored = opts.sessions.get(sessionKey);
+      const resume = isRecord(sessionCaps.resume) ? "session/resume" : caps.loadSession === true ? "session/load" : null;
+      let acpSessionId: string | null = null;
+      let hasContext = false;
+      let opened: Record<string, unknown> | null = null;
+      if (stored && resume) {
+        opened = await setup(
+          conn.request<Record<string, unknown> | null>(resume, {
+            sessionId: stored,
+            cwd: input.cwd,
+            mcpServers: [bridgeServer],
+          }),
+        ).then(
+          (r) => r ?? {},
+          () => null,
+        );
+        if (opened) {
+          acpSessionId = stored;
+          hasContext = true;
+        } else {
+          opts.sessions.delete(sessionKey);
+        }
+      } else if (stored) {
+        opts.sessions.delete(sessionKey);
+      }
+      if (!acpSessionId) {
+        opened = await setup(
+          conn.request<Record<string, unknown> | null>("session/new", { cwd: input.cwd, mcpServers: [bridgeServer] }),
+        );
+        acpSessionId = str(opened?.sessionId) || null;
+        if (!acpSessionId) throw new Error("OpenCode didn't start a session");
+      }
+      const configOpts = Array.isArray(opened?.configOptions) ? opened.configOptions.filter(isRecord) : [];
+      let currentModel = str(configOpts.find((o) => o.id === "model")?.currentValue) || undefined;
+      if (input.model && currentModel !== input.model) {
+        await setup(
+          conn.request("session/set_config_option", { sessionId: acpSessionId, configId: "model", value: input.model }),
+        );
+        currentModel = input.model;
+      }
+      if (this.closed || exited) {
+        conn.close();
+        killTree(child, "SIGTERM");
+        return null;
+      }
+      const bridge: McpTaskInfo = {
+        token,
+        missionId: "",
+        running: false,
+        idle: true,
+        ...(input.agentId ? { agentId: input.agentId } : {}),
+        cwd: input.cwd,
+        folder: input.folder ?? input.cwd,
+      };
+      this.opts.runs.set(id, bridge);
+      const release = acquireRelease?.();
+      const live: OpencodeLive = {
+        key,
+        id,
+        agentId: input.agentId ?? "",
+        account: input.account?.id ?? null,
+        sessionKey,
+        acpSessionId,
+        hasContext,
+        model: currentModel ?? input.model,
+        version,
+        steering,
+        child,
+        conn,
+        exited: false,
+        exitedPromise,
+        stderr: () => stderr,
+        sig,
+        busy: false,
+        lastUsed: Date.now(),
+        idleSince: awakeClock.read(),
+        idleTimer: null,
+        bridge,
+        ...(release ? { release } : {}),
+      };
+      void exitedPromise.then(() => {
+        live.exited = true;
+        if (!live.busy) this.drop(live);
+      });
+      this.live.set(key, live);
+      return live;
+    } catch {
+      conn.close();
+      killTree(child, "SIGTERM");
+      return null;
+    }
+  }
+
+  private async onLive(
+    live: OpencodeLive,
+    input: OpencodeTurnInput,
+    opts: OpencodeTurnOptions,
+    turn: { emit: (e: CodexBrainEvent) => void; hasEnded: () => boolean; timings: () => BrainTurnTimings },
+  ): Promise<{ died?: boolean; drop?: boolean }> {
+    live.busy = true;
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.idleTimer = null;
+    const secrets = accountKeySecrets(input.account);
+    const redact = secrets.length
+      ? (text: string) => redactSecrets(opts.redact ? opts.redact(text) : text, secrets)
+      : opts.redact;
+    if (live.bridge) {
+      this.opts.runs.set(live.id, {
+        token: live.bridge.token,
+        missionId: "",
+        running: true,
+        ...(live.agentId ? { agentId: live.agentId } : {}),
+        cwd: live.bridge.cwd ?? input.cwd,
+        folder: live.bridge.folder ?? input.cwd,
+        runId: input.runId,
+        serverToken: input.mcp.token,
+        ...(redact ? { redact } : {}),
+      });
+    }
+    const reader = new OpencodeTurnReader({ ...(input.chat ? { chat: true } : {}), ...(redact ? { redact } : {}) });
+    const s = {
+      stopping: null as "canceled" | "silence" | "breach" | null,
+      refusedAsk: null as string | null,
+      killTimer: undefined as ReturnType<typeof setTimeout> | undefined,
+    };
+    const steered: { uuids: string[]; step: number }[] = [];
+    const readSteered = (all: boolean) => {
+      const read = steered.filter((m) => all || reader.steps > m.step);
+      if (!read.length) return;
+      steered.splice(0, steered.length, ...steered.filter((m) => !read.includes(m)));
+      turn.emit({ type: "steer_read", uuids: read.flatMap((m) => m.uuids) });
+    };
+    const admit = () => {
+      if (live.hasContext) return;
+      live.hasContext = true;
+      opts.sessions.set(live.sessionKey, live.acpSessionId);
+    };
+    const fail = (code: string, message: string, retryable?: boolean) =>
+      turn.emit({ type: "error", code, message, ...(retryable ? { retryable } : {}) });
+    const stop = (why: "canceled" | "silence" | "breach") => {
+      if (s.stopping) return;
+      s.stopping = why;
+      live.conn.notify("session/cancel", { sessionId: live.acpSessionId });
+      s.killTimer = setTimeout(() => killTree(live.child, "SIGKILL"), why === "breach" ? 0 : STOP_WAIT_MS);
+    };
+    const onAbort = () => stop("canceled");
+    if (opts.signal.aborted) onAbort();
+    else opts.signal.addEventListener("abort", onAbort, { once: true });
+    const silenceMs = opts.silenceMs ?? OPENCODE_SILENCE_MS;
+    const silence = setInterval(() => {
+      if (reader.running.size === 0 && Date.now() - live.conn.lastHeard > silenceMs) stop("silence");
+    }, Math.min(15_000, Math.max(50, silenceMs / 4)));
+    live.conn.setHandlers({
+      onNotification(method, params) {
+        if (method !== "session/update" || !isRecord(params) || params.sessionId !== live.acpSessionId) return;
+        if (s.stopping === "breach") return;
+        admit();
+        const events = reader.update(params.update);
+        if (reader.breach) return stop("breach");
+        for (const event of events) turn.emit(event);
+        readSteered(false);
+      },
+      onRequest(method, params) {
+        if (method !== "session/request_permission") {
+          throw new AcpError(ACP_METHOD_NOT_FOUND, `Method not found: ${method}`);
+        }
+        const p = isRecord(params) ? params : {};
+        const call = isRecord(p.toolCall) ? p.toolCall : {};
+        s.refusedAsk ??= str(call.title) || str(call.name) || "use a tool";
+        const options = Array.isArray(p.options) ? p.options.filter(isRecord) : [];
+        const reject = options.find((o) => str(o.kind).startsWith("reject"));
+        return reject
+          ? { outcome: { outcome: "selected", optionId: str(reject.optionId) } }
+          : { outcome: { outcome: "cancelled" } };
+      },
+    });
+    if (input.agentId) {
+      liveTurns.set(input.runId, {
+        agentId: input.agentId,
+        session: input.sessionId,
+        steer: async (messages) => {
+          if (!live.steering) {
+            return {
+              status: "unsupported",
+              reason: `OpenCode ${live.version || "here"} reads messages only between turns`,
+            };
+          }
+          if (messages.some((m) => m.urgent)) {
+            return { status: "unsupported", reason: "OpenCode can't take an urgent message mid-turn" };
+          }
+          if (s.stopping || turn.hasEnded() || live.conn.closed) return { status: "no_turn" };
+          const step = reader.steps;
+          const reply = await live.conn
+            .request<Record<string, unknown> | null>("_session/steering", {
+              sessionId: live.acpSessionId,
+              prompt: messages.map((m) => ({ type: "text", text: m.text })),
+            })
+            .catch(() => null);
+          if (reply?.outcome !== "injected") return { status: "no_turn" };
+          const uuids = messages.map((m) => m.uuid);
+          steered.push({ uuids, step });
+          return { status: "accepted", accepted: uuids };
+        },
+      });
+    }
+    const stopped = () => {
+      if (s.stopping === "canceled") fail("canceled", "The turn was canceled.");
+      else if (s.stopping === "breach") {
+        fail("tools_not_locked", reader.breach ?? "OpenCode called a tool of its own, so the turn stopped.");
+      } else if (s.stopping === "silence") {
+        const span =
+          silenceMs >= 60_000 ? `${Math.round(silenceMs / 60_000)} minutes` : `${Math.round(silenceMs / 1000)} seconds`;
+        fail(
+          "opencode_failed",
+          `OpenCode said nothing for ${span} with no tool running (its provider may be refusing it, as at a usage limit), so the turn stopped.`,
+          true,
+        );
+      }
+      return s.stopping !== null;
+    };
+    try {
+      if (input.model && live.model !== input.model && !stopped()) {
+        await within(
+          live.conn.request("session/set_config_option", {
+            sessionId: live.acpSessionId,
+            configId: "model",
+            value: input.model,
+          }),
+          SETUP_TIMEOUT_MS,
+          "OpenCode took too long to switch models",
+        );
+        live.model = input.model;
+      }
+      if (stopped()) return { drop: true };
+      const fresh = !live.hasContext;
+      const answer = await live.conn
+        .request<Record<string, unknown> | null>("session/prompt", {
+          sessionId: live.acpSessionId,
+          prompt: [{ type: "text", text: opencodePrompt(input.system, input.prompt, fresh) }],
+        })
+        .then(
+          (result) => ({ ok: true as const, result }),
+          (error: unknown) => ({ ok: false as const, error }),
+        );
+      if (answer.ok) {
+        admit();
+        for (const event of reader.usage(answer.result?.usage, input.model)) turn.emit(event);
+      }
+      if (stopped()) return { drop: true };
+      if (!answer.ok) {
+        if (live.exited) return { died: true, drop: true };
+        const problem = acpProblem(answer.error);
+        if (problem.auth) fail("not_logged_in", problem.message, true);
+        else for (const event of opencodeProblem(problem.message, reader.worked, problem.errorName)) turn.emit(event);
+        return { drop: true };
+      }
+      const stopReason = str(answer.result?.stopReason);
+      if (stopReason === "cancelled") {
+        fail(
+          "opencode_failed",
+          s.refusedAsk
+            ? `OpenCode asked for permission to ${s.refusedAsk}, which this agent may not do here, so the turn stopped.`
+            : "OpenCode stopped the turn by itself.",
+          true,
+        );
+        return { drop: true };
+      }
+      const text = reader.answer || reader.streamed;
+      if (stopReason === "refusal" && !text.trim()) {
+        fail("model_refused", "The model refused to answer.");
+        return {};
+      }
+      readSteered(true);
+      turn.emit({ type: "done", text, session: { id: input.sessionId }, timings: turn.timings() });
+      return {};
+    } catch (err) {
+      if (stopped()) return { drop: true };
+      if (live.exited) return { died: true, drop: true };
+      const problem = acpProblem(err);
+      for (const event of opencodeProblem(problem.message, reader.worked, problem.errorName)) turn.emit(event);
+      return { drop: true };
+    } finally {
+      liveTurns.delete(input.runId);
+      clearInterval(silence);
+      clearTimeout(s.killTimer);
+      opts.signal.removeEventListener("abort", onAbort);
+      live.conn.setHandlers({
+        onRequest(method) {
+          throw new AcpError(ACP_METHOD_NOT_FOUND, `Method not found: ${method}`);
+        },
+      });
+      live.busy = false;
+      live.lastUsed = Date.now();
+      if (live.bridge && this.opts.runs.has(live.id)) this.opts.runs.set(live.id, live.bridge);
+      if (this.live.get(live.key) === live && !live.exited) this.armIdle(live);
+      this.trim(live.agentId);
+    }
+  }
+
+  private armIdle(live: OpencodeLive) {
+    live.idleSince = awakeClock.read();
+    this.checkIdle(live, this.opts.idleMs ?? CODEX_APP_IDLE_MS);
+  }
+
+  private checkIdle(live: OpencodeLive, waitMs: number) {
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.idleTimer = setTimeout(() => {
+      live.idleTimer = null;
+      if (live.busy) return;
+      const left = (this.opts.idleMs ?? CODEX_APP_IDLE_MS) - (awakeClock.read() - live.idleSince);
+      if (left > 0) return this.checkIdle(live, left);
+      this.drop(live);
+    }, waitMs);
+    live.idleTimer.unref?.();
+  }
+
+  private get max() {
+    return this.opts.maxProcesses ?? CODEX_APP_MAX_PROCESSES;
+  }
+
+  private alive(agentId: string) {
+    return [...this.live.values()].filter((l) => l.agentId === agentId && !l.exited).length;
+  }
+
+  private lruIdle(agentId: string): OpencodeLive | undefined {
+    let lru: OpencodeLive | undefined;
+    for (const l of this.live.values()) {
+      if (l.busy || l.agentId !== agentId) continue;
+      if (!lru || l.lastUsed < lru.lastUsed) lru = l;
+    }
+    return lru;
+  }
+
+  private trim(agentId: string) {
+    while (this.alive(agentId) > this.max) {
+      const l = this.lruIdle(agentId);
+      if (!l) return;
+      this.drop(l);
+    }
+  }
+
+  private drop(live: OpencodeLive) {
+    if (live.idleTimer) clearTimeout(live.idleTimer);
+    live.idleTimer = null;
+    if (this.live.get(live.key) === live) this.live.delete(live.key);
+    this.opts.runs.delete(live.id);
+    live.bridge = null;
+    live.conn.close();
+    live.child.stdin?.end();
+    killTree(live.child, "SIGTERM");
+    live.release?.();
+    live.release = undefined;
+  }
+
+  close() {
+    this.closed = true;
+    for (const l of [...this.live.values()]) this.drop(l);
+  }
+}
+
+/** What the runner's `brain.turn` handler hands the OpenCode branch. */
 export interface OpencodeBrainContext {
   folder: string;
   exec: boolean;
@@ -875,9 +1674,11 @@ export interface OpencodeBrainContext {
   secretsDir?: string;
   mcp?: { socketPath: string; command: string[] };
   sessions?: CodexThreads;
+  pool?: OpencodeServers;
   bin?: string;
   grants?: string[];
-  accounts?: { accountDir(kind: "opencode", id: string): string | null };
+  accounts?: AccountFolders;
+  grant?: AccountGrant;
   spawn?: Spawn;
 }
 
@@ -899,7 +1700,7 @@ export async function handleOpencodeBrainTurn(
   }
   if (typeof req.mcp?.token !== "string" || !req.mcp.token)
     throw new RunnerError("bad_request", "mcp.token is required");
-  if (typeof req.model === "string" && req.model && !/^[\w.-]{1,40}\/[\w.:-]{1,79}$/.test(req.model)) {
+  if (typeof req.model === "string" && req.model && !/^[\w.-]{1,40}\/[\w.:[\]-]{1,79}$/.test(req.model)) {
     throw new RunnerError("bad_request", "model is provider/model");
   }
   const freeTier = req.freeTier === true && !req.account;
@@ -916,11 +1717,16 @@ export async function handleOpencodeBrainTurn(
   }
   // ADR 0041: the account's folder or nothing (never the machine's own sign-in instead).
   let account: OpencodeTurnInput["account"];
+  let release: (() => void) | undefined;
   const accountId: unknown = req.account;
   if (accountId !== undefined && accountId !== null && accountId !== "") {
     if (!isAccountId(accountId)) throw new RunnerError("bad_request", "Invalid account id");
-    const home = ctx.accounts?.accountDir("opencode", accountId);
-    if (!home) {
+    const signIn = await accountSignIn(ctx.accounts, "opencode", accountId, ctx.grant);
+    if (signIn === "signed_out") {
+      scope.emit({ type: "error", code: "not_logged_in", message: ACCOUNT_SIGNED_OUT, retryable: true });
+      return;
+    }
+    if (signIn === "missing") {
       scope.emit({
         type: "error",
         code: "account_missing",
@@ -929,15 +1735,17 @@ export async function handleOpencodeBrainTurn(
       });
       return;
     }
-    const key = await opencodeKeyOf(home);
-    account = { id: accountId, home, ...(key ? { key } : {}) };
+    release = signIn.release;
+    const planKey = signIn.planKey ?? (await planKeyOf(signIn.home)) ?? undefined;
+    const key = planKey ? undefined : await opencodeKeyOf(signIn.home);
+    account = { id: accountId, home: signIn.home, ...(key ? { key } : {}), ...(planKey ? { planKey } : {}) };
   }
-  const secrets = chat ? null : await agentSecrets(ctx.secretsDir, req.agent);
-  const file = opencodeSessionsFile(ctx.runnerHome);
-  const sessions = ctx.sessions ?? sessionStores.get(file) ?? new CodexThreads(file);
-  sessionStores.set(file, sessions);
-  await runOpencodeTurn(
-    {
+  try {
+    const secrets = chat ? null : await agentSecrets(ctx.secretsDir, req.agent);
+    const file = opencodeSessionsFile(ctx.runnerHome);
+    const sessions = ctx.sessions ?? sessionStores.get(file) ?? new CodexThreads(file);
+    sessionStores.set(file, sessions);
+    const turnInput: OpencodeTurnInput = {
       runId: req.runId,
       sessionId: req.session.id,
       cwd,
@@ -949,9 +1757,11 @@ export async function handleOpencodeBrainTurn(
       profile: codexProfileOf(req),
       ...(freeTier ? { freeTier } : {}),
       ...(chat ? { chat } : {}),
+      ...(req.keepAlive === false ? { keepAlive: false } : {}),
+      folder: ctx.folder,
       agentId: String(req.agent.id),
-    },
-    {
+    };
+    const turnOpts: OpencodeTurnOptions = {
       sessions,
       emit: scope.emit,
       signal: scope.signal,
@@ -960,6 +1770,78 @@ export async function handleOpencodeBrainTurn(
       ...(secrets ? { env: secrets.env, redact: secrets.redact } : {}),
       ...(ctx.bin ? { bin: ctx.bin } : {}),
       ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
-    },
-  );
+    };
+    if (ctx.pool && !turnInput.mcp.url) {
+      const owned = release;
+      release = undefined;
+      await ctx.pool.turn(turnInput, turnOpts, owned);
+      return;
+    }
+    await runOpencodeTurn(turnInput, turnOpts);
+  } finally {
+    release?.();
+  }
+}
+
+/** `brain.warm` with `kind: "opencode"`: best-effort pre-spawn of a pooled `opencode acp` process. */
+export async function handleOpencodeBrainWarm(
+  ctx: OpencodeBrainContext,
+  req: BrainWarmRequest & { agent?: AgentScope },
+): Promise<BrainWarmReply> {
+  const no: BrainWarmReply = { open: false, started: false };
+  if (!ctx.exec || !ctx.pool || !req.agent) return no;
+  if (typeof req.session?.id !== "string" || !/^[a-zA-Z0-9-]{8,64}$/.test(req.session.id)) return no;
+  if (req.permissions?.mode === "chat") return no;
+  if (typeof req.model === "string" && req.model && !/^[\w.-]{1,40}\/[\w.:[\]-]{1,79}$/.test(req.model)) return no;
+  const freeTier = req.freeTier === true && !req.account;
+  if (freeTier && typeof req.model === "string" && req.model && !req.model.startsWith("opencode/")) return no;
+  let cwd = ctx.folder;
+  if (typeof req.cwd === "string" && req.cwd.trim() !== "") {
+    const resolved = await resolveForAgent(ctx.folder, ctx.grants, req.cwd).catch(() => null);
+    if (!resolved?.exists) return no;
+    cwd = resolved.abs;
+  }
+  let account: OpencodeTurnInput["account"];
+  let release: (() => void) | undefined;
+  const accountId: unknown = req.account;
+  if (accountId !== undefined && accountId !== null && accountId !== "") {
+    if (!isAccountId(accountId)) return no;
+    const signIn = await accountSignIn(ctx.accounts, "opencode", accountId, ctx.grant).catch(() => null);
+    if (!signIn || signIn === "signed_out" || signIn === "missing") return no;
+    release = signIn.release;
+    const planKey = signIn.planKey ?? (await planKeyOf(signIn.home).catch(() => null)) ?? undefined;
+    const key = planKey ? undefined : await opencodeKeyOf(signIn.home).catch(() => undefined);
+    account = { id: accountId, home: signIn.home, ...(key ? { key } : {}), ...(planKey ? { planKey } : {}) };
+  }
+  try {
+    const secrets = await agentSecrets(ctx.secretsDir, req.agent).catch(() => null);
+    const file = opencodeSessionsFile(ctx.runnerHome);
+    const sessions = ctx.sessions ?? sessionStores.get(file) ?? new CodexThreads(file);
+    sessionStores.set(file, sessions);
+    const owned = release;
+    release = undefined;
+    return await ctx.pool.prewarm(
+      {
+        sessionId: req.session.id,
+        cwd,
+        folder: ctx.folder,
+        ...(typeof req.model === "string" && req.model ? { model: req.model } : {}),
+        ...(account ? { account } : {}),
+        profile: codexProfileOf(req),
+        ...(freeTier ? { freeTier } : {}),
+        agentId: String(req.agent.id),
+      },
+      {
+        sessions,
+        runnerHome: ctx.runnerHome,
+        ...(ctx.mcp ? { mcpCommand: ctx.mcp.command, socketPath: ctx.mcp.socketPath } : {}),
+        ...(secrets ? { env: secrets.env, redact: secrets.redact } : {}),
+        ...(ctx.bin ? { bin: ctx.bin } : {}),
+        ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
+      },
+      owned,
+    );
+  } finally {
+    release?.();
+  }
 }

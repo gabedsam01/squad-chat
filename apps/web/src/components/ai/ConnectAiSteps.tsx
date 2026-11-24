@@ -835,7 +835,7 @@ export function PlanWithoutAgent({
               </Button>
             </span>
           )}
-          {elsewhere && mayAddKey && keyFitsPlan(kindOf(choice)) && (
+          {elsewhere && mayAddKey && keyFitsPlan(kindOf(choice), isPlanId(choice)) && (
             <span>
               <Button size="sm" onClick={onKey}>
                 {t("connectAi.wait.useKey")}
@@ -1612,7 +1612,7 @@ function PlanSteps({
  * Whether "Use an API key now" fits a plan's panel: the key row adds workspace API keys, and OpenCode's key is an
  * account kept on the computer for its CLI (`provider: "zen"`), which that row can't take.
  */
-const keyFitsPlan = (kind: MachineAccountKind) => kind !== "opencode";
+const keyFitsPlan = (kind: MachineAccountKind, coding = false) => coding || kind !== "opencode";
 
 /**
  * Why a plan's panel waits or can't sign in there (`PlanGate`), with the way on: the computer's wait, a key now, a
@@ -1652,7 +1652,7 @@ function GateWait({
   const machines = useMachines(org.id, edition !== null);
   const preparing = gate.state === "preparing" ? gate.view : null;
   const { eta, email } = useSetupWait(preparing, reader.held);
-  const keyButton = keyFitsPlan(kind) ? (
+  const keyButton = keyFitsPlan(kind, coding) ? (
     <Button size="sm" onClick={onKey}>
       {t("connectAi.wait.useKey")}
     </Button>

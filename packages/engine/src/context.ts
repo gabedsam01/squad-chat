@@ -890,7 +890,8 @@ export async function buildRunContext(
     channel.kind === "dm" && !agentsDm && !background && !options.routine && trigger.authorUserId
       ? handedFor(db, run.orgId, agent.id, trigger.authorUserId).catch(() => [])
       : Promise.resolve([]);
-  const [names, members, zone, talks, personLines, origins, handedRows] = await Promise.all([
+  const rightHandAgent = isRightHand(agent);
+  const [names, members, zone, talks, personLines, origins, handedRows, teamRows, seat] = await Promise.all([
     authorNames(db, history),
     caches.channelMembers.getOrLoad(`${run.orgId}:${run.channelId}`, () =>
       db
@@ -939,6 +940,8 @@ export async function buildRunContext(
     personNotes(db, run, trigger.authorUserId, { language: !background, style: !agentsDm }),
     originNotes(db, run.orgId, agent.id, run.channelId, history, trigger.authorUserId),
     handedHere,
+    options.team ? loadTeam(db, run.orgId) : Promise.resolve([]),
+    rightHandAgent ? seatState(db, run) : Promise.resolve(undefined),
   ]);
   // One statement, two parts: what agents already did in this thread (or DM),
   // and this agent's own work in other conversations the requester is in.
@@ -950,8 +953,20 @@ export async function buildRunContext(
   const quotedId = typeof quoted === "string" ? quoted : null;
   // A channel's conversations: its main timeline (runs asked there answer there) and each thread.
   const sameConversation = flat ? inChannelRun(sql`r`) : sql`r.thread_root_id = ${run.threadRootId}::uuid`;
-  const actionRows = rowsOf<ActionRow>(
-    await db.execute(sql`with here_readers as materialized ${channelReadersSql(sql`${run.orgId}::uuid`, sql`${run.channelId}::uuid`)}
+  const requesterName = requester ? (names.get(requester) ?? "this person") : "this person";
+  // The agents' DM: the person behind this exchange, if any (no one reads it there, so named here).
+  const behind = samePerson?.personId ?? null;
+  // What the other agents here can do, so this one never answers for them.
+  const others = members.filter((m) => m.agentId && m.agentId !== agent.id);
+  const here = new Set(others.map((m) => m.agentId as string));
+  // Who "# Your team" names (past TEAM_IN_PROMPT, only how many).
+  const named = teammatesFor(teamRows, agent.id, requester, here, talks);
+  const listed = [
+    ...others.map((m) => ({ id: m.agentId as string, handle: m.agentHandle as string })),
+    ...(named.length > TEAM_IN_PROMPT ? [] : named.map((a) => ({ id: a.id, handle: a.handle }))),
+  ];
+  const actionRowsPromise = db
+    .execute(sql`with here_readers as materialized ${channelReadersSql(sql`${run.orgId}::uuid`, sql`${run.channelId}::uuid`)}
       (select s.data, s.created_at, a.handle, false as elsewhere, c.kind, c.name, r.id as run_id,
           ${confidentialThreadSql(sql`r.org_id`, sql`r.thread_root_id`)} as confidential
         from agent_run_steps s
@@ -992,8 +1007,29 @@ export async function buildRunContext(
           -- private channel shows only if they all read it there too.
           and ((c.kind = 'channel' and c.visibility = 'public') or not exists (
             select 1 from here_readers h where not ${channelReaderSql(sql`r.channel_id`, sql`h.user_id`)}))
-        order by s.created_at desc limit 30)`),
-  );
+        order by s.created_at desc limit 30)`)
+    .then((res) => rowsOf<ActionRow>(res));
+  const [actionRows, behindName, asksBehind, otherScopes, teammatesNow, [routed]] = await Promise.all([
+    actionRowsPromise,
+    behind ? (names.get(behind) ?? userNameOf(db, behind).then((n) => n ?? "a person")) : Promise.resolve(null),
+    // `ask_user` reaches them only where its card goes (`consultedFor`): none when this agent answers agents only for them.
+    behind ? consultationOrigin(db, run.orgId, run.id).then(Boolean) : Promise.resolve(false),
+    rosterScopeNames(db, options.machines, run.orgId, [...here]),
+    options.ai ? teammatesNowPrompt({ db, ...options.ai }, run.orgId, listed) : Promise.resolve(""),
+    // The router (or the addressee check of a message mentioning several agents) sent this message to
+    // several agents (ADR 0034): each answers its own part, at the same time.
+    (run.trigger === "router" || run.trigger === "mention") && others.length > 0
+      ? db
+          .select({ selected: schema.routingDecisions.selectedAgentIds })
+          .from(schema.routingDecisions)
+          .where(
+            and(
+              eq(schema.routingDecisions.orgId, run.orgId),
+              eq(schema.routingDecisions.messageId, run.triggerMessageId),
+            ),
+          )
+      : Promise.resolve([]),
+  ]);
   // A result read from outside never shows here (ADR 0117): only that the tool read it. Nor does anything a run of
   // a confidential thread did (ADR 0190): what it called next may repeat what it read.
   const firstLine = (d: { content?: unknown; data?: { outside?: unknown } }, confidential: boolean) =>
@@ -1023,12 +1059,7 @@ export async function buildRunContext(
       }),
     RECENT_ACTIONS_MAX,
   );
-  const requesterName = requester ? (names.get(requester) ?? "this person") : "this person";
-  // The agents' DM: the person behind this exchange, if any (no one reads it there, so named here).
-  const behind = samePerson?.personId ?? null;
-  const behindName = behind ? (names.get(behind) ?? (await userNameOf(db, behind)) ?? "a person") : null;
-  // `ask_user` reaches them only where its card goes (`consultedFor`): none when this agent answers agents only for them.
-  const asksBehind = !!behind && !!(await consultationOrigin(db, run.orgId, run.id));
+  void asksBehind;
   const workElsewhere = collapseRepeats(
     actionRows
       .filter((r) => r.elsewhere)
@@ -1046,40 +1077,12 @@ export async function buildRunContext(
   );
   // Only where that person is the one reading: never into a DM with someone else in it.
   const handed = members.every((m) => !m.userId || m.userId === requester) ? handedRows.map(handedLine) : [];
-  // What the other agents here can do, so this one never answers for them.
-  const others = members.filter((m) => m.agentId && m.agentId !== agent.id);
-  const here = new Set(others.map((m) => m.agentId as string));
-  const teamRows = options.team ? await loadTeam(db, run.orgId) : [];
-  // Who "# Your team" names (past TEAM_IN_PROMPT, only how many).
-  const named = teammatesFor(teamRows, agent.id, requester, here, talks);
-  const listed = [
-    ...others.map((m) => ({ id: m.agentId as string, handle: m.agentHandle as string })),
-    ...(named.length > TEAM_IN_PROMPT ? [] : named.map((a) => ({ id: a.id, handle: a.handle }))),
-  ];
-  const [otherScopes, teammatesNow] = await Promise.all([
-    rosterScopeNames(db, options.machines, run.orgId, [...here]),
-    options.ai ? teammatesNowPrompt({ db, ...options.ai }, run.orgId, listed) : "",
-  ]);
   const otherAgents = others
     .map((m) => {
       const scopes = otherScopes.filter((s) => s.agentId === m.agentId).map((s) => s.scope);
       return `${m.agentName} (@${m.agentHandle}${m.agentRole ? `, ${m.agentRole}` : ""}): ${summarizeScopes(scopes)}`;
     })
     .join("; ");
-  // The router (or the addressee check of a message mentioning several agents) sent this message to
-  // several agents (ADR 0034): each answers its own part, at the same time.
-  const [routed] =
-    (run.trigger === "router" || run.trigger === "mention") && others.length > 0
-      ? await db
-          .select({ selected: schema.routingDecisions.selectedAgentIds })
-          .from(schema.routingDecisions)
-          .where(
-            and(
-              eq(schema.routingDecisions.orgId, run.orgId),
-              eq(schema.routingDecisions.messageId, run.triggerMessageId),
-            ),
-          )
-      : [];
   const alsoAnswering = others
     .filter((m) => m.agentId && routed?.selected.includes(m.agentId))
     .map((m) => `@${m.agentHandle}`);
@@ -1140,7 +1143,7 @@ export async function buildRunContext(
   const capabilities = await options.capabilities;
   // The right hand's own block (ADR 0137), in place of instructions: read live for the person behind the run.
   const rightHand =
-    isRightHand(agent) && requester
+    rightHandAgent && requester
       ? await rightHandPrompt(
           { db, ai: options.ai, workspaceComputer: options.workspaceComputer },
           {
@@ -1148,7 +1151,7 @@ export async function buildRunContext(
             agent,
             personId: requester,
             inDm: channel.kind === "dm",
-            computer: await seatState(db, run),
+            computer: seat ?? (await seatState(db, run)),
           },
         )
       : null;
@@ -1229,7 +1232,7 @@ export async function buildRunContext(
           `You are ${agent.name} (@${agent.handle})${agent.role ? `, ${agent.role}` : ""}, ${personal ? "one of this person's AI agents" : "an AI agent of this organization"}.`,
           agent.instructions.trim() ? `# Your instructions\n${agent.instructions.trim()}` : "",
           // The right hand with nobody behind the run (another agent's message) still keeps to its tools.
-          isRightHand(agent) ? rightHandTools(await seatState(db, run)) : "",
+          rightHandAgent ? rightHandTools(seat ?? (await seatState(db, run))) : "",
         ]
           .filter(Boolean)
           .join("\n\n"),

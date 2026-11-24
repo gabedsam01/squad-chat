@@ -1,7 +1,7 @@
 import type { PlanUsage } from "@agenteschat/adapters";
 import { and, type Executor, eq, inArray, isNull, ne, or, schema, sql } from "@agenteschat/db";
 import { isAutoModel } from "@agenteschat/providers";
-import { autoPlanModel, claudeCodeModel, NEXT_ACCOUNT_KINDS, planOf } from "@agenteschat/providers/plans";
+import { autoPlanModel, claudeCodeModel, isPlanId, NEXT_ACCOUNT_KINDS, opencodePlanModel, planOf } from "@agenteschat/providers/plans";
 import type { Agent } from "./agents";
 import { type BrainPlan, computerBrainUnavailable, NO_AI_CODES, planIsOwners, storedPlanUsage } from "./brains/select";
 import type { BrainAccount, BrainSession } from "./brains/types";
@@ -60,7 +60,9 @@ export async function spillPlan(
   const model =
     plan.kind === "claude_code" && plan.model && !isAutoModel(plan.model)
       ? claudeCodeModel(planOf(account?.provider), plan.model)
-      : plan.model;
+      : plan.kind === "opencode" && isPlanId(account?.provider) && !isAutoModel(plan.model)
+        ? opencodePlanModel(account.provider, plan.model)
+        : plan.model;
   const ownersPlan = await planIsOwners(
     deps.db,
     { orgId: agent.orgId, ownerUserId: agent.ownerUserId },

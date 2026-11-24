@@ -647,7 +647,7 @@ describe("Quem pensa: the account on the computer and the effort (ADR 0041)", ()
 describe("Quem pensa: a plan with a login per agent, and plans on the Cloud", () => {
   const glm = (id: string, usedBy: string[]): MachineAccount => ({
     id,
-    kind: "claude_code",
+    kind: "opencode",
     label: "GLM Coding",
     email: null,
     plan: null,
@@ -670,6 +670,7 @@ describe("Quem pensa: a plan with a login per agent, and plans on the Cloud", ()
       fakeAgentBrain(ADA_ID, {
         brain: "claude_code",
         effectiveModel: "sonnet",
+        options: [...fakeAgentBrain(ADA_ID).options, { kind: "opencode", available: true, models: [], defaultModel: null }],
         accounts: [glm("acct_theo", ["Theo"]), glm("acct_lia", ["Lia"])],
       });
     fakeMachinesOf.get(api)?.endLogin("login_1", { state: "done", account: glm("acct_ada", []) });
@@ -688,7 +689,7 @@ describe("Quem pensa: a plan with a login per agent, and plans on the Cloud", ()
     });
     await click(within(block).getByRole("button", { name: "Enviar ao MacBook" }));
     await settle(8);
-    expect(loginArgs(state)).toEqual([ORG_ID, "machine_1", "claude_code", { provider: "zai" }]);
+    expect(loginArgs(state)).toEqual([ORG_ID, "machine_1", "opencode", { provider: "zai" }]);
     // Signed in, it thinks with it at once.
     expect(brainCalls(state).at(-1)).toMatchObject({ account: "acct_ada" });
     expect(brainScreen(d)).toBe("Pronto");

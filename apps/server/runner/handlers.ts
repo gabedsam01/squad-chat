@@ -27,12 +27,28 @@ import { realFoldersFor } from "./access";
 import type { AccountBrains } from "./account-brains";
 import type { AccountFolders, AccountGrant, AccountManager } from "./accounts";
 import { type BrainManager, brainKey } from "./brain";
-import { type AntigravityBrainTurnRequest, handleAntigravityBrainTurn } from "./brain-antigravity";
-import { type CodexBrainEvent, type CodexBrainTurnRequest, handleCodexBrainTurn } from "./brain-codex";
+import {
+  type AntigravityBrainTurnRequest,
+  AntigravityServers,
+  handleAntigravityBrainTurn,
+  handleAntigravityBrainWarm,
+} from "./brain-antigravity";
+import {
+  type CodexBrainEvent,
+  type CodexBrainTurnRequest,
+  handleCodexBrainTurn,
+  handleCodexBrainWarm,
+} from "./brain-codex";
 import type { CodexAppServers } from "./brain-codex-app";
 import { type CursorBrainTurnRequest, handleCursorBrainTurn } from "./brain-cursor";
 import { type GrokBrainTurnRequest, handleGrokBrainTurn } from "./brain-grok";
-import { handleOpencodeBrainTurn, type OpencodeBrainTurnRequest, steerOpencodeTurn } from "./brain-opencode";
+import {
+  handleOpencodeBrainTurn,
+  handleOpencodeBrainWarm,
+  type OpencodeBrainTurnRequest,
+  OpencodeServers,
+  steerOpencodeTurn,
+} from "./brain-opencode";
 import { routeWithPlan } from "./brain-route";
 import { type BrowserManager, browserSetupText } from "./browser";
 import type { BrowserViews } from "./browser-views";
@@ -326,6 +342,10 @@ export interface HandlerContext {
     runs: Map<string, McpTaskInfo>;
     /** Protocol 15: long-lived `codex app-server`s (turns take messages mid-turn); without it, `codex exec`. */
     app?: CodexAppServers;
+    /** Pooled `opencode acp` processes (`OpencodeServers`). */
+    opencode?: OpencodeServers;
+    /** Pooled `agy acp` processes (`AntigravityServers`). */
+    antigravity?: AntigravityServers;
     /**
      * System mode, in a worker: the account folders lent to this agent (`accounts` is root's), and its own folder
      * for an account root keeps (`agentHome`, protocol 29).
@@ -836,9 +856,64 @@ async function routeRequest(ctx: HandlerContext, req: MachineRequest, scope: Req
     case "brain.turn":
       return doBrainTurn(ctx, req, scope, secrets);
     case "brain.warm": {
-      if (req.kind !== "claude_code" || !ctx.brains || !req.agent) return { open: false, started: false };
-      requireTool(ctx, "claude");
+      if (!req.agent) return { open: false, started: false };
       const chat = req.permissions?.mode === "chat";
+      if (req.kind === "codex") {
+        if (!ctx.codex?.app || !toolOn(ctx, "codex")) return { open: false, started: false };
+        return handleCodexBrainWarm(
+          {
+            folder: ctx.workspaceReal,
+            exec: toolOn(ctx, "codex"),
+            runnerHome: ctx.codex.runnerHome,
+            ...(ctx.secretsDir && !chat ? { secretsDir: ctx.secretsDir } : {}),
+            ...(ctx.codex.mcp ? { mcp: ctx.codex.mcp } : {}),
+            ...(ctx.grants && !chat ? { grants: ctx.grants } : {}),
+            ...(ctx.accounts || ctx.codex.accounts ? { accounts: ctx.accounts ?? ctx.codex.accounts } : {}),
+            app: ctx.codex.app,
+            ...(ctx.codex.spawn ? { spawn: ctx.codex.spawn } : {}),
+            ...(ctx.grant ? { grant: ctx.grant } : {}),
+          },
+          req,
+        );
+      }
+      if (req.kind === "opencode") {
+        if (!ctx.codex?.opencode || !toolOn(ctx, "opencode")) return { open: false, started: false };
+        return handleOpencodeBrainWarm(
+          {
+            folder: ctx.workspaceReal,
+            exec: toolOn(ctx, "opencode"),
+            runnerHome: ctx.codex.runnerHome,
+            ...(ctx.secretsDir && !chat ? { secretsDir: ctx.secretsDir } : {}),
+            ...(ctx.codex.mcp ? { mcp: ctx.codex.mcp } : {}),
+            ...(ctx.grants && !chat ? { grants: ctx.grants } : {}),
+            ...(ctx.accounts || ctx.codex.accounts ? { accounts: ctx.accounts ?? ctx.codex.accounts } : {}),
+            ...(ctx.grant ? { grant: ctx.grant } : {}),
+            pool: ctx.codex.opencode,
+            ...(ctx.codex.spawn ? { spawn: ctx.codex.spawn } : {}),
+          },
+          req,
+        );
+      }
+      if (req.kind === "antigravity") {
+        if (!ctx.codex?.antigravity || !toolOn(ctx, "antigravity")) return { open: false, started: false };
+        return handleAntigravityBrainWarm(
+          {
+            folder: ctx.workspaceReal,
+            exec: toolOn(ctx, "antigravity"),
+            runnerHome: ctx.codex.runnerHome,
+            ...(ctx.secretsDir && !chat ? { secretsDir: ctx.secretsDir } : {}),
+            ...(ctx.codex.mcp ? { mcp: ctx.codex.mcp } : {}),
+            ...(ctx.grants && !chat ? { grants: ctx.grants } : {}),
+            ...(ctx.accounts || ctx.codex.accounts ? { accounts: ctx.accounts ?? ctx.codex.accounts } : {}),
+            pool: ctx.codex.antigravity,
+            ...(ctx.codex.spawn ? { spawn: ctx.codex.spawn } : {}),
+            ...(ctx.grant ? { grant: ctx.grant } : {}),
+          },
+          req,
+        );
+      }
+      if (req.kind !== "claude_code" || !ctx.brains) return { open: false, started: false };
+      requireTool(ctx, "claude");
       return ctx.brains.prewarm(req, {
         agent: req.agent,
         folder: ctx.workspaceReal,
@@ -1496,6 +1571,7 @@ async function doCodexTurn(
           ...(codex.mcp ? { mcp: codex.mcp } : {}),
           ...(ctx.grants && !chat ? { grants: ctx.grants } : {}),
           ...(ctx.accounts || codex.accounts ? { accounts: ctx.accounts ?? codex.accounts } : {}),
+          ...(codex.antigravity ? { pool: codex.antigravity } : {}),
           ...(codex.spawn ? { spawn: codex.spawn } : {}),
           ...(ctx.grant ? { grant: ctx.grant } : {}),
         },
@@ -1528,7 +1604,9 @@ async function doCodexTurn(
           ...(codex.mcp ? { mcp: codex.mcp } : {}),
           ...(ctx.grants && !chat ? { grants: ctx.grants } : {}),
           ...(ctx.accounts || codex.accounts ? { accounts: ctx.accounts ?? codex.accounts } : {}),
+          ...(codex.opencode ? { pool: codex.opencode } : {}),
           ...(codex.spawn ? { spawn: codex.spawn } : {}),
+          ...(ctx.grant ? { grant: ctx.grant } : {}),
         },
         req as unknown as OpencodeBrainTurnRequest,
         { signal: scope.signal, emit },

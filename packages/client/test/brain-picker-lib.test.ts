@@ -59,10 +59,16 @@ const claudeCode: BrainOption = {
   defaultModel: "sonnet",
 };
 const codexOff: BrainOption = { ...claudeCode, kind: "codex", available: false, models: [], defaultModel: null };
-const MAC: BrainMachine = { machineId: "m1", name: "Mac mini", online: true, options: [claudeCode, codexOff] };
+const opencodeOn: BrainOption = { ...claudeCode, kind: "opencode", models: [], defaultModel: null };
+const MAC: BrainMachine = {
+  machineId: "m1",
+  name: "Mac mini",
+  online: true,
+  options: [claudeCode, codexOff, opencodeOn],
+};
 const goKey: AiAccounts["accounts"][number] = {
   id: "acc-go",
-  kind: "claude_code",
+  kind: "opencode",
   label: "OpenCode Go",
   email: null,
   plan: null,
@@ -146,7 +152,7 @@ describe("Quem pensa as one list (the new agent's step)", () => {
       AUTO,
       ...brainModelChoices(undefined, claudeCode.models).map((m) => m.value),
     ]);
-    const go = options.filter((o) => o.pick.kind === "claude_code" && "accountId" in o.pick && o.pick.accountId);
+    const go = options.filter((o) => o.pick.kind === "opencode" && "accountId" in o.pick && o.pick.accountId);
     expect(go.map((o) => (o.pick as { model: string }).model)).toEqual([
       AUTO,
       ...brainModelChoices(CODING_PLANS.opencode, []).map((m) => m.value),
@@ -206,12 +212,12 @@ describe("Quem pensa as one list (the new agent's step)", () => {
     expect(brainPickValue(options, { kind: "claude_code", machineId: "m1" })).toBe("claude@m1/auto");
     expect(brainPickValue(options, { kind: "connect", choice: "kimi" })).toBe("connect:kimi");
     expect(
-      brainPickValue(options, { kind: "claude_code", machineId: "m1", accountId: "acc-go", model: "glm-5.3" }),
+      brainPickValue(options, { kind: "opencode", machineId: "m1", accountId: "acc-go", model: "glm-5.3" }),
     ).toBe("opencode@m1#acc-go/glm-5.3");
     // A model without a key isn't a choice to show.
     expect(brainPickValue(options, { kind: "model", model: "gpt-6.1-sol" })).toBeUndefined();
-    expect(brainPickInput({ kind: "claude_code", accountId: "acc-go", model: "glm-5.3" })).toEqual({
-      brain: "claude_code",
+    expect(brainPickInput({ kind: "opencode", accountId: "acc-go", model: "glm-5.3" })).toEqual({
+      brain: "opencode",
       account: "acc-go",
       model: "glm-5.3",
     });
@@ -235,7 +241,15 @@ describe("Quem pensa as one list (the new agent's step)", () => {
   });
 
   test("the accounts the agent's page offers: one row per account of mine that can think for it at once", () => {
-    const work = { ...goKey, id: "acc-work", label: "Trabalho", plan: "max", provider: null, email: "a@example.test" };
+    const work = {
+      ...goKey,
+      id: "acc-work",
+      kind: "claude_code" as const,
+      label: "Trabalho",
+      plan: "max",
+      provider: null,
+      email: "a@example.test",
+    };
     // Two logins of one account: one row, the free one.
     const options = build([{ ...work, id: "acc-work-0", usedBy: ["Ada"] }, work]);
     const rows = options.filter((o) => "accountId" in o.pick && o.pick.accountId?.startsWith("acc-work"));
