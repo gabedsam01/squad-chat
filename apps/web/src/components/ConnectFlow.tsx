@@ -548,7 +548,12 @@ function ConnectStep({
                 <p className="muted cflow__text">{t("connectFlow.customText")}</p>
               )}
               {askUrl && (
-                <Field label={t("connectors.serverUrl")} id="cflow-url" example={t("connectFlow.urlHelp")} error={urlError}>
+                <Field
+                  label={t("connectors.serverUrl")}
+                  id="cflow-url"
+                  example={t("connectFlow.urlHelp")}
+                  error={urlError}
+                >
                   <Input
                     value={url}
                     onChange={(e) => {

@@ -335,7 +335,7 @@ type ThinkingAgent = Pick<Agent, "orgId" | "brainAccountId" | "machineId"> &
       "builtin" | "ownerUserId" | "brain" | "brainModel" | "brainEffort" | "brainAccountLentBy" | "contextTokens"
     >
   > &
-  Partial<Pick<Agent, "planForOthers" | "brainFallback" | "brainExtraUsage" | "credentialId">>;
+  Partial<Pick<Agent, "planForOthers" | "credentialId">>;
 
 /** A person's own AI for the right hand (§11): their row, null when their DM thinks with the workspace's. */
 export async function personalBrain(db: Executor, orgId: string, userId: string) {

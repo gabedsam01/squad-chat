@@ -192,7 +192,9 @@ export function useAiChoice(orgId: string, target: AiChoiceTarget): AiChoiceStat
   };
 
   const familyFor = (row: AiChoiceRow, model: string | null | undefined) =>
-    row.type !== "workspace" && row.type !== "key" && model ? effortFamilyOf(optionsFor(row), row.brain, model) : undefined;
+    row.type !== "workspace" && row.type !== "key" && model
+      ? effortFamilyOf(optionsFor(row), row.brain, model)
+      : undefined;
 
   const mutation = useMutation({
     mutationFn: async ({ choice, preview }: { choice: AiChoice; preview?: boolean }) => {

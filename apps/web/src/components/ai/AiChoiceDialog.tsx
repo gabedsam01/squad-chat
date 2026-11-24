@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { TeamScene } from "@/components/arrival/TeamScene";
 import { useOrg } from "@/components/org-context";
 import { BrainLine } from "@/pages/agent/brain/pieces";
-import { type AiChoicePart, AiChoiceFields, rowOfChoice } from "./AiChoice";
+import { AiChoiceFields, type AiChoicePart, rowOfChoice } from "./AiChoice";
 import "@/pages/agent/brain/brain-dialog.css";
 
 /** A line under the picker that leads elsewhere ("Mais opções", connecting another AI). */

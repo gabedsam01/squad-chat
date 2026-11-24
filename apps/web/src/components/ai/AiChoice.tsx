@@ -254,7 +254,7 @@ export function AiChoiceFields({
     commit({ ...shown, ...(id ? { model: id } : {}), effort: v ? (v as EffortLevel) : AUTO }, row);
   };
 
-  const contextOptions = row && shown ? state.contextOptions(row, model) : [];
+  const contextOptions: readonly number[] = row && shown ? state.contextOptions(row, model) : [];
   const context = shown?.contextTokens ?? null;
   const pickContext = (v: string) => {
     if (!row || !shown || (v === AUTO ? null : Number(v)) === context) return;

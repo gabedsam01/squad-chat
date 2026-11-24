@@ -624,13 +624,16 @@ export class RealtimeConnection {
     if (!this.isOpen || this.pongTimer !== null) return;
     this.send({ type: "ping" });
     const socket = this.socket;
-    this.pongTimer = this.timers.setTimeout(() => {
-      this.pongTimer = null;
-      if (this.socket !== socket || !socket) return;
-      // Its close event may never come (or come late, after the new socket opened): detached first.
-      this.dropSocket(4000, "no pong");
-      this.lost();
-    }, timeoutMs ?? this.options.pongTimeoutMs ?? 10_000);
+    this.pongTimer = this.timers.setTimeout(
+      () => {
+        this.pongTimer = null;
+        if (this.socket !== socket || !socket) return;
+        // Its close event may never come (or come late, after the new socket opened): detached first.
+        this.dropSocket(4000, "no pong");
+        this.lost();
+      },
+      timeoutMs ?? this.options.pongTimeoutMs ?? 10_000,
+    );
   }
 
   /** Whether frames can go out now. */

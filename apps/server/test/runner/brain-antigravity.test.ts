@@ -336,13 +336,13 @@ test.skipIf(!posix)(
   async () => {
     const none = () => ({ status: 127, stdout: "" });
     const rootOnly = (bin: string) => bin === "agy";
-    const { found } = await detectExecutors(none, {}, {}, undefined, () => [], rootOnly);
+    const { found } = await detectExecutors(none, {}, {}, undefined, () => [], undefined, rootOnly);
     expect(found.antigravity).toBeUndefined();
     expect(found.broken).toEqual({ antigravity: CLI_HOME_ONLY });
     // One the agents run wins, and a CLI that is nowhere stays missing.
     const run = (command: string, args: string[]) =>
       command === "agy" && args[0] === "--version" ? { status: 0, stdout: "agy 1.5.14\n" } : none();
-    expect((await detectExecutors(run, {}, {}, undefined, () => [], rootOnly)).found.broken).toBeUndefined();
+    expect((await detectExecutors(run, {}, {}, undefined, () => [], undefined, rootOnly)).found.broken).toBeUndefined();
     expect((await detectExecutors(none, {}, {}, undefined, () => [])).found.broken).toBeUndefined();
   },
 );
