@@ -1647,6 +1647,12 @@ export class CodexAppServers implements CodexAppRunner {
     live.client.close();
   }
 
+  /** System mode: a pooled process on an account its agent no longer thinks with closes (a busy one stays until it idles out). */
+  keepAccount(account: string | null, also: readonly string[] = []) {
+    const keep = new Set([...(account ? [account] : []), ...also]);
+    for (const l of [...this.live.values()]) if (!l.busy && l.account !== null && !keep.has(l.account)) this.drop(l);
+  }
+
   /** The runner is exiting: every process is closed. */
   close() {
     this.closed = true;

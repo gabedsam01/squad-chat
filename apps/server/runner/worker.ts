@@ -869,6 +869,9 @@ export async function runWorker(o: WorkerOptions): Promise<number> {
     if (next.account !== undefined) {
       brains.keepAccount(next.account, next.accounts);
       tasks.keepAccount(next.account, next.accounts);
+      codexApp.keepAccount(next.account, next.accounts);
+      opencodePool.keepAccount(next.account, next.accounts);
+      antigravityPool.keepAccount(next.account, next.accounts);
     }
     // The browser switch went off: the agent's browser closes now, not at its next command.
     if (browserOff) void browser.closeAll();

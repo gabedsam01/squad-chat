@@ -13,7 +13,7 @@ describe("isQuickGreeting", () => {
       "oi, tudo bem?",
       "valeu!",
       "obrigado",
-      "ok",
+      "bom dia",
       "hi",
       "hello!",
       "thanks",
@@ -22,6 +22,12 @@ describe("isQuickGreeting", () => {
       "oi 👋",
     ]) {
       expect(isQuickGreeting(msg)).toBe(true);
+    }
+  });
+
+  test("rejects approvals that may answer an agent question", () => {
+    for (const msg of ["ok", "okay", "fechado", "combinado", "show", "perfeito", "beleza", "blz"]) {
+      expect(isQuickGreeting(msg)).toBe(false);
     }
   });
 

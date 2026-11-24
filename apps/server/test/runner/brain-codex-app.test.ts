@@ -966,3 +966,21 @@ test("two different messages that read alike are both sent", () => {
   }
   expect(sent.join("")).toBe("Feito.\n\nFeito.");
 });
+
+test("the pool: keepAccount closes idle processes of other accounts only", () => {
+  const pool = new CodexAppServers({ runs: new Map() });
+  const mk = (account: string | null, busy = false) => ({
+    key: `a:${account}`,
+    id: `r:${account}`,
+    agentId: "a",
+    account,
+    busy,
+    idleTimer: null,
+    bridge: null,
+    client: { close: () => undefined },
+  });
+  const map = (pool as unknown as { live: Map<string, unknown> }).live;
+  for (const r of [mk("one"), mk("two"), mk("three", true), mk(null)]) map.set(r.key, r);
+  pool.keepAccount("one", []);
+  expect([...map.keys()].sort()).toEqual(["a:null", "a:one", "a:three"]);
+});

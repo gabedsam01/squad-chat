@@ -6,7 +6,9 @@ import {
   connectorListing,
   createFileArtifact,
   createNativeConnectorToolSource,
+  orgLimitsView,
   revokeAtProvider,
+  setOrgLimits,
   startOAuth,
   type ToolContext,
 } from "../src";
@@ -169,6 +171,27 @@ test("X's limits and refusals in words, the workspace's monthly cap, deleting as
   const capped = await call(ctx, "x_get_my_posts", {});
   expect(capped).toMatchObject({ isError: true, data: { code: "connector.capped" } });
   void connection;
+});
+
+test("X calls priced by what X answered, and refused before a call that could pass the month's budget", async () => {
+  const x = fakeX();
+  const ctx = await world(x.http);
+  await connectX(x.http);
+  const none = { members: null, membersMax: null, payerUserId: null, storageBytes: null, uploadBytesPerDay: null };
+  await setOrgLimits(f.db, f.org.id, { ...none, platformUsdPerMonth: null, connectorUsdPerMonth: 0.2 });
+  expect((await call(ctx, "x_create_post", { text: "Lançamos hoje!" })).isError).toBeUndefined();
+  expect((await call(ctx, "x_get_mentions", {})).isError).toBeUndefined();
+  expect((await call(ctx, "x_get_post", { id: "404" })).isError).toBe(true);
+  const posts = x.calls.filter((c) => c.key === "POST /2/tweets").length;
+  const link = await call(ctx, "x_create_post", { text: "Read it at example.com" });
+  expect(link).toMatchObject({ isError: true, data: { code: "connector.capped" } });
+  expect(link.content).toStartWith("X budget for this month used:");
+  expect(link.content).toContain("US$ 0.02 of its US$ 0.20");
+  expect(x.calls.filter((c) => c.key === "POST /2/tweets").length).toBe(posts);
+  const rows = await f.db.select().from(schema.connectorUsageDays);
+  // A post (US$ 0.015), one mention returned (US$ 0.005), a failed read and a refused post: nothing.
+  expect(rows.reduce((sum, r) => sum + r.costNanoUsd, 0)).toBe(20_000_000);
+  expect((await orgLimitsView(f.db, f.owner.id, f.org.id)).connectors).toEqual({ usedUsd: 0.02, limitUsd: 0.2 });
 });
 
 test("without its app a self-hosted server says what's missing; the Cloud keeps it unavailable", () => {

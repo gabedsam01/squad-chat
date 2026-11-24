@@ -39,6 +39,7 @@ import {
   createChatToolSource,
   createClaudeCodeBrain,
   createCoAuthorToolSource,
+  createCodeSuggestionToolSource,
   createCommentToolSource,
   createConnectorToolSource,
   createContextToolSource,
@@ -99,6 +100,7 @@ import {
   deviceWaitHooks,
   type EmailArt,
   emailArtAt,
+  ensureCodeSessionsOn,
   envSpeechEngines,
   feedbackDestination,
   type GatewayEmbeddings,
@@ -503,6 +505,8 @@ export function buildEngine(o: EngineOptions) {
       }),
       createReactToolSource({ pubsub: adapters.pubsub }),
       createSayNowToolSource({ pubsub: adapters.pubsub }),
+      // An agent that programs on a computer suggests a code session for a change asked in the chat (ADR 0215 §11).
+      createCodeSuggestionToolSource(),
       // A GIF or the agent's sticker when asked (ADR 0091): listed by the workspace's switches and the agent's.
       createMediaToolSource({ pubsub: adapters.pubsub, gifs: adapters.gifs ?? null }),
       // Long work goes to the background and reports back by itself, on every brain (ADR 0121).
@@ -618,6 +622,8 @@ export function buildEngine(o: EngineOptions) {
         browser: browserTools.readPage,
         resolveHost: o.resolveHost,
         usage: gateway,
+        // `show_image` (ADR 0217): pictures from the web saved where the run posts.
+        artifacts,
       }),
       // The agent's own desktop (ADR 0062): `desktop:use` with Run code, when its computer serves desktop use.
       createDesktopToolSource({
@@ -654,6 +660,10 @@ export function buildEngine(o: EngineOptions) {
     online: async (machineId: string) => {
       await missionHooks.online?.(machineId);
       await deviceWaits.online(machineId).catch(() => undefined);
+      // Code sessions whose worktree waited for this computer (ADR 0215) are prepared now.
+      await ensureCodeSessionsOn({ db, pubsub: adapters.pubsub, hub: machineHub, git: sandbox.git }, machineId).catch(
+        () => undefined,
+      );
     },
     phonesChanged: deviceWaits.phonesChanged,
   };

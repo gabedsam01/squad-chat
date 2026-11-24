@@ -329,6 +329,13 @@ export function ConnectAiDialog({
   const askedId = request.agentId ?? sole;
   const askedFor = askedId && (request.chat || !plain) ? dir.agentById.get(askedId) : undefined;
   const asleep = (id: string) => (aiStateOf(status.data, id) ?? "no_ai") === "no_ai";
+  // Past its own screens, Back goes to the dialog it was opened from, when there is one.
+  const leave = request.onBack
+    ? () => {
+        onClose();
+        request.onBack?.();
+      }
+    : undefined;
   // Opened for several agents or none (the channel's notice, Settings › AI accounts, the first-run list, a team just
   // made, a receipt or a card for several agents, the onboarding's AI step): the narrow dialog under the sky, for every
   // agent of the person's that can't think, on the computer of the first of them since a plan signs in on one computer
@@ -970,7 +977,7 @@ export function ConnectAiDialog({
                 } else if (listing) setAllOpen(false);
                 else setAdding(false);
               }
-            : undefined
+            : leave
         }
         scene={{
           agents: drawn,
@@ -1235,7 +1242,7 @@ export function ConnectAiDialog({
                 } else if (listing) setAllOpen(false);
                 else setAdding(false);
               }
-            : undefined
+            : leave
         }
         scene={{
           agents: wide

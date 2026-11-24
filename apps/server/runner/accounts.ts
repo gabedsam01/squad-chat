@@ -878,6 +878,14 @@ export const NETWORK_ENV = [
 const CLOUD_ENV = ["CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX", "CLAUDE_CODE_USE_FOUNDRY"] as const;
 
 /**
+ * Claude Code's `cleanupPeriodDays` in the `--settings` of a sign-in the runner keeps (an account folder, or the one
+ * sign-in a system-mode computer lends to all its agents): transcripts of sessions idle this long go at the CLI's next
+ * start (its default is 30). Every agent on that sign-in writes there, so 30 days of 15-minute routines piled up. A
+ * session idle longer than this starts afresh. The computer owner's own sign-in keeps its own setting.
+ */
+export const ACCOUNT_TRANSCRIPT_DAYS = 14;
+
+/**
  * The `env` of a Claude Code turn's or task's own `--settings`, which outranks the project's settings (the agent
  * can write those, and a cloned repo can bring them): the endpoint (the plan's, else Anthropic's), no other
  * cloud, and the runner's own proxies and certificates (or none), so the sign-in or key goes nowhere else;
@@ -2968,6 +2976,25 @@ export class AccountManager {
       this.log(`account ${id.slice(0, 8)} (${kind}) lent to uid ${uid}`);
       return true;
     });
+  }
+
+  /**
+   * What a terminal as the agent that thinks with this account adds to its shell (ADR 0215): the one variable that
+   * points the account's CLI at its folder, so `claude` or `codex` typed there is signed in as the agent's turns
+   * are. Only a Claude Code or Codex sign-in made for that agent: their folder is one variable of the CLI's own.
+   * The other CLIs keep theirs under the XDG folders, which a shell's other programs read too, and an account root
+   * keeps for several agents (`grant`) or a plan's key never leaves it for a shell. System mode lends the folder to
+   * `uid` first, as a turn does (`lendTo`). Nothing to add: an empty object.
+   */
+  async terminalEnv(id: string, uid?: number): Promise<Record<string, string>> {
+    for (const kind of ["claude_code", "codex"] as const) {
+      const dir = this.accountDir(kind, id);
+      if (!dir) continue;
+      if (this.isShared(kind, id) || (kind === "claude_code" && (await planKeyOf(dir)))) return {};
+      if (this.opts.lending && !(uid !== undefined && (await this.lendTo(kind, id, uid)))) return {};
+      return { [ENV_VAR[kind]]: dir };
+    }
+    return {};
   }
 
   private async reclaimNow(kind: AccountKind, id: string) {

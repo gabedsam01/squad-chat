@@ -13,6 +13,8 @@ import {
   acpProblem,
   githubConfigDir,
   OPENCODE_CHAT_PERMISSION,
+  OpencodeServers,
+  keyPrint,
   OpencodeTurnReader,
   opencodeBridge,
   opencodeConfig,
@@ -902,3 +904,32 @@ async function waitFor(check: () => boolean, ms = 10_000) {
     await new Promise((r) => setTimeout(r, 20));
   }
 }
+
+test("the pool: keepAccount closes idle processes of other accounts only; a rotated key is a new signature, never the key itself", () => {
+  const pool = new OpencodeServers({ runs: new Map() });
+  const mk = (account: string | null, busy = false) => ({
+    key: `a:${account}`,
+    id: `r:${account}`,
+    agentId: "a",
+    account,
+    busy,
+    idleTimer: null,
+    bridge: null,
+    conn: { close: () => undefined },
+    child: { stdin: null, pid: undefined, kill: () => true },
+  });
+  const rows = [mk("one"), mk("two"), mk("three", true), mk(null)];
+  const map = (pool as unknown as { live: Map<string, unknown> }).live;
+  for (const r of rows) map.set(r.key, r);
+  pool.keepAccount("one", []);
+  expect([...map.keys()].sort()).toEqual(["a:null", "a:one", "a:three"]);
+  const sig = (key: string) =>
+    (pool as unknown as { signature(i: unknown, o: unknown): string }).signature(
+      { cwd: "/w", account: { id: "one", home: "/h", key } },
+      {},
+    );
+  expect(sig("k1")).not.toBe(sig("k2"));
+  expect(sig("k1")).toBe(sig("k1"));
+  expect(sig("k1")).not.toContain("k1");
+  expect(keyPrint(undefined)).toBeNull();
+});

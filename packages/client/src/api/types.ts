@@ -1,6 +1,7 @@
 /** Types of the private web-app API (`/api/app/*`, apps/server/src/routes/app). */
 
 import type { CanvasPreview, DocumentPreview, SheetPreview, SlidesPreview } from "@agenteschat/live";
+import type { CodeSuggestion } from "../code/types";
 import type { ChatPrefs } from "../lib/chat-look";
 import type { RoleId } from "../lib/new-agent";
 import type { OnboardingStepId } from "../lib/onboarding";
@@ -17,6 +18,24 @@ export interface Health {
   status: "ok" | "degraded";
   version: string;
   edition: Edition;
+}
+
+/**
+ * An app's own speed, for its server (`POST /api/app/client-vitals`): what it measured since its last report, all in
+ * milliseconds but the heap (bytes) and the counts.
+ */
+export interface ClientVitalsReport {
+  platform: "ios" | "android" | "web";
+  /** From the app's start to the launch splash leaving. */
+  coldStartMs?: number;
+  /** From the app's start to its first list drawn with rows. */
+  firstRowsMs?: number;
+  jsLagP95Ms?: number;
+  jsLagMaxMs?: number;
+  heapBytes?: number;
+  /** Reads (GETs) in the 10 s after the app came back to the front. */
+  getsPerReturn?: number;
+  reconnects?: number;
 }
 
 /** The usage report's switch, for the installation's owner (`GET /api/app/telemetry`). */
@@ -294,6 +313,8 @@ export interface WorkspaceLimits {
   /** `ownStorage`: new files go to the workspace's own bucket, which no limit counts. */
   storage: { usedBytes: number; limitBytes: number | null; ownStorage: boolean };
   uploads: { usedBytes24h: number; limitBytesPerDay: number | null };
+  /** What vendors that bill per call (X) charged this month, against the month's limit, in US$. Absent from older servers. */
+  connectors?: { usedUsd: number; limitUsd: number | null };
 }
 
 /** Where in the app a billing link is opened from: the billing service opens on what it came for (ADR 0079). */
@@ -399,6 +420,11 @@ export interface User {
   hasPassword?: boolean;
   /** Opened the link that confirms the email address. */
   emailVerified?: boolean;
+  /**
+   * On a server that sends email, an address never confirmed: `required` while in no workspace (the apps show only
+   * "check your inbox", and none can be made), `reminder` once in one (a line asks for it). Null or absent: nothing.
+   */
+  emailConfirmation?: "required" | "reminder" | null;
   /**
    * The installation's owner on the desktop app's own server: a sign-in in the last 10 minutes through Continue on this
    * Mac is their proof before a deletion (absent from an older server: false).
@@ -1917,6 +1943,14 @@ export type ChannelEvent =
   | { type: "block.state"; channelId: string; block: BlockState }
   /** A choice card was answered (ADR 0124). */
   | { type: "choices.updated"; channelId: string; choices: Choices }
+  /** A suggested code session was opened, kept in the chat, or waits again (ADR 0215 §11): the reply's card. */
+  | {
+      type: "code.suggestion";
+      channelId: string;
+      threadId: string | null;
+      messageId: string;
+      suggestion: CodeSuggestion;
+    }
   /** A long work changed (ADR 0121): moved, updated, waiting, queued or ended. Its anchor's line redraws. */
   | {
       type: "agent.work";
@@ -2630,7 +2664,11 @@ export interface Memory {
   from?: { messageId: string; channelId: string; threadId: string | null; dm: boolean; at: string } | null;
 }
 
-export type ProposalStatus = "pending" | "accepted" | "refused";
+/**
+ * `pending`: the agent's review hasn't weighed it yet (ADR 0219); `refused`: left out; `undone`: applied, then put
+ * back.
+ */
+export type ProposalStatus = "pending" | "accepted" | "refused" | "undone";
 
 /** An app a proposal turns on or off for an agent, as `request_permission` names it (`label` in English). */
 export interface ProposalAccessLine {
@@ -2643,6 +2681,7 @@ export interface ProposalAccessLine {
 /** A setting the right hand's card changes on an agent (ADR 0137). */
 export type ProposalSettingField =
   | "model"
+  | "effort"
   | "ai_account"
   | "budget"
   | "owner"
@@ -2659,7 +2698,7 @@ export type ProposalSettingField =
   | "delete";
 
 /**
- * One line of a settings card: `model` a model id; `ai_account` `{ brain, accountId }`; `budget` nano-USD a month or
+ * One line of a settings card: `model` a model id; `effort` an effort as stored or null (its default); `ai_account` `{ brain, accountId }`; `budget` nano-USD a month or
  * null (the workspace's default); `owner` a user id; `audience` `{ mode, userIds, roleIds }`; `channel_add` /
  * `channel_remove` / `reply_mode` its seat in `channelId` (null: not in it, else whether it answers without a
  * mention); `skill` whether it has the skill in `skillId` on (its name in `label.to`); `name` its name; `look`
@@ -2733,6 +2772,19 @@ export interface Proposal {
   decider: { type: "user"; userId: string; name: string } | { type: "admins" } | { type: "account_owner" };
   createdAt: string;
   decidedBy: { userId: string; name: string } | null;
+  /** The agent whose review applied it or left it out (ADR 0219); null when a person did. */
+  decidedByAgent: { agentId: string; name: string } | null;
+  /**
+   * The review's line, in the language of the text it changes: why it was applied or left out; null when a person
+   * decided.
+   */
+  review: string | null;
+  /** Decided by the review, not a person (`decidedByAgent` is null for a workspace-wide lesson). */
+  reviewed: boolean;
+  /** Applied, and the viewer may put it back (`proposals.undo`). */
+  undoable: boolean;
+  undoneBy: { userId: string; name: string } | null;
+  undoneAt: string | null;
   decidedAt: string | null;
 }
 
@@ -2796,6 +2848,11 @@ export interface OrgOverview {
   approvalsWaitingForMe: number;
   /** Open proposals the viewer can see and decide. */
   proposalsWaitingForMe?: number;
+  /**
+   * Whether Code has anything for the viewer (ADR 0215 §12): an agent that programs on a computer, or an open session
+   * they take part in. Absent (a server without Code): no.
+   */
+  code?: boolean;
 }
 
 export interface Person {
@@ -2971,7 +3028,7 @@ export interface AgentWork {
   runId: string;
   /** Where it shows, when you read that conversation: null otherwise. */
   channelId: string | null;
-  channelKind: "channel" | "dm" | "task" | "file" | null;
+  channelKind: "channel" | "dm" | "task" | "file" | "code" | null;
   channelName: string | null;
   threadId: string | null;
   /** The reply that handed it off, once posted. */
@@ -2995,7 +3052,7 @@ export interface PendingReturn {
   messageId: string;
   agentId: string;
   channelId: string;
-  channelKind: "channel" | "dm" | "task" | "file";
+  channelKind: "channel" | "dm" | "task" | "file" | "code";
   channelName: string | null;
   /** Null: the conversation's main timeline. */
   threadId: string | null;
@@ -3016,7 +3073,7 @@ export interface CanceledReturn {
   messageId: string;
   agentId: string;
   channelId: string;
-  channelKind: "channel" | "dm" | "task" | "file";
+  channelKind: "channel" | "dm" | "task" | "file" | "code";
   channelName: string | null;
   threadId: string | null;
   at: string;
@@ -3298,6 +3355,17 @@ export type CustomConnectStart =
    * refused our registration, in its own words (`error: error_description`, short).
    */
   | { status: "needs_key"; reason?: "not_approved"; detail?: string };
+
+/**
+ * A workspace's own OAuth client (its app at the provider) for an MCP server that takes only clients it approved: one
+ * per authorization server (`issuer`). Its secret is never returned.
+ */
+export interface OwnOAuthClient {
+  /** The redirect URI to register in that app. */
+  redirectUri: string;
+  issuer: string;
+  client: { clientId: string; hasSecret: boolean; scopes: string | null } | null;
+}
 
 // ── Knowledge (phase 5: apps/server/src/routes/app/knowledge.ts) ─────────────
 
@@ -4197,6 +4265,13 @@ export interface ArtifactRef {
   /** A picture's size (pixels), when the server knew it: its card has its box before the file's details load. */
   width?: number;
   height?: number;
+  /**
+   * An uploaded file's name, type and bytes (servers from 2026-11 on): a picture or a video shows from these alone,
+   * with no request for the file's details first.
+   */
+  name?: string;
+  contentType?: string;
+  size?: number;
 }
 
 export interface ArtifactFilters {
@@ -4385,6 +4460,8 @@ export type IssuePatch = Partial<
    * one without is new, one left out is removed.
    */
   criteria?: { id?: string; text: string }[];
+  /** Files to take off the task ("Anexos" ×): they stay in the Drive. */
+  removeFiles?: string[];
 };
 
 /** A task's project as its card shows it: a name and one of the roles' colors. Archived: offered to no new task. */
@@ -4486,6 +4563,8 @@ export interface RoutineWebhookTrigger {
   signed: boolean;
   /** The HTTP methods its address answers (POST by default; GET passes its query string as the run's data). */
   methods: RoutineHookMethod[];
+  /** "Group calls by": a dot path into each call's data; the same value runs in order, others side by side. */
+  groupBy: string | null;
 }
 
 export const ROUTINE_HOOK_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
@@ -4512,6 +4591,7 @@ export interface RoutineHook {
   url: string;
   signed: boolean;
   methods: RoutineHookMethod[];
+  groupBy: string | null;
   calls: RoutineHookCall[];
 }
 
@@ -4730,7 +4810,7 @@ export interface RoutineInput {
     | { type: "event"; event: RoutineEvent }
     | { type: "once"; at: string; timezone?: string }
     | Omit<RoutineEmailTrigger, "status">
-    | { type: "webhook"; methods?: RoutineHookMethod[] }
+    | { type: "webhook"; methods?: RoutineHookMethod[]; groupBy?: string | null }
     | Omit<RoutineConnectorTrigger, "status" | "lastError">;
   /** Ignored: every routine acts (ADR 0109). */
   access?: RoutineAccess;
@@ -6013,7 +6093,7 @@ export interface ThreadInfo {
   id: string;
   channelId: string;
   channelName: string;
-  channelKind: "channel" | "dm" | "task" | "file";
+  channelKind: "channel" | "dm" | "task" | "file" | "code";
   /** Null: show `rootText`. */
   title: string | null;
   rootText: string;
@@ -6511,6 +6591,11 @@ export interface MachineAccount {
   /** Who it thinks for (ADR 0059 §3): everyone in the workspace, or only its owner (absent: an older server). */
   serves?: PlanServes;
   /**
+   * In an agent's "Quem pensa" (`GET …/brain`): it may think for that agent, its owner being in "Usar em agentes"
+   * (absent: an older server, which says it with `serves`).
+   */
+  usable?: boolean;
+  /**
    * Its place in the order of use of its computer's accounts of its kind (ADR 0041 §6), 0 first; null: after the
    * placed ones, oldest first (absent: an older server).
    */
@@ -6543,6 +6628,81 @@ export type PlanServes = "everyone" | "owner";
 export interface AiAccounts {
   accounts: (MachineAccount & { machineId: string; computer: string })[];
   computers: AiComputer[];
+  /** "Contas de IA" as one view (absent: an older server). */
+  hub?: AiHub;
+}
+
+/**
+ * Who besides its owner holds one of an AI account's permissions: nobody (`owner`), administrators (`admins`), the
+ * holders of some roles (`roles`), some people (`people`) or everyone. In the apps: Só você, Você e administradores,
+ * Cargos…, Pessoas…, Todos.
+ */
+export type AccountAudienceMode = "owner" | "admins" | "roles" | "people" | "everyone";
+
+export interface AccountAudience {
+  mode: AccountAudienceMode;
+  /** With `people`. */
+  userIds: string[];
+  /** With `roles`. */
+  roleIds: string[];
+}
+
+/**
+ * An AI account's permissions. `manage` ("Gerenciar": rename, sign in again, remove), `use` ("Usar em agentes": whose
+ * agents, by the agent's owner, and whose Lodi may think with it) and `reply` ("Atender todos": whom an agent on it
+ * answers besides the agent's own owner; `owner` there reads "Só o dono do agente").
+ */
+export interface AccountPermissions {
+  manage: AccountAudience;
+  use: AccountAudience;
+  reply: AccountAudience;
+}
+
+/** Why the viewer's agents can't think with an account: dimmed in the picker with this reason. */
+export type AccountUseReason = "signed_out" | "owner_left" | "owner_only" | "not_allowed";
+
+/** What the viewer may do with an AI account. */
+export interface AccountRights {
+  /** Rename it, remove it, choose `use`. */
+  canManage: boolean;
+  /** Choose `manage`: its owner. */
+  canSetManage: boolean;
+  /** The viewer's agents and Lodi may think with it; else `useReason`. */
+  canUse: boolean;
+  useReason?: AccountUseReason;
+  /** Choose `reply`: its owner or an administrator. */
+  canReplyAll: boolean;
+}
+
+/** A plan account in "Contas de IA", whoever connected it. */
+export interface AiHubAccount extends MachineAccount {
+  machineId: string;
+  computer: string;
+  permissions: AccountPermissions;
+  rights: AccountRights;
+}
+
+/** A workspace API key in "Contas de IA": that it exists, for everyone; who uses it only for whoever manages keys. */
+export interface AiHubKey {
+  id: string;
+  provider: string;
+  label: string;
+  keyHint: string;
+  isDefault: boolean;
+  usedBy?: { id: string; name: string }[];
+  endpoint?: Credential["endpoint"];
+}
+
+/** `GET …/ai-accounts`'s `hub`: every account, the keys, the order of use and the API-key switch. */
+export interface AiHub {
+  accounts: AiHubAccount[];
+  keys: AiHubKey[];
+  order: AccountOrderGroup[];
+  /** "Continuar com a chave de API quando todos os planos estiverem no limite" (off by default). */
+  keyFallback: boolean;
+  canManageKeys: boolean;
+  /** Turns `keyFallback` on or off and moves anyone's account in the order. */
+  canConfigure: boolean;
 }
 
 export interface AiComputer {
@@ -7216,6 +7376,12 @@ export type NotificationKind =
   | "change_request"
   | "proposal_waiting"
   /**
+   * ADR 0219: an agent applied a change it judged worth making to an agent this person looks after (or the workspace's
+   * context): one row a day while unread, `count`, `latest.title` the newest change, `source.agentId`/`label` the agent
+   * it changed, `source.proposalId`, the applying agent as actor. Inbox only.
+   */
+  | "proposal_applied"
+  /**
    * ADR 0141: a person's monthly AI limit, `source.userId` the person, `latest.statusTo`: `warning` (80%, the
    * person), `reached` (who decides; `reached_notify` to the person when the limit only notifies), `request` (who
    * decides, waiting, with `raiseToUsd`), `raised` or `refused` (the person). The person's own carry a percent only.
@@ -7354,6 +7520,8 @@ export interface NotificationSource {
   widgetId?: string;
   /** A message in a live file's conversation (ADR 0199): the file, opened with it at `messageId`. */
   artifactId?: string;
+  /** A message in a code session's conversation (ADR 0215): the session, opened on the Code page. */
+  codeSessionId?: string;
   /** Channel name, thread title, issue title, topic title, mission or routine name (or the computer's name). */
   label?: string;
 }
@@ -7474,7 +7642,7 @@ export interface AuditRow {
   details: Record<string, unknown>;
   runId: string | null;
   channelId: string | null;
-  channel: { id: string; name: string; kind: "channel" | "dm" | "task" | "file" } | null;
+  channel: { id: string; name: string; kind: "channel" | "dm" | "task" | "file" | "code" } | null;
   onBehalfOf: { id: string; name: string | null } | null;
   outcome: AuditOutcome | null;
   /** The approval the call waited for or ran after, as it stands now. */
@@ -7557,7 +7725,6 @@ export interface NoticePrefs {
 /** A tool at the top of the sidebar (`SIDEBAR_ITEMS` in packages/engine/src/sidebar-items.ts). */
 export type SidebarItem =
   | "waiting"
-  | "approvals"
   | "proposals"
   | "threads"
   | "issues"
@@ -7567,7 +7734,8 @@ export type SidebarItem =
   | "calendar"
   | "team"
   | "dashboards"
-  | "taskManager";
+  | "taskManager"
+  | "code";
 /** `always` in the list, `more` only in the More menu, `auto` in the list while its count is above zero. */
 export type SidebarPlace = "always" | "more" | "auto";
 /** Where I put each tool I moved, in one workspace (`GET …/me/sidebar`); the others keep their default. */
@@ -7654,11 +7822,40 @@ export interface ThreadFollow {
 }
 
 /**
- * Unread marks on my own topic: a message in a conversation I'm in (no content: the lists read again), and my
- * reads and mutes from any device.
+ * A new message as the conversation lists show it (`channel.activity`): whether it counts as unread and, when it may
+ * be a list's last line, that line (`Channel.lastMessage`'s `preview`, `DirectMessage.lastMessage`'s `body`).
+ */
+export interface ActivityLine {
+  id: string;
+  createdAt: string;
+  /** It counts as unread: not a quiet notice, nor an agent's sticker after its own reply. */
+  counts: boolean;
+  /** A channel's top-level message or any of a DM's; absent for a routine's call (its answer is the line). */
+  last?: {
+    authorType: AuthorType;
+    authorId: string | null;
+    preview: string;
+    body: string;
+    meta: PreviewMeta | null;
+    mediaKind: MediaKind | null;
+  };
+}
+
+/**
+ * Unread marks on my own topic: a message in a conversation I'm in (with its list line, `message`, the lists patch
+ * their row; without, from an older server or for a confidential message, they read again), and my reads and mutes
+ * from any device.
  */
 export type UnreadEvent =
-  | { type: "channel.activity"; channelId: string; threadId: string | null; dm?: boolean }
+  | {
+      type: "channel.activity";
+      channelId: string;
+      threadId: string | null;
+      dm?: boolean;
+      message?: ActivityLine;
+      /** With `message`: it mentions me. */
+      mentioned?: boolean;
+    }
   | { type: "channel.read"; channelId: string; userId: string; lastReadAt: string }
   | { type: "channel.muted"; channelId: string; muted: boolean }
   | { type: "thread.read"; threadId: string; channelId: string; lastReadAt: string }
@@ -7723,7 +7920,7 @@ export interface TaskDelegation {
   /** Where it was handed off, when you read that conversation. Older servers send none. */
   from?: {
     channelId: string;
-    channelKind: "channel" | "dm" | "task" | "file";
+    channelKind: "channel" | "dm" | "task" | "file" | "code";
     channelName: string | null;
     threadId: string | null;
     messageId: string | null;

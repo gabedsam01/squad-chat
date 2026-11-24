@@ -71,21 +71,10 @@ test("streamed: the file as it is read; nothing for a missing key", async () => 
   expect(store.stream?.("../outside")).rejects.toThrow("outside the files folder");
 });
 
-test("stat and readRange return metadata and byte slices without buffering the full object", async () => {
+test("a range streams only its part, both ends included", async () => {
   const store = createDiskBlobStore(dir);
-  await store.put("orgs/o1/vid", bytes("0123456789"), { contentType: "video/mp4" });
-  expect(await store.stat?.("orgs/o1/vid")).toEqual({ size: 10, contentType: "video/mp4" });
-  expect(await store.stat?.("orgs/o1/missing")).toBeNull();
-  expect(store.stat?.("../outside")).rejects.toThrow("outside the files folder");
-
-  const full = await store.readRange?.("orgs/o1/vid");
-  if (!full) throw new Error("expected full object");
-  expect(full).toMatchObject({ size: 10, contentType: "video/mp4" });
-  expect(await new Response(full.body).text()).toBe("0123456789");
-
-  const slice = await store.readRange?.("orgs/o1/vid", { start: 2, end: 5 });
-  if (!slice) throw new Error("expected slice object");
-  expect(slice).toMatchObject({ size: 10, contentType: "video/mp4" });
-  expect(await new Response(slice.body).text()).toBe("2345");
-  expect(await store.readRange?.("orgs/o1/missing", { start: 0, end: 1 })).toBeNull();
+  await store.put("orgs/o1/clip", bytes("0123456789"), { contentType: "video/mp4" });
+  expect(await new Response(await store.stream?.("orgs/o1/clip", { start: 2, end: 5 })).text()).toBe("2345");
+  expect(await new Response(await store.stream?.("orgs/o1/clip", { start: 9, end: 9 })).text()).toBe("9");
+  expect(await store.stream?.("orgs/o1/gone", { start: 0, end: 1 })).toBeNull();
 });

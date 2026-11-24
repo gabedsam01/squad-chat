@@ -715,9 +715,27 @@ const READ_ONLY_TOOLS = new Set(["get_context"]);
 export const ALWAYS_LOADED: ReadonlySet<string> = new Set([
   "react",
   "ask_user",
+  "ask_choices",
   // The line before slow work (ADR 0207): in hand from the first round. The server also marks it `upFront`.
   "say_now",
+  "request_approval",
+  "remember",
+  "update_memory",
+  "forget",
+  "save_how_to",
   "search_context",
+  "load_skill",
+  "update_skill",
+  "read_wiki_page",
+  "search_wiki",
+  "ask_agent",
+  "tell_agent",
+  "follow_up",
+  "work_in_background",
+  "post_update",
+  "post_message",
+  "send_dm",
+  "show_block",
   "web_search",
   "web_fetch",
   "find_tools",
@@ -906,7 +924,12 @@ export async function handleMcpMessage(
           : {};
       // Claude Code's permission prompt: always an answer it understands (allow or deny JSON), never an error.
       if (name === PERMISSION_TOOL) {
-        const answer = await permissionPrompt(args, call, { ...(scope ? { scope } : {}), profile, ...context });
+        const answer = await permissionPrompt(args, call, { ...(scope ? { scope } : {}), profile, ...context }).catch(
+          (err): PermissionAnswer => ({
+            behavior: "deny",
+            message: `This command couldn't be checked (${String(err).slice(0, 200)}). Run it another way, or split it into simpler steps.`,
+          }),
+        );
         return { jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(answer) }] } };
       }
       const reply = await call(name, args);
@@ -1145,7 +1168,11 @@ export async function runMcpServer(options: {
       .then((res) => {
         if (res) write(res);
       })
-      .catch(() => undefined)
+      // A request left unanswered keeps Claude Code waiting on it for good, its turn quiet until the stall check.
+      .catch((err) => {
+        const id = (message as { id?: unknown } | null)?.id;
+        if (typeof id === "string" || typeof id === "number") write(rpcError(id, -32603, String(err).slice(0, 200)));
+      })
       .finally(() => inflight.delete(p));
     inflight.add(p);
   }

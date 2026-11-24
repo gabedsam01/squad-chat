@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import os from "node:os";
@@ -1005,6 +1005,9 @@ export interface OpencodeServersOptions {
   log?: (line: string) => void;
 }
 
+/** A rotated key in the same folder must not reuse the old process: a short one-way print, never the key. */
+export const keyPrint = (key?: string) => (key ? createHash("sha256").update(key).digest("hex").slice(0, 12) : null);
+
 const modelProvider = (model?: string) => (model?.includes("/") ? model.slice(0, model.indexOf("/")) : null);
 
 /** Long-lived `opencode acp` processes per `(agent, session, account, cwd)`, with `brain.warm` pre-spawning. */
@@ -1033,8 +1036,9 @@ export class OpencodeServers {
     return JSON.stringify({
       cwd: input.cwd,
       account: input.account?.home ?? null,
-      key: Boolean(input.account?.key),
+      key: keyPrint(input.account?.key),
       planProvider: input.account?.planKey?.provider ?? null,
+      planKey: keyPrint(input.account?.planKey?.key),
       provider: modelProvider(input.model),
       profile: input.profile ?? "work",
       freeTier: Boolean(input.freeTier && !input.account),
@@ -1669,6 +1673,12 @@ export class OpencodeServers {
     killTree(live.child, "SIGTERM");
     live.release?.();
     live.release = undefined;
+  }
+
+  /** System mode: a pooled process on an account its agent no longer thinks with closes (a busy one stays until it idles out). */
+  keepAccount(account: string | null, also: readonly string[] = []) {
+    const keep = new Set([...(account ? [account] : []), ...also]);
+    for (const l of [...this.live.values()]) if (!l.busy && l.account !== null && !keep.has(l.account)) this.drop(l);
   }
 
   close() {
