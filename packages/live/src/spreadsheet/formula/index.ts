@@ -41,20 +41,27 @@ export type CanonicalResult =
     }
   | { ok: false; error: FormulaProblem };
 
-const PARSED_MAX = 100_000;
+const PARSED_MAX = 20_000;
 const parsed = new Map<string, Ast | FormulaError>();
 
 /** A stored formula's tree, cached (trees are never changed in place); throws `FormulaError` for a malformed one. */
 export function parseStored(f: string): Ast {
   let hit = parsed.get(f);
-  if (hit === undefined) {
+  if (hit !== undefined) {
+    parsed.delete(f);
+    parsed.set(f, hit);
+  } else {
     try {
       hit = parseCanonical(f);
     } catch (e) {
       if (!(e instanceof FormulaError)) throw e;
       hit = e;
     }
-    if (parsed.size >= PARSED_MAX) parsed.clear();
+    while (parsed.size >= PARSED_MAX) {
+      const oldest = parsed.keys().next().value;
+      if (oldest === undefined) break;
+      parsed.delete(oldest);
+    }
     parsed.set(f, hit);
   }
   if (hit instanceof FormulaError) throw hit;

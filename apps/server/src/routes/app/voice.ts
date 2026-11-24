@@ -17,7 +17,7 @@ import {
 import { createRoute, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { rangedResponse } from "../../http/byte-range";
+import { rangedResponse, rangedStreamResponse } from "../../http/byte-range";
 import { apiError, errorResponse } from "../../http/errors";
 import { type AppDeps, body, createAppRouter, errors, json, OrgParams, requireSession, security } from "./context";
 
@@ -34,12 +34,27 @@ const ClipParams = OrgParams.extend({ clipId: z.uuid() });
 // The count is the engine's to refuse (`message.too_many_attachments`), as for a typed message.
 const AttachmentIds = z.array(z.uuid());
 
-function audioResponse(c: Context, audio: Uint8Array, contentType: string) {
-  return rangedResponse(audio, c.req.header("range"), {
-    "content-type": contentType,
+function audioResponse(
+  c: Context,
+  audio:
+    | { body: Uint8Array; contentType: string }
+    | {
+        stream: {
+          size: number;
+          read: (range?: { start: number; end: number }) => Promise<Blob | ReadableStream<Uint8Array> | null>;
+        };
+        contentType: string;
+      },
+) {
+  const headers = {
+    "content-type": audio.contentType,
     "cache-control": "private, max-age=300",
     "x-content-type-options": "nosniff",
-  });
+  };
+  if ("stream" in audio) {
+    return rangedStreamResponse(audio.stream.size, audio.stream.read, c.req.header("range"), headers);
+  }
+  return rangedResponse(audio.body, c.req.header("range"), headers);
 }
 
 /**
@@ -211,7 +226,7 @@ export function voiceRoutes(deps: AppDeps) {
       const audio = await voiceClipAudio(voice(), c.get("user").id, orgId, clipId);
       if ("expired" in audio) return apiError(c, 410, "voice.expired", "This recording is no longer kept");
       if ("url" in audio) return c.redirect(audio.url, 302);
-      return audioResponse(c, audio.body, audio.contentType);
+      return audioResponse(c, audio);
     },
   );
 

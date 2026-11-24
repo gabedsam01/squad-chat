@@ -135,7 +135,13 @@ export function createS3BlobStore(
   async function send(
     method: "GET" | "PUT" | "DELETE" | "HEAD",
     key: string,
-    init: { query?: Record<string, string>; body?: Uint8Array; contentType?: string; timeoutMs?: number } = {},
+    init: {
+      query?: Record<string, string>;
+      body?: Uint8Array;
+      contentType?: string;
+      headers?: Record<string, string>;
+      timeoutMs?: number;
+    } = {},
   ): Promise<Response> {
     const { origin, host, path } = locate(settings, key);
     const query = init.query ?? {};
@@ -147,6 +153,11 @@ export function createS3BlobStore(
       "x-amz-date": amzDate,
       ...(init.contentType ? { "content-type": init.contentType } : {}),
     };
+    if (init.headers) {
+      for (const [k, v] of Object.entries(init.headers)) {
+        headers[k.toLowerCase()] = v;
+      }
+    }
     const names = Object.keys(headers).sort();
     const canonicalHeaders = names.map((n) => `${n}:${String(headers[n]).trim()}\n`).join("");
     const signedHeaders = names.join(";");
@@ -174,8 +185,11 @@ export function createS3BlobStore(
 
   const fail = async (res: Response) => s3Error(res.status, await res.text().catch(() => ""));
 
-  async function object(key: string, timeoutMs?: number) {
-    const res = await send("GET", key, { ...(timeoutMs ? { timeoutMs } : {}) });
+  async function object(key: string, timeoutMs?: number, headers?: Record<string, string>) {
+    const res = await send("GET", key, {
+      ...(timeoutMs ? { timeoutMs } : {}),
+      ...(headers ? { headers } : {}),
+    });
     if (res.status === 404) {
       const err = await fail(res);
       if (err.code === "not_found") return null;
@@ -201,6 +215,32 @@ export function createS3BlobStore(
     },
     async stream(key) {
       return (await object(key, STREAM_TIMEOUT_MS))?.body ?? null;
+    },
+    async stat(key) {
+      const res = await send("HEAD", key);
+      if (res.status === 404) return null;
+      if (!res.ok) throw await fail(res);
+      const len = Number(res.headers.get("content-length") ?? 0);
+      return {
+        size: Number.isFinite(len) && len >= 0 ? len : 0,
+        contentType: res.headers.get("content-type") ?? "application/octet-stream",
+      };
+    },
+    async readRange(key, range) {
+      const res = await object(
+        key,
+        STREAM_TIMEOUT_MS,
+        range ? { range: `bytes=${range.start}-${range.end}` } : undefined,
+      );
+      if (!res) return null;
+      const contentRange = res.headers.get("content-range");
+      const totalMatch = contentRange ? /\/(\d+)$/.exec(contentRange) : null;
+      const rawSize = totalMatch ? Number(totalMatch[1]) : Number(res.headers.get("content-length") ?? 0);
+      return {
+        body: res.body ?? new Blob([]),
+        size: Number.isFinite(rawSize) && rawSize >= 0 ? rawSize : 0,
+        contentType: res.headers.get("content-type") ?? "application/octet-stream",
+      };
     },
     async delete(key) {
       const res = await send("DELETE", key);

@@ -382,16 +382,17 @@ export async function exportLive(
 ): Promise<{ body: Uint8Array; contentType: string; filename: string }> {
   const access = await requireLiveFile(deps, actor, orgId, fileId);
   const a = access.artifact;
+  if (deps.live) {
+    const made = await deps.live.readWith(orgId, fileId, (doc) => writeLiveExport(deps, a, access.kind, doc, format));
+    return { body: made.body, contentType: made.contentType, filename: exportName(a.title, made.ext) };
+  }
+  const head = await loadHeadDoc(deps.db, orgId, fileId);
   let doc: Y.Doc;
-  if (deps.live) doc = (await deps.live.read(orgId, fileId)).doc;
+  if (head) doc = head.doc;
   else {
-    const head = await loadHeadDoc(deps.db, orgId, fileId);
-    if (head) doc = head.doc;
-    else {
-      // No live document (never one made here): its latest version.
-      doc = new Y.Doc();
-      Y.applyUpdate(doc, await liveSnapshotOf(deps, orgId, fileId, a.currentVersion));
-    }
+    // No live document (never one made here): its latest version.
+    doc = new Y.Doc();
+    Y.applyUpdate(doc, await liveSnapshotOf(deps, orgId, fileId, a.currentVersion));
   }
   try {
     const made = await writeLiveExport(deps, a, access.kind, doc, format);

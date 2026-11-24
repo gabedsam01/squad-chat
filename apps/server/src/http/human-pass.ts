@@ -30,6 +30,9 @@ export interface HumanPasses {
  * `secret`: a key of its own (`deriveSecret(AGENTES_SECRET, "human-pass")`). The calls a pass spent are counted in
  * memory, like the server's other counts per IP: a restart gives a pass its calls back, never more time.
  */
+const MAX_USED = 50_000;
+const CLEANUP_BUDGET = 64;
+
 export function createHumanPasses(secret: string, now: () => number = Date.now): HumanPasses {
   const used = new Map<string, { count: number; until: number }>();
   const sign = (until: number, email: string, network: string) =>
@@ -40,17 +43,26 @@ export function createHumanPasses(secret: string, now: () => number = Date.now):
       return `${HUMAN_PASS_PREFIX}${until}.${sign(until, email, network)}`;
     },
     accepts(pass, { action, email, network }) {
+      const nowMs = now();
       if (!PASS_ACTIONS.has(action) || !pass.startsWith(HUMAN_PASS_PREFIX)) return false;
       const [expiry, signature, ...rest] = pass.slice(HUMAN_PASS_PREFIX.length).split(".");
       const until = Number(expiry);
-      if (!signature || rest.length > 0 || !Number.isSafeInteger(until) || until <= now()) return false;
+      if (!signature || rest.length > 0 || !Number.isSafeInteger(until) || until <= nowMs) return false;
       const given = Buffer.from(signature);
       const made = Buffer.from(sign(until, email, network));
       if (given.length !== made.length || !timingSafeEqual(given, made)) return false;
-      for (const [key, entry] of used) if (entry.until <= now()) used.delete(key);
-      const entry = used.get(signature) ?? { count: 0, until };
-      if (entry.count >= PASS_USES) return false;
-      used.set(signature, { count: entry.count + 1, until });
+      let checked = 0;
+      for (const [key, entry] of used) {
+        if (entry.until <= nowMs) used.delete(key);
+        if (++checked >= CLEANUP_BUDGET) break;
+      }
+      const existing = used.get(signature);
+      if (existing && existing.count >= PASS_USES) return false;
+      if (!existing && used.size >= MAX_USED) {
+        const oldest = used.keys().next().value;
+        if (oldest !== undefined) used.delete(oldest);
+      }
+      used.set(signature, { count: (existing?.count ?? 0) + 1, until });
       return true;
     },
   };

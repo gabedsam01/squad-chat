@@ -8,8 +8,6 @@
 @layer base;
 @import "@fontsource-variable/source-sans-3/index.css";
 @import "@fontsource-variable/jetbrains-mono/index.css";
-/* Onest: the design system's own default face (`--font-sans` in its tokens). */
-@import "@fontsource-variable/onest/index.css";
 @import "./fonts.css";
 @import "@agenteschat/ui/styles.css" layer(base);
 @import "./layout.css" layer(base);

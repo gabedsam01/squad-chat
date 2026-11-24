@@ -287,7 +287,13 @@ export function RequestCard({
     if (!el) return;
     const height = el.offsetHeight;
     if (!ended) {
-      if (height) waitingHeights.set(id, height);
+      if (height) {
+        waitingHeights.set(id, height);
+        for (const old of waitingHeights.keys()) {
+          if (waitingHeights.size <= 200) break;
+          waitingHeights.delete(old);
+        }
+      }
       return;
     }
     const from = waitingHeights.get(id);

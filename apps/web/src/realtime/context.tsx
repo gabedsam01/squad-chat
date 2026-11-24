@@ -85,6 +85,7 @@ import {
   type SocketFactory,
   type StreamsState,
   seedReceipt,
+  seedReceipts,
   staleProvisional,
   startThreadCache,
   type TypingKind,
@@ -107,7 +108,17 @@ import { playSound, soundForEvent } from "@agenteschat/client/lib/sounds";
 import { playAgentReaction } from "@agenteschat/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
 import { checkAppVersion } from "@/lib/app-version";
@@ -184,6 +195,32 @@ function dropMemoryCards(
   return kept.length === list.length ? memory : { ...memory, [channelId]: kept };
 }
 
+const MAX_LIVE_ENTRIES = 1000;
+
+const LIVE_SLICE = {
+  streams: 1 << 0,
+  receipts: 1 << 1,
+  typing: 1 << 2,
+  memory: 1 << 3,
+  questions: 1 << 4,
+  secrets: 1 << 5,
+  notices: 1 << 6,
+  continued: 1 << 7,
+  consults: 1 << 8,
+} as const;
+const LIVE_SLICE_ALL = (1 << 9) - 1;
+
+function capRecord<T>(rec: Record<string, T>, max = MAX_LIVE_ENTRIES): Record<string, T> {
+  const recKeys = Object.keys(rec);
+  if (recKeys.length <= max) return rec;
+  const next: Record<string, T> = {};
+  for (let i = recKeys.length - max; i < recKeys.length; i++) {
+    const k = recKeys[i];
+    if (k !== undefined) next[k] = rec[k] as T;
+  }
+  return next;
+}
+
 export function createStreamsStore(
   initial: StreamsState = emptyStreams,
   now: () => number = () => Date.now(),
@@ -200,9 +237,15 @@ export function createStreamsStore(
     continued: {},
     consults: {},
   };
-  const listeners = new Set<() => void>();
+  const listeners = new Set<{ fn: () => void; mask: () => number }>();
+  let pendingMask = 0;
   const notify = () => {
-    for (const l of listeners) l();
+    const mask = pendingMask;
+    pendingMask = 0;
+    if (mask === 0) return;
+    for (const l of listeners) {
+      if ((l.mask() & mask) !== 0) l.fn();
+    }
   };
   // Streaming deltas arrive many times a frame: their notifications wait for the next frame (one render
   // per frame, `get()` is always current). Anything else notifies at once, with whatever was waiting.
@@ -213,19 +256,31 @@ export function createStreamsStore(
     notify();
   };
   const set = (next: LiveState, batched = false) => {
-    if (
-      next.streams === state.streams &&
-      next.receipts === state.receipts &&
-      next.typing === state.typing &&
-      next.memory === state.memory &&
-      next.questions === state.questions &&
-      next.secrets === state.secrets &&
-      next.notices === state.notices &&
-      next.continued === state.continued &&
-      next.consults === state.consults
-    )
-      return;
-    state = next;
+    let changed = 0;
+    if (next.streams !== state.streams) changed |= LIVE_SLICE.streams;
+    if (next.receipts !== state.receipts) changed |= LIVE_SLICE.receipts;
+    if (next.typing !== state.typing) changed |= LIVE_SLICE.typing;
+    if (next.memory !== state.memory) changed |= LIVE_SLICE.memory;
+    if (next.questions !== state.questions) changed |= LIVE_SLICE.questions;
+    if (next.secrets !== state.secrets) changed |= LIVE_SLICE.secrets;
+    if (next.notices !== state.notices) changed |= LIVE_SLICE.notices;
+    if (next.continued !== state.continued) changed |= LIVE_SLICE.continued;
+    if (next.consults !== state.consults) changed |= LIVE_SLICE.consults;
+    if (changed === 0) return;
+    const receipts = changed & LIVE_SLICE.receipts ? capRecord(next.receipts) : next.receipts;
+    const questions = changed & LIVE_SLICE.questions ? capRecord(next.questions) : next.questions;
+    const secrets = changed & LIVE_SLICE.secrets ? capRecord(next.secrets) : next.secrets;
+    const notices = changed & LIVE_SLICE.notices ? capRecord(next.notices) : next.notices;
+    const continued = changed & LIVE_SLICE.continued ? capRecord(next.continued) : next.continued;
+    state =
+      receipts === next.receipts &&
+      questions === next.questions &&
+      secrets === next.secrets &&
+      notices === next.notices &&
+      continued === next.continued
+        ? next
+        : { ...next, receipts, questions, secrets, notices, continued };
+    pendingMask |= changed;
     if (batched && batchFrames()) {
       frame ??= requestAnimationFrame(() => {
         frame = null;
@@ -309,10 +364,9 @@ export function createStreamsStore(
      * read as it is.
      */
     seed: (messages: Message[], before?: ReceiptsState) => {
-      let receipts = state.receipts;
+      const receipts = seedReceipts(state.receipts, messages, before);
       let memory = state.memory;
       for (const m of messages) {
-        receipts = seedReceipt(receipts, m, before !== undefined && receipts[m.id] === before[m.id]);
         memory = dropMemoryCards(memory, m.channelId, m);
       }
       set({ ...state, receipts, memory });
@@ -390,9 +444,17 @@ export function createStreamsStore(
     /** "Atualizar" found the run still active. */
     touch: (runId: string) => set({ ...state, streams: touchRun(state.streams, runId, now()) }),
     subscribe: (listener: () => void) => {
-      listeners.add(listener);
+      const entry = { fn: listener, mask: () => LIVE_SLICE_ALL };
+      listeners.add(entry);
       return () => {
-        listeners.delete(listener);
+        listeners.delete(entry);
+      };
+    },
+    subscribeSlices: (listener: () => void, mask: () => number) => {
+      const entry = { fn: listener, mask };
+      listeners.add(entry);
+      return () => {
+        listeners.delete(entry);
       };
     },
   };
@@ -599,12 +661,31 @@ export function RealtimeProvider({
 
   // Resync what the server never confirmed instead of spinning forever.
   useEffect(() => {
-    const timer = setInterval(() => {
-      for (const channelId of streams.sweep()) {
-        void qc.invalidateQueries({ queryKey: ["org", orgId, "channel", channelId] });
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const hasProvisional = () => Object.values(streams.get().streams.runs).some((r) => r.provisional);
+    const sync = () => {
+      if (hasProvisional()) {
+        if (timer !== null) return;
+        timer = setInterval(() => {
+          for (const channelId of streams.sweep()) {
+            void qc.invalidateQueries({ queryKey: ["org", orgId, "channel", channelId] });
+          }
+          if (!hasProvisional() && timer !== null) {
+            clearInterval(timer);
+            timer = null;
+          }
+        }, 5000);
+      } else if (timer !== null) {
+        clearInterval(timer);
+        timer = null;
       }
-    }, 5000);
-    return () => clearInterval(timer);
+    };
+    sync();
+    const off = streams.subscribeSlices(sync, () => LIVE_SLICE.streams);
+    return () => {
+      off();
+      if (timer !== null) clearInterval(timer);
+    };
   }, [streams, qc, orgId]);
 
   // What I sent while the connection was down (or the server restarting) goes out once it's back, whatever page
@@ -971,31 +1052,69 @@ export function useLive<T>(select: (state: LiveState) => T, isEqual: (a: T, b: T
   const store = useContext(RealtimeContext)?.streams ?? quietStore();
   const selectRef = useRef(select);
   selectRef.current = select;
-  const [value, setValue] = useState(() => select(store.get()));
-  const valueRef = useRef(value);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the selector and isEqual are read through refs
-  useEffect(() => {
-    const check = () => {
-      const next = selectRef.current(store.get());
-      if (!isEqual(valueRef.current, next)) {
-        valueRef.current = next;
-        setValue(() => next);
-      }
+  const isEqualRef = useRef(isEqual);
+  isEqualRef.current = isEqual;
+  const hasValueRef = useRef(false);
+  const valueRef = useRef<T>(undefined as T);
+  const maskRef = useRef(LIVE_SLICE_ALL);
+
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => store.subscribeSlices(onStoreChange, () => maskRef.current),
+    [store],
+  );
+
+  const getSnapshot = useCallback(() => {
+    const raw = store.get();
+    let mask = 0;
+    const tracked: LiveState = {
+      get streams() {
+        mask |= LIVE_SLICE.streams;
+        return raw.streams;
+      },
+      get receipts() {
+        mask |= LIVE_SLICE.receipts;
+        return raw.receipts;
+      },
+      get typing() {
+        mask |= LIVE_SLICE.typing;
+        return raw.typing;
+      },
+      get memory() {
+        mask |= LIVE_SLICE.memory;
+        return raw.memory;
+      },
+      get questions() {
+        mask |= LIVE_SLICE.questions;
+        return raw.questions;
+      },
+      get secrets() {
+        mask |= LIVE_SLICE.secrets;
+        return raw.secrets;
+      },
+      get notices() {
+        mask |= LIVE_SLICE.notices;
+        return raw.notices;
+      },
+      get continued() {
+        mask |= LIVE_SLICE.continued;
+        return raw.continued;
+      },
+      get consults() {
+        mask |= LIVE_SLICE.consults;
+        return raw.consults;
+      },
     };
-    check();
-    return store.subscribe(check);
-  }, [store]);
-  // The selector may read the component's own state (which runs a channel shows): a render checks again.
-  // A selector that builds a new list or object each call (`runsInChannel`) would set it on every render
-  // and never stop: one with the same items counts as unchanged here.
-  useEffect(() => {
-    const next = selectRef.current(store.get());
-    if (!isEqual(valueRef.current, next) && !shallowEqual(valueRef.current, next)) {
-      valueRef.current = next;
-      setValue(() => next);
+    const next = selectRef.current(tracked);
+    maskRef.current = mask;
+    if (hasValueRef.current && (isEqualRef.current(valueRef.current, next) || shallowEqual(valueRef.current, next))) {
+      return valueRef.current;
     }
-  });
-  return value;
+    hasValueRef.current = true;
+    valueRef.current = next;
+    return next;
+  }, [store]);
+
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }
 
 export function useStreams<T>(select: (state: StreamsState) => T, isEqual?: (a: T, b: T) => boolean): T {

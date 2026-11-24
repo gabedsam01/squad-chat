@@ -81,6 +81,10 @@ export function ChartBlock({
     const key = JSON.stringify([spec.type, spec.title, spec.labels, spec.series, spec.value]);
     const seen = drawn.has(key);
     drawn.add(key);
+    for (const old of drawn) {
+      if (drawn.size <= 100) break;
+      drawn.delete(old);
+    }
     return seen;
   });
   const [open, setOpen] = useState(false);

@@ -5,7 +5,7 @@
  */
 import { execFile } from "node:child_process";
 import { existsSync, readFileSync, statfsSync } from "node:fs";
-import { statfs } from "node:fs/promises";
+import { readFile, statfs } from "node:fs/promises";
 import os from "node:os";
 import { dirname, resolve } from "node:path";
 import { promisify } from "node:util";
@@ -92,7 +92,7 @@ async function memoryInUse(): Promise<number> {
   const total = os.totalmem();
   let available: number | null = null;
   try {
-    if (process.platform === "linux") available = memAvailable(readFileSync("/proc/meminfo", "utf8"));
+    if (process.platform === "linux") available = memAvailable(await readFile("/proc/meminfo", "utf8"));
     else if (process.platform === "darwin") {
       available = vmStatAvailable((await execFileAsync("vm_stat", { encoding: "utf8", timeout: 5000 })).stdout);
     }

@@ -41,12 +41,17 @@ type Kept = { height?: number; open?: boolean; sent?: { text: string; at: string
  * What stays when a frame goes away (scrolled out, opened big). Its state is everyone's and lives on the server
  * (`useSharedBlock`); this is only how tall it was, whether it was shown whole and what this person sent from it.
  */
+const MAX_KEPT = 100;
 const kept = new Map<string, Kept>();
 const keptOf = (key: string): Kept => {
   const found = kept.get(key);
   if (found) return found;
   const fresh: Kept = {};
   kept.set(key, fresh);
+  for (const old of kept.keys()) {
+    if (kept.size <= MAX_KEPT) break;
+    kept.delete(old);
+  }
   return fresh;
 };
 

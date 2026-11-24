@@ -20,6 +20,9 @@ export interface RateLimiter {
 /** Seconds until a rate limit's window opens again, at least 1. */
 export const retryInSeconds = (resetAt: Date) => Math.max(1, Math.ceil((resetAt.getTime() - Date.now()) / 1000));
 
+const MAX_WINDOWS = 50_000;
+const EVICT_SCAN = 64;
+
 export function createMemoryRateLimiter(now: () => number = Date.now): RateLimiter {
   const windows = new Map<string, { count: number; resetAt: number }>();
   return {
@@ -27,12 +30,22 @@ export function createMemoryRateLimiter(now: () => number = Date.now): RateLimit
       const t = now();
       let w = windows.get(key);
       if (!w || w.resetAt <= t) {
+        if (w) windows.delete(key);
         w = { count: 0, resetAt: t + rule.windowMs };
         windows.set(key, w);
       }
       w.count++;
-      if (windows.size > 50_000) {
-        for (const [k, v] of windows) if (v.resetAt <= t) windows.delete(k);
+      if (windows.size > MAX_WINDOWS) {
+        let scanned = 0;
+        for (const [k, v] of windows) {
+          if (v.resetAt <= t) windows.delete(k);
+          if (++scanned >= EVICT_SCAN) break;
+        }
+        while (windows.size > MAX_WINDOWS) {
+          const oldest = windows.keys().next().value;
+          if (oldest === undefined) break;
+          windows.delete(oldest);
+        }
       }
       return {
         allowed: w.count <= rule.limit,

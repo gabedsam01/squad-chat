@@ -208,7 +208,9 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("online", () => void checkAppVersion());
 document.addEventListener("copy", copyPillAddresses);
-setInterval(() => void checkAppVersion(), VERSION_CHECK_MS);
+setInterval(() => {
+  if (!document.hidden) void checkAppVersion();
+}, VERSION_CHECK_MS);
 
 // Back from a provider's sign-in that didn't connect (a connector, the GitHub App, a mailbox): why, once.
 showReturnNotices(i18n.t, toasts.show);

@@ -6,7 +6,7 @@ import { MutationCache, QueryCache } from "@tanstack/react-query";
 /** How long a read counts as fresh: shown again within it, a page asks the server nothing. */
 export const STALE_MS = 30_000;
 /** How long a page's data stays in memory once nothing shows it. */
-export const KEEP_MS = 30 * 60_000;
+export const KEEP_MS = 5 * 60_000;
 
 /**
  * Queries show their errors inline; a

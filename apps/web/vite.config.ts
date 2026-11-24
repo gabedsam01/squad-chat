@@ -5,6 +5,10 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { preloadLocale } from "./vite-locale-preload";
 
+/** Non-critical route and editor chunks skipped from index.html `<link rel="modulepreload">` on cold boot. */
+const SKIP_HTML_PRELOAD =
+  /(?:^|\/)(?:org\._orgId\.|(?:Agora|AgentPage|SettingsPage|LegalPage|AuthPage|AuthLayout|DeleteAccount|LiveFilePage|Canvas|DocumentEditor|Slides|Spreadsheet|WorkbookView|DeckView|Standing|login|signup|terms|termos|privacy|privacidade|reset-password|invite\._token|desktop\.(?:connector|handover|sign-in|signed-in)|autorizar|conectando|conectar|download|email-undo|arrival|owner|refer|onboarding)-)/;
+
 // In development the web app runs on Vite (port 5173) and proxies /api,
 // including the WebSocket at /api/ws, to the server (port 3000). In
 // production the server serves the built files itself (WEB_DIR), so one
@@ -28,6 +32,10 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    modulePreload: {
+      resolveDependencies: (_filename, deps, { hostType }) =>
+        hostType === "html" ? deps.filter((dep) => !SKIP_HTML_PRELOAD.test(dep)) : deps,
+    },
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),

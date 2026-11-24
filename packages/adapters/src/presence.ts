@@ -21,9 +21,13 @@ export function createMemoryPresence(): Presence {
       conns.add(connectionId);
     },
     async disconnect(orgId, userId, connectionId) {
-      const conns = orgs.get(orgId)?.get(userId);
+      const users = orgs.get(orgId);
+      const conns = users?.get(userId);
       conns?.delete(connectionId);
-      if (conns?.size === 0) orgs.get(orgId)?.delete(userId);
+      if (conns?.size === 0) {
+        users?.delete(userId);
+        if (users?.size === 0) orgs.delete(orgId);
+      }
     },
     async online(orgId) {
       return [...(orgs.get(orgId)?.keys() ?? [])].sort();

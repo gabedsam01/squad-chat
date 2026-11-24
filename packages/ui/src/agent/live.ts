@@ -100,18 +100,21 @@ export function agentReactionOf(key: string | undefined): { kind: AgentReaction;
 export function playAgentReaction(key: string, kind: AgentReaction) {
   reactions.set(key, { kind, t0: clock() });
   const redraw = () => {
-    for (const a of agents) if (a.look().reactionKey === key) drawLive(a, clock() / 1000);
+    for (const a of visibleAgents) if (a.look().reactionKey === key) drawLive(a, clock() / 1000);
   };
   redraw();
   if (reduced()) {
     for (const ms of [600, 700, (REACTION_SECONDS + 0.05) * 1000]) setTimeout(redraw, ms);
-  } else if (!raf && agents.size && typeof requestAnimationFrame === "function") raf = requestAnimationFrame(tick);
+  } else wakeLoop();
 }
 
 const agents = new Set<LiveAgent>();
 const byBox = new Map<HTMLElement, LiveAgent>();
 const visible = new WeakSet<HTMLElement>();
+const visibleAgents = new Set<LiveAgent>();
 let raf = 0;
+let restTimer: ReturnType<typeof setTimeout> | 0 = 0;
+let ticking = false;
 let last = 0;
 let lastRest = 0;
 let gaze: { x: number; y: number } | null = null;
@@ -121,9 +124,10 @@ const isNoopDomObserver = () =>
   "happyDOM" in window &&
   typeof IntersectionObserver === "function" &&
   IntersectionObserver === (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
-/** Frame gaps (ms): an agent at work, and one at rest. */
+/** Frame gaps (ms): an agent at work, one at rest, and sparse polling when all visible agents are idle. */
 const ACTIVE_MS = 40;
 const REST_MS = 80;
+const REST_POLL_MS = 500;
 
 // Read every frame for every avatar: kept here instead of asking the page (a layout read, a media query).
 const sizes = new WeakMap<HTMLElement, number>();
@@ -135,8 +139,8 @@ const reduced = () => {
     motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
     // Motion allowed again: the loop starts moving.
     motionQuery?.addEventListener?.("change", () => {
-      if (!motionQuery?.matches && !raf && agents.size && typeof requestAnimationFrame === "function")
-        raf = requestAnimationFrame(tick);
+      if (motionQuery?.matches) stopLoop();
+      else wakeLoop();
     });
   }
   return motionQuery?.matches === true;
@@ -159,6 +163,7 @@ export function getGaze() {
 /** Where avatars inside `[data-gaze]` look (client coordinates), or null to let them wander. */
 export function setGaze(point: { x: number; y: number } | null) {
   gaze = point;
+  if (point) wakeLoop();
 }
 
 /** In the app expressions are rare (one every ~18 s per agent); thinking speeds the head up. */
@@ -213,6 +218,7 @@ export function drawLive(agent: LiveAgent, t: number) {
   const dpr = Math.min(2, typeof devicePixelRatio === "number" ? devicePixelRatio : 1);
   if (agent.look().framed) {
     drawFramed(agent, ctx, size, dpr, t);
+    if (visibleAgents.has(agent) && busy(agent)) wakeLoop();
     return;
   }
   const R = ACCESSORY_REACH;
@@ -234,6 +240,7 @@ export function drawLive(agent: LiveAgent, t: number) {
     cells: size <= 28 ? 8 : 16,
     after: decorate(agent, t),
   });
+  if (visibleAgents.has(agent) && busy(agent)) wakeLoop();
 }
 
 /** The pose for this frame, with a playing reaction's face and hop (a fraction of the body). */
@@ -298,26 +305,36 @@ function redrawAll() {
   darkCache = new WeakMap();
   if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
   const t = clock() / 1000;
-  for (const a of agents) if (visible.has(a.box)) drawLive(a, t);
+  for (const a of visibleAgents) drawLive(a, t);
+  wakeLoop();
 }
 
 let themeWatch: MutationObserver | null = null;
+let themeQueued = false;
 let visibilityWatch = false;
 function watchVisibility() {
   if (visibilityWatch || typeof document === "undefined") return;
   visibilityWatch = true;
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    const t = clock() / 1000;
-    for (const a of agents) if (visible.has(a.box)) drawLive(a, t);
-    if (!raf && agents.size && !reduced() && typeof requestAnimationFrame === "function") {
-      raf = requestAnimationFrame(tick);
+    if (document.visibilityState !== "visible") {
+      stopLoop();
+      return;
     }
+    const t = clock() / 1000;
+    for (const a of visibleAgents) drawLive(a, t);
+    wakeLoop();
   });
 }
 function watchTheme() {
   if (themeWatch || typeof MutationObserver === "undefined" || typeof document === "undefined") return;
-  themeWatch = new MutationObserver(redrawAll);
+  themeWatch = new MutationObserver(() => {
+    if (themeQueued) return;
+    themeQueued = true;
+    queueMicrotask(() => {
+      themeQueued = false;
+      redrawAll();
+    });
+  });
   // Subtree: a page can theme its own part (the landing's `data-theme`).
   themeWatch.observe(document.documentElement, { attributes: true, subtree: true, attributeFilter: PAINT_ATTRS });
 }
@@ -330,24 +347,72 @@ const busy = (a: LiveAgent) => {
   return Boolean(gaze && a.box.closest("[data-gaze]"));
 };
 
+function stopLoop() {
+  if (raf && typeof cancelAnimationFrame === "function") cancelAnimationFrame(raf);
+  raf = 0;
+  if (restTimer) {
+    clearTimeout(restTimer);
+    restTimer = 0;
+  }
+}
+
+function wakeLoop() {
+  if (ticking || !agents.size || !visibleAgents.size || reduced()) return;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+  if (restTimer) {
+    clearTimeout(restTimer);
+    restTimer = 0;
+  }
+  if (!raf && typeof requestAnimationFrame === "function") raf = requestAnimationFrame(tick);
+}
+
+const scheduleTick = () => {
+  restTimer = 0;
+  if (!agents.size || !visibleAgents.size || reduced()) return;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+  if (!raf && typeof requestAnimationFrame === "function") raf = requestAnimationFrame(tick);
+};
+
 function tick(now: number) {
   raf = 0;
-  if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-  if (now - last >= ACTIVE_MS) {
-    last = now;
-    const rest = now - lastRest >= REST_MS;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    stopLoop();
+    return;
+  }
+  let anyBusy = false;
+  ticking = true;
+  try {
+    const shouldDraw = now - last >= ACTIVE_MS;
+    if (shouldDraw) last = now;
+    const rest = shouldDraw && now - lastRest >= REST_MS;
     if (rest) lastRest = now;
     const t = now / 1000;
     // A full-screen menu is open (MenuOverlay): the app behind is blurred, so its avatars hold still
     // (each frame there would blur the whole screen again); the ones in the menu keep moving.
     const covered = typeof document !== "undefined" && document.documentElement.dataset.menuOverlay !== undefined;
-    for (const a of agents) {
-      if (!visible.has(a.box) || !(rest || busy(a))) continue;
+    for (const a of visibleAgents) {
+      const isBusy = busy(a);
+      if (isBusy) anyBusy = true;
+      if (!shouldDraw || !(rest || isBusy)) continue;
       if (covered && !a.box.closest(".ac-mo")) continue;
       drawLive(a, t);
     }
+  } finally {
+    ticking = false;
   }
-  if (agents.size && !reduced()) raf = requestAnimationFrame(tick);
+  if (!agents.size || !visibleAgents.size || reduced()) {
+    stopLoop();
+    return;
+  }
+  if (anyBusy) {
+    if (restTimer) {
+      clearTimeout(restTimer);
+      restTimer = 0;
+    }
+    if (typeof requestAnimationFrame === "function") raf = requestAnimationFrame(tick);
+  } else if (!restTimer) {
+    restTimer = setTimeout(scheduleTick, REST_POLL_MS);
+  }
 }
 
 /** Starts drawing an agent; returns the cleanup. */
@@ -359,17 +424,30 @@ export function addLiveAgent(agent: LiveAgent): () => void {
   if (typeof IntersectionObserver === "function" && !isNoopDomObserver()) {
     observer ??= new IntersectionObserver((entries) => {
       const t = clock() / 1000;
+      let becameVisible = false;
       for (const e of entries) {
         const box = e.target as HTMLElement;
+        const hit = byBox.get(box);
         if (e.isIntersecting) {
           visible.add(box);
-          const hit = byBox.get(box);
-          if (hit && sizes.get(box)) drawLive(hit, t);
-        } else visible.delete(box);
+          if (hit) {
+            visibleAgents.add(hit);
+            becameVisible = true;
+            if (sizes.get(box)) drawLive(hit, t);
+          }
+        } else {
+          visible.delete(box);
+          if (hit) visibleAgents.delete(hit);
+        }
       }
+      if (!visibleAgents.size) stopLoop();
+      else if (becameVisible) wakeLoop();
     });
     observer.observe(agent.box);
-  } else visible.add(agent.box);
+  } else {
+    visible.add(agent.box);
+    visibleAgents.add(agent);
+  }
   if (typeof ResizeObserver === "function") {
     resizes ??= new ResizeObserver((entries) => {
       const t = clock() / 1000;
@@ -385,16 +463,15 @@ export function addLiveAgent(agent: LiveAgent): () => void {
     resizes.observe(agent.box);
   }
   drawLive(agent, typeof performance === "object" ? performance.now() / 1000 : 0);
-  const pageHidden = typeof document !== "undefined" && document.visibilityState === "hidden";
-  if (!pageHidden && !raf && !reduced() && typeof requestAnimationFrame === "function") {
-    raf = requestAnimationFrame(tick);
-  }
+  if (visibleAgents.has(agent)) wakeLoop();
   return () => {
     agents.delete(agent);
+    visibleAgents.delete(agent);
     if (byBox.get(agent.box) === agent) byBox.delete(agent.box);
     observer?.unobserve(agent.box);
     resizes?.unobserve(agent.box);
     sizes.delete(agent.box);
     visible.delete(agent.box);
+    if (!agents.size || !visibleAgents.size) stopLoop();
   };
 }

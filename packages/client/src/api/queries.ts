@@ -5534,7 +5534,7 @@ export const useArtifactBlob = (orgId: string, id: string, version: number, enab
     queryFn: ({ signal }) => api.artifacts.fileBlob(orgId, id, version, { signal }),
     enabled,
     staleTime: Number.POSITIVE_INFINITY,
-    gcTime: 10 * 60_000,
+    gcTime: 2 * 60_000,
     retry: false,
     meta: { quiet: true, immutable: true },
   });

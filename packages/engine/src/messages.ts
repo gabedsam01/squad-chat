@@ -7,6 +7,7 @@ import {
   type Executor,
   eq,
   gt,
+  gte,
   inArray,
   isNull,
   lt,
@@ -1985,6 +1986,13 @@ export async function listMessages(
 async function withReplies(db: Database, orgId: string, roots: MessageView[]): Promise<MessageView[]> {
   const ids = roots.map((r) => r.id);
   if (ids.length === 0) return roots;
+  let minMs = Number.POSITIVE_INFINITY;
+  for (const r of roots) {
+    const t = Date.parse(r.createdAt);
+    if (Number.isFinite(t) && t < minMs) minMs = t;
+  }
+  const minCreatedAt = Number.isFinite(minMs) ? new Date(minMs) : undefined;
+  const minCreatedAtFilter = minCreatedAt ? gte(messages.createdAt, minCreatedAt) : undefined;
   const counts = await db
     .select({
       threadId: messages.threadId,
@@ -1996,6 +2004,7 @@ async function withReplies(db: Database, orgId: string, roots: MessageView[]): P
       and(
         eq(messages.orgId, orgId),
         inArray(messages.threadId, ids),
+        minCreatedAtFilter,
         isNull(messages.deletedAt),
         // An agent's sticker or GIF after its own reply (ADR 0091) is part of that reply: not one more.
         sql`${messages.meta}->>'mediaAfter' is null`,
@@ -2010,6 +2019,7 @@ async function withReplies(db: Database, orgId: string, roots: MessageView[]): P
       and(
         eq(messages.orgId, orgId),
         inArray(messages.threadId, ids),
+        minCreatedAtFilter,
         isNull(messages.deletedAt),
         sql`not ${quietNoticeSql(sql`${messages.meta}`)}`,
       ),

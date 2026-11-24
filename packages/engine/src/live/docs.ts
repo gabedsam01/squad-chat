@@ -138,6 +138,8 @@ export const LIVE_TIMING: LiveTiming = {
 
 /** A stored change goes inline in its event while the event's JSON stays under this (NOTIFY takes under 7900). */
 export const INLINE_BYTES = 6000;
+/** Maximum idle lingering documents held in memory before oldest idle entries are evicted. */
+const MAX_LINGERING_DOCS = 64;
 
 export interface LiveDeps extends ArtifactDeps {
   pubsub: PubSub;
@@ -207,6 +209,8 @@ export interface LiveDocs {
   ): Promise<{ result: T; seq: number }>;
   /** A fresh copy at the head (agents' reads, exports, previews): the caller's to destroy. */
   read(orgId: string, fileId: string): Promise<{ doc: Y.Doc; seq: number }>;
+  /** Scoped read against the hosted document at its head without cloning `Y.Doc`. */
+  readWith<T>(orgId: string, fileId: string, fn: (doc: Y.Doc, seq: number) => T | Promise<T>): Promise<T>;
   /** The head as one update (an app's first load over HTTP). */
   state(orgId: string, fileId: string): Promise<{ state: Uint8Array; seq: number }>;
   /** An agent's presence in a file (`null`: gone), from whatever process runs its tool. */
@@ -605,6 +609,24 @@ export function createLiveDocs(deps: LiveDeps): LiveDocs {
     }
   }
 
+  const busy = (h: Hosted) => h.dead || h.users > 0 || h.sessions.size > 0;
+  const isIdle = (h: Hosted | null): h is Hosted =>
+    !!h && !busy(h) && h.pending.length === 0 && h.inFlight === 0 && h.catching === null;
+
+  function evictLingering(limit: number, onlyLingering = false) {
+    let count = onlyLingering
+      ? [...entries.values()].filter((e) => isIdle(e.hosted) && e.hosted.linger !== null).length
+      : entries.size;
+    if (count <= limit) return;
+    for (const e of [...entries.values()]) {
+      if (count <= limit) break;
+      const h = e.hosted;
+      if (!isIdle(h) || (onlyLingering && h.linger === null)) continue;
+      count--;
+      void unload(h);
+    }
+  }
+
   async function acquire(orgId: string, fileId: string): Promise<Hosted> {
     for (;;) {
       let entry = entries.get(fileId);
@@ -614,6 +636,7 @@ export function createLiveDocs(deps: LiveDeps): LiveDocs {
           hosted: null,
         };
         entries.set(fileId, made);
+        evictLingering(MAX_LINGERING_DOCS);
         made.promise.then(
           (h) => {
             made.hosted = h;
@@ -642,16 +665,23 @@ export function createLiveDocs(deps: LiveDeps): LiveDocs {
     lingerOn(h);
   }
 
-  const busy = (h: Hosted) => h.dead || h.users > 0 || h.sessions.size > 0;
-
   function lingerOn(h: Hosted) {
     if (busy(h) || h.linger) return;
+    const existing = entries.get(h.fileId);
+    if (existing?.hosted === h) {
+      entries.delete(h.fileId);
+      entries.set(h.fileId, existing);
+    }
     h.linger = setTimeout(() => void unload(h), stopped ? 0 : timing.lingerMs);
     unref(h.linger);
+    evictLingering(MAX_LINGERING_DOCS, true);
   }
 
   async function unload(h: Hosted) {
-    h.linger = null;
+    if (h.linger) {
+      clearTimeout(h.linger);
+      h.linger = null;
+    }
     if (busy(h)) return;
     // What sockets that left sent and isn't stored yet goes first.
     if (h.pending.length > 0) await flushAll(h);
@@ -1451,6 +1481,17 @@ export function createLiveDocs(deps: LiveDeps): LiveDocs {
         const doc = new Y.Doc();
         Y.applyUpdate(doc, Y.encodeStateAsUpdate(h.doc));
         return { doc, seq: h.seq };
+      } finally {
+        release(h);
+      }
+    },
+
+    async readWith(orgId, fileId, fn) {
+      const h = await acquire(orgId, fileId);
+      try {
+        await catchUp(h);
+        alive(h);
+        return await fn(h.doc, h.seq);
       } finally {
         release(h);
       }

@@ -240,6 +240,7 @@ export function startWorkers(deps: WorkerDeps) {
   const { db, log } = deps;
   const workerId = deps.workerId ?? `${process.pid}-${crypto.randomUUID().slice(0, 8)}`;
   const timers: Timer[] = [];
+  const bootTimers: Timer[] = [];
   const ticks = new Map<string, () => Promise<void>>();
   let stopped = false;
 
@@ -268,7 +269,13 @@ export function startWorkers(deps: WorkerDeps) {
     };
     ticks.set(name, tick);
     timers.push(setInterval(tick, ms));
-    void tick();
+    if (ms >= 5_000) {
+      const bootTimer = setTimeout(() => void tick(), Math.floor(Math.random() * Math.min(5_000, ms / 4)));
+      bootTimer.unref?.();
+      bootTimers.push(bootTimer);
+    } else {
+      void tick();
+    }
   };
 
   // A pool, not batches: a slow job (a long agent run) doesn't hold back the ones claimed after it, and quick jobs
@@ -579,6 +586,7 @@ export function startWorkers(deps: WorkerDeps) {
       stopped = true;
       offWake();
       offCancel();
+      for (const timer of bootTimers) clearTimeout(timer);
       for (const timer of timers) clearInterval(timer);
     },
     /**

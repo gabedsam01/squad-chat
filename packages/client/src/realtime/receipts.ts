@@ -201,42 +201,37 @@ function setForRun(
   return next;
 }
 
-/**
- * Seeds a person's message: server receipts, else the agents it mentions (they will answer). Server receipts
- * replace a local guess, and a confirmed receipt when the read is `fresh`: nothing changed that receipt since the
- * read was asked for, so the read is the newest word on it.
- */
-export function seedReceipt(state: ReceiptsState, message: Message, fresh = false): ReceiptsState {
+function seedReceiptEntry(
+  existing: MessageReceipt | undefined,
+  message: Message,
+  fresh = false,
+): MessageReceipt | undefined {
   const mentioned = message.mentionedAgentIds ?? [];
   // An agent's message has one only for the agents it mentions: the judge decides whom it hands off to.
   const byAgent = message.author?.type === "agent";
-  if (message.author?.type !== "person" && !(byAgent && mentioned.length > 0)) return state;
-  const existing = state[message.id];
+  if (message.author?.type !== "person" && !(byAgent && mentioned.length > 0)) return existing;
   const r = message.receipts;
   const metaReferenced = message.meta?.referencedAgentIds;
   const referenced = r?.referenced ?? (Array.isArray(metaReferenced) ? (metaReferenced as string[]) : []);
+  let next: ReceiptsState = existing ? { [message.id]: existing } : {};
   // The mentions stay on the receipt: "nobody will answer" needs the server to say they can't.
-  const withMentions = (s: ReceiptsState): ReceiptsState => {
+  const withMentions = (s: ReceiptsState): MessageReceipt | undefined => {
     const current = s[message.id];
-    if (!current || mentioned.length === 0) return s;
-    const next = {
-      ...current,
-      ...(current.mentioned ? {} : { mentioned }),
-      ...(referenced.length > 0 && !current.referenced ? { referenced } : {}),
-      ...(byAgent && !current.byAgent ? { byAgent: true as const } : {}),
-    };
-    return next.mentioned === current.mentioned &&
-      next.referenced === current.referenced &&
-      next.byAgent === current.byAgent
-      ? s
-      : { ...s, [message.id]: next };
+    if (!current || mentioned.length === 0) return current;
+    return current.mentioned && (referenced.length === 0 || current.referenced) && (!byAgent || current.byAgent)
+      ? current
+      : {
+          ...current,
+          ...(current.mentioned ? {} : { mentioned }),
+          ...(referenced.length > 0 && !current.referenced ? { referenced } : {}),
+          ...(byAgent && !current.byAgent ? { byAgent: true as const } : {}),
+        };
   };
   // The list seeds again each time it changes: a read already seeded changes nothing (events may be ahead of it).
-  if (existing && (!r || existing.server === r)) return withMentions(state);
+  if (existing && (!r || existing.server === r)) return withMentions(next);
   // Otherwise the read may be older than events heard since it was asked for: it only ends the run each agent's
   // receipt follows (a run's end is final), never one a newer run replaced. That shows a run end that was missed.
   if (r && existing?.confirmed && !fresh) {
-    let next = state;
     for (const h of r.handled) {
       const phase = h.reason === NO_AI ? "no_ai" : phaseOf(h.status, h.outage, h.computer, h.passed, h.usage);
       const follows = existing.runOf?.[h.agentId];
@@ -244,11 +239,11 @@ export function seedReceipt(state: ReceiptsState, message: Message, fresh = fals
       next = linkRun(set(next, message.id, h.agentId, phase), message.id, h.runId, h.agentId);
       next = withFailure(next, message.id, h.agentId, h);
     }
-    return withMentions({ ...next, [message.id]: { ...(next[message.id] ?? existing), server: r } });
+    return withMentions({ [message.id]: { ...(next[message.id] ?? existing), server: r } });
   }
-  let next: ReceiptsState = existing
-    ? { ...state, [message.id]: { routed: false, agents: [], ...(existing.runs ? { runs: existing.runs } : {}) } }
-    : state;
+  next = existing
+    ? { [message.id]: { routed: false, agents: [], ...(existing.runs ? { runs: existing.runs } : {}) } }
+    : {};
   if (r) {
     for (const id of r.seenBy) next = set(next, message.id, id, "seen");
     for (const id of r.pickedBy) next = set(next, message.id, id, "picked");
@@ -268,7 +263,6 @@ export function seedReceipt(state: ReceiptsState, message: Message, fresh = fals
     const decided =
       r.seenBy.length > 0 || r.handled.length > 0 || Boolean(r.noAi || r.platformCap || r.reason || r.decidedBy);
     return withMentions({
-      ...next,
       [message.id]: {
         ...current,
         routed: decided,
@@ -291,13 +285,37 @@ export function seedReceipt(state: ReceiptsState, message: Message, fresh = fals
 }
 
 /**
+ * Seeds a person's message: server receipts, else the agents it mentions (they will answer). Server receipts
+ * replace a local guess, and a confirmed receipt when the read is `fresh`: nothing changed that receipt since the
+ * read was asked for, so the read is the newest word on it.
+ */
+export function seedReceipt(state: ReceiptsState, message: Message, fresh = false): ReceiptsState {
+  const existing = state[message.id];
+  const updated = seedReceiptEntry(existing, message, fresh);
+  if (updated === existing || !updated) return state;
+  return { ...state, [message.id]: updated };
+}
+
+/**
  * A read of messages. `before`: the receipts when it was asked for; one that hasn't changed since takes the read as it
  * is (`seedReceipt`), so a run that moved while nobody listened reads as it is now.
  */
-export function seedReceipts(state: ReceiptsState, messages: readonly Message[], before?: ReceiptsState) {
-  let next = state;
-  for (const m of messages) next = seedReceipt(next, m, before !== undefined && next[m.id] === before[m.id]);
-  return next;
+export function seedReceipts(
+  state: ReceiptsState,
+  messages: readonly Message[],
+  before?: ReceiptsState,
+): ReceiptsState {
+  let draft: ReceiptsState | null = null;
+  for (const m of messages) {
+    const current = draft ?? state;
+    const existing = current[m.id];
+    const fresh = before !== undefined && existing === before[m.id];
+    const updated = seedReceiptEntry(existing, m, fresh);
+    if (updated === existing || !updated) continue;
+    draft ??= { ...state };
+    draft[m.id] = updated;
+  }
+  return draft ?? state;
 }
 
 /** The client's guess right after an explicit @mention or an agent DM (not confirmed; times out). */

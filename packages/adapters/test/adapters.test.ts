@@ -117,6 +117,29 @@ test("memory rate limiter uses fixed windows; a take given back counts no more, 
   expect((await rl.consume("k", rule)).remaining).toBe(1);
 });
 
+test("memory rate limiter bounds live keys to 50,000 and evicts expired entries first", async () => {
+  let t = 0;
+  const rl = createMemoryRateLimiter(() => t);
+  const rule = { limit: 2, windowMs: 1000 };
+  for (let i = 0; i < 10; i++) {
+    expect((await rl.consume(`exp:${i}`, rule)).remaining).toBe(1);
+  }
+  t = 1000;
+  for (let i = 0; i < 49_990; i++) {
+    expect((await rl.consume(`live:${i}`, rule)).remaining).toBe(1);
+  }
+  // Inserting past 50,000 scans and drops expired entries first, keeping live:0 intact.
+  expect((await rl.consume("live:extra", rule)).remaining).toBe(1);
+  expect((await rl.consume("live:0", rule)).remaining).toBe(0);
+
+  // Pushing past 50,000 non-expired keys evicts the oldest live key (live:1).
+  for (let i = 0; i < 12; i++) {
+    expect((await rl.consume(`overflow:${i}`, rule)).remaining).toBe(1);
+  }
+  expect((await rl.consume("live:1", rule)).remaining).toBe(1);
+  expect((await rl.consume("overflow:11", rule)).remaining).toBe(0);
+});
+
 test("postgres pub/sub: publish doesn't wait for the database; a tick's events go out in one statement, in order", async () => {
   const { createPostgresPubSub } = await import("../src");
   let listener: ((p: string) => void) | null = null;

@@ -320,30 +320,39 @@ export function createRealtime(deps: RealtimeDeps) {
   // count it as unread without subscribing to every channel. The author's own sockets never hear it.
   // ponytail: one audience query per message per replica with sockets; a per-channel member cache if that shows up.
   const browsers = new Set<BrowserSocket>();
+  const browsersByOrg = new Map<string, Set<BrowserSocket>>();
   deps.pubsub.subscribe(chatActivityTopic, (raw) => {
     if (browsers.size === 0) return;
-    const { channelId, threadId, authorUserId, mentionedUserIds } = raw as {
+    const {
+      orgId: rawOrgId,
+      channelId,
+      threadId,
+      authorUserId,
+      mentionedUserIds,
+    } = raw as {
+      orgId?: unknown;
       channelId?: unknown;
       threadId?: unknown;
       authorUserId?: unknown;
       mentionedUserIds?: unknown;
     };
     if (typeof channelId !== "string" || !UUID.test(channelId)) return;
+    if (typeof rawOrgId === "string" && UUID.test(rawOrgId) && !browsersByOrg.get(rawOrgId)?.size) return;
     const thread = typeof threadId === "string" && UUID.test(threadId) ? threadId : null;
     const mentioned = Array.isArray(mentionedUserIds)
       ? mentionedUserIds.filter((id): id is string => typeof id === "string")
       : [];
     void activityAudience(deps.db, channelId, thread, mentioned)
       .then(({ orgId, dm, userIds }) => {
+        const orgSockets = orgId ? browsersByOrg.get(orgId) : undefined;
+        if (!orgSockets?.size) return;
         const event = { type: "channel.activity", channelId, threadId: thread, dm };
-        for (const ws of browsers)
-          if (
-            ws.readyState === 1 &&
-            ws.data.orgId === orgId &&
-            ws.data.user.id !== authorUserId &&
-            userIds.has(ws.data.user.id)
-          )
-            send(ws, { type: "event", scope: "user", event });
+        const payload = JSON.stringify({ type: "event", scope: "user", event });
+        for (const ws of orgSockets) {
+          if (ws.readyState === 1 && ws.data.user.id !== authorUserId && userIds.has(ws.data.user.id)) {
+            if (ws.send(payload) === 0 && ws.readyState === 1) ws.close(1013, "too far behind");
+          }
+        }
       })
       .catch(() => {});
   });
@@ -758,6 +767,12 @@ export function createRealtime(deps: RealtimeDeps) {
         const ws = socket as BrowserSocket;
         if (!(await liveSession(ws, true))) return;
         browsers.add(ws);
+        let orgSockets = browsersByOrg.get(ws.data.orgId);
+        if (!orgSockets) {
+          orgSockets = new Set();
+          browsersByOrg.set(ws.data.orgId, orgSockets);
+        }
+        orgSockets.add(ws);
         const { orgId, user } = ws.data;
         const drop = (channelId: string, reason: string) => {
           const pending = ws.data.pending.get(channelId);
@@ -932,6 +947,11 @@ export function createRealtime(deps: RealtimeDeps) {
         if (isLive(socket)) return deps.live?.close(socket);
         const ws = socket as BrowserSocket;
         browsers.delete(ws);
+        const orgSockets = browsersByOrg.get(ws.data.orgId);
+        if (orgSockets) {
+          orgSockets.delete(ws);
+          if (orgSockets.size === 0) browsersByOrg.delete(ws.data.orgId);
+        }
         if (ws.data.sessionTimer) clearInterval(ws.data.sessionTimer);
         ws.data.sessionTimer = null;
         for (const off of ws.data.subscriptions.values()) off();

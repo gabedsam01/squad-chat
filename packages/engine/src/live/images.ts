@@ -245,15 +245,14 @@ async function referenceAssets(
   if (wanted.length > MAX_IMAGE_REFERENCES) {
     throw new ValidationError(`At most ${MAX_IMAGE_REFERENCES} pictures to start from`, "images.reference");
   }
-  const { doc } = await deps.live.read(orgId, fileId);
-  let byShape: Map<string, string>;
-  try {
-    byShape = new Map(
-      readShapes(doc, { text: false }).flatMap((s) => (s.type === "image" && s.asset ? [[s.id, s.asset]] : [])),
-    );
-  } finally {
-    doc.destroy();
-  }
+  const byShape = await deps.live.readWith(
+    orgId,
+    fileId,
+    (doc) =>
+      new Map(
+        readShapes(doc, { text: false }).flatMap((s) => (s.type === "image" && s.asset ? [[s.id, s.asset]] : [])),
+      ),
+  );
   const assetIds = wanted.filter((ref) => UUID.test(ref) && !byShape.has(ref));
   const known = assetIds.length
     ? new Set(
@@ -591,18 +590,12 @@ export async function runImageRequest(
   const by = peerOf(actor);
   const origin = originFor(authorOf(actor), runId);
   // The placeholders still waiting (someone may have deleted some meanwhile).
-  const read = await deps.live.read(orgId, fileId);
-  let waiting: string[];
-  try {
+  const waiting = await deps.live.readWith(orgId, fileId, (doc) => {
     const pending = new Set(
-      readShapes(read.doc, { text: false }).flatMap((s) =>
-        s.type === "pending" && s.request === requestId ? [s.id] : [],
-      ),
+      readShapes(doc, { text: false }).flatMap((s) => (s.type === "pending" && s.request === requestId ? [s.id] : [])),
     );
-    waiting = row.shapeIds.filter((id) => pending.has(id));
-  } finally {
-    read.doc.destroy();
-  }
+    return row.shapeIds.filter((id) => pending.has(id));
+  });
   if (waiting.length === 0) return finish({ status: row.assetIds.length > 0 ? "done" : "failed", error: null });
 
   const marked = (status: "running" | "failed", ids: readonly string[], error?: ImageFailure) =>

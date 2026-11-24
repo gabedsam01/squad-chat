@@ -107,20 +107,21 @@ export function NoticeIsland() {
     };
   }, [showing, href]);
 
+  const hasItems = snap.items.length > 0;
   // Time runs while nobody looks: stopped open, typing, with the pointer on it or the tab hidden.
   useEffect(() => {
-    const timer = setInterval(() => island.tick(TICK_MS), TICK_MS);
     const hidden = () => island.pause("hidden", document.visibilityState !== "visible");
     hidden();
     document.addEventListener("visibilitychange", hidden);
+    const timer = hasItems ? setInterval(() => island.tick(TICK_MS), TICK_MS) : undefined;
     return () => {
-      clearInterval(timer);
+      if (timer !== undefined) clearInterval(timer);
       clearTimeout(hover.current);
       document.removeEventListener("visibilitychange", hidden);
       island.pause("hidden", false);
       island.pause("hover", false);
     };
-  }, []);
+  }, [hasItems]);
   useEffect(() => island.pause("open", open), [open]);
 
   // A new notice on an island already showing: a short pulse, so it isn't missed.

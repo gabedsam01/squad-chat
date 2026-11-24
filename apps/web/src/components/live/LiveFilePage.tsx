@@ -27,7 +27,7 @@ import {
   useMatchMedia,
 } from "@agenteschat/ui";
 import { useNavigate } from "@tanstack/react-router";
-import { type ComponentType, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ComponentType, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDeleteArtifact } from "@/components/artifacts/ArtifactActions";
 import { useFileShare } from "@/components/artifacts/ShareDialog";
@@ -35,9 +35,7 @@ import { useOrg } from "@/components/org-context";
 import { useDirectory } from "@/hooks/useDirectory";
 import { useDocumentTitle } from "@/lib/desktop";
 import { useToast } from "@/lib/toast";
-import { Canvas } from "./canvas";
 import { canvasShortcuts } from "./canvas/tools";
-import { DocumentEditor } from "./document";
 import { documentShortcuts } from "./document/shortcuts";
 import type { LiveAskRequest, LiveEditorProps, LiveEditorSearch, LiveReveal } from "./editor";
 import {
@@ -51,8 +49,6 @@ import {
 import { LiveHeader } from "./LiveHeader";
 import { FollowingIsland, usePeerLooks } from "./peers";
 import { usePageRoom } from "./room";
-import { Slides } from "./slides";
-import { Spreadsheet } from "./spreadsheet";
 import {
   FileAgentContext,
   type FileTalk,
@@ -76,6 +72,11 @@ export interface LiveFileSearch extends LiveEditorSearch {
  * narrow by the conversation beside it folds the same way (`usePageRoom`).
  */
 export const LIVE_COMPACT_QUERY = "(max-width: 760px)";
+
+const Canvas = lazy(() => import("./canvas").then((m) => ({ default: m.Canvas })));
+const DocumentEditor = lazy(() => import("./document").then((m) => ({ default: m.DocumentEditor })));
+const Slides = lazy(() => import("./slides").then((m) => ({ default: m.Slides })));
+const Spreadsheet = lazy(() => import("./spreadsheet").then((m) => ({ default: m.Spreadsheet })));
 
 /** The editor of each kind; a kind this build has none for says so instead of opening. */
 const EDITORS: Partial<Record<LiveKind, ComponentType<LiveEditorProps>>> = {
@@ -450,22 +451,31 @@ export function LiveFilePage({
                   <EmptyState size="panel" icon="file" title={t("live.shell.notHere")} />
                 ) : ready && Editor && room && artifact ? (
                   <div className="lf-editor" data-kind={kind}>
-                    <Editor
-                      key={editorKey}
-                      room={room}
-                      orgId={org.id}
-                      artifact={artifact}
-                      readOnly={previewing || readOnlyNow}
-                      locale={i18n.language}
-                      search={search}
-                      onSearch={onSearch}
-                      following={previewing ? null : following}
-                      onStopFollowing={stopFollowing}
-                      onSelection={onSelection}
-                      onAsk={previewing ? undefined : ask}
-                      reveal={previewing ? null : reveal}
-                      onVersions={() => setVersionsOpen((o) => !o)}
-                    />
+                    <Suspense
+                      fallback={
+                        <EditorSkeleton
+                          kind={kind}
+                          label={previewing ? t("live.shell.versions.opening") : t("live.shell.loading")}
+                        />
+                      }
+                    >
+                      <Editor
+                        key={editorKey}
+                        room={room}
+                        orgId={org.id}
+                        artifact={artifact}
+                        readOnly={previewing || readOnlyNow}
+                        locale={i18n.language}
+                        search={search}
+                        onSearch={onSearch}
+                        following={previewing ? null : following}
+                        onStopFollowing={stopFollowing}
+                        onSelection={onSelection}
+                        onAsk={previewing ? undefined : ask}
+                        reveal={previewing ? null : reveal}
+                        onVersions={() => setVersionsOpen((o) => !o)}
+                      />
+                    </Suspense>
                   </div>
                 ) : (
                   <EditorSkeleton

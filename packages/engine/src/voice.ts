@@ -424,13 +424,24 @@ export async function transcribeVoiceClip(deps: VoiceDeps, clipId: string, optio
   }
 }
 
-/** A recording to play, for who can read its channel: a signed link where the store has them, else the bytes. */
+/** A recording to play, for who can read its channel: a signed link where the store has them, else a stream or the bytes. */
 export async function voiceClipAudio(
   deps: Pick<VoiceDeps, "db" | "blobs" | "retentionDays">,
   userId: string,
   orgId: string,
   clipId: string,
-): Promise<{ expired: true } | { url: string } | { body: Uint8Array; contentType: string }> {
+): Promise<
+  | { expired: true }
+  | { url: string }
+  | { body: Uint8Array; contentType: string }
+  | {
+      stream: {
+        size: number;
+        read: (range?: { start: number; end: number }) => Promise<Blob | ReadableStream<Uint8Array> | null>;
+      };
+      contentType: string;
+    }
+> {
   const [clip] = await deps.db
     .select()
     .from(voiceClips)
@@ -444,6 +455,18 @@ export async function voiceClipAudio(
   const store = await deps.blobs.forConfig(orgId, clip.storageConfigId);
   const url = await store.signedUrl(clip.blobKey, { expiresInSeconds: 300 });
   if (url) return { url };
+  if (store.stat && store.readRange) {
+    const info = await store.stat(clip.blobKey);
+    if (!info) throw new NotFoundError();
+    const { readRange } = store;
+    return {
+      stream: {
+        size: info.size,
+        read: async (range) => (await readRange(clip.blobKey, range))?.body ?? null,
+      },
+      contentType: clip.contentType,
+    };
+  }
   const object = await store.get(clip.blobKey);
   if (!object) throw new NotFoundError();
   return { body: object.body, contentType: clip.contentType };
