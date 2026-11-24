@@ -779,6 +779,8 @@ export interface AccountFolders {
   accountDir(kind: AccountKind, id: string): string | null;
   /** System mode, in a worker (protocol 29): this agent's own folder for an account root keeps (`AccountGrant`). */
   agentHome?(kind: AccountKind, id: string): string | null;
+  /** The models the CLI lists to the accounts signed in here (`AccountManager.listedModels`); not in a worker. */
+  listedModels?(kind: ListingKind): CursorModelInfo[] | undefined;
   /** System mode, in a worker: a refreshed ChatGPT sign-in root keeps goes back to root (`watchCodexAuth`). */
   codexAuth?(id: string, auth: string): void;
   /** System mode, in a worker: a refreshed Grok Build sign-in root keeps goes back to root (`watchGrokAuth`). */

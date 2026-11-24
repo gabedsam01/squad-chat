@@ -73,6 +73,8 @@ export function brainEffortScale(
 ): readonly EffortScaleLevel[] | null {
   if (kind === "model") return keyEffortScale(opts.keyModel);
   if (opts.family) return opts.family.levels;
+  // A concrete Antigravity slug with no level variants (the Orchestrator) takes no effort: the CLI refuses it.
+  if (kind === "antigravity") return [];
   if (opts.planModel?.efforts?.length) {
     const known = new Set<string>(opts.planModel.efforts);
     const scale = EFFORT_SCALE.filter((l) => known.has(l));

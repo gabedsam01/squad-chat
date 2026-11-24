@@ -105,6 +105,27 @@ test("command line: headless stream-json in the sandbox; work takes edits, plan 
   expect(chat).not.toContain("accept-edits");
 });
 
+test("command line: the account's listed models decide the level; a listed model takes no --effort", () => {
+  const listed = ["gemini-4-neon-high", "gemini-4-neon-xhigh", "gemini-pro-orchestrator-neon", "gemini-4-argon-low"];
+  const orch = antigravityTurnArgs({ prompt: "oi", model: "gemini-pro-orchestrator-neon", effort: "xhigh", listed });
+  expect(orch.join(" ")).toContain("--model gemini-pro-orchestrator-neon");
+  expect(orch).not.toContain("--effort");
+  const family = antigravityTurnArgs({ prompt: "oi", model: "gemini-4-neon", effort: "xhigh", listed }).join(" ");
+  expect(family).toContain("--model gemini-4-neon-xhigh");
+  expect(family).not.toContain("--effort");
+  const slug = antigravityTurnArgs({ prompt: "oi", model: "gemini-4-argon-low", effort: "high", listed });
+  expect(slug.join(" ")).toContain("--model gemini-4-argon-low ");
+  expect(slug).not.toContain("--effort");
+  // Not listed, no list: today's rule.
+  expect(antigravityTurnArgs({ prompt: "oi", model: "gemini-x", effort: "high" }).join(" ")).toContain("--effort high");
+  expect(antigravityTurnArgs({ prompt: "oi", model: "gemini-x", effort: "high", listed }).join(" ")).toContain(
+    "--effort high",
+  );
+  expect(antigravityTurnArgs({ prompt: "oi", model: "gemini-x", effort: "high", noEffort: true })).not.toContain(
+    "--effort",
+  );
+});
+
 test("the account's home: what a turn planted goes, our settings, our server alone and Lodi's agent; the sign-in stays", () => {
   const home = tempDir("agy-home-");
   dirs.push(home);
