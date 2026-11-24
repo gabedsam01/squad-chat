@@ -1,5 +1,5 @@
 /**
- * The MCP sandbox's bridge (ADR 0190, addendum): each WebSocket from the app starts one stdio MCP program here, in a
+ * The MCP sandbox's bridge (ADR 9003): each WebSocket from the app starts one stdio MCP program here, in a
  * container of its own that holds none of the app's secrets, files or database. The first text frame is the program
  * (`{ command, args, cwd, env }`); after it, each frame is one JSON-RPC message, written to its stdin or read off its
  * stdout's lines. The socket closing stops the program's whole process group, and the program ending closes the socket.

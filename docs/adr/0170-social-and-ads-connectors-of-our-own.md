@@ -264,7 +264,10 @@ WhatsApp connect through Composio's own apps, in another change.
      `spam_risk_too_many_posts` and 5 pending drafts): "X takes no more posts from @acme until 14:32 UTC. Nothing was
      posted." Never retried in a loop; the agent can come back then (`follow_up`).
    - `connector.capped`: the workspace's month for X is used (`CONNECTOR_X_CALLS_PER_MONTH`, counted and announced
-     once to its connector admins as Composio's calls are), or X's own usage cap for the server's app.
+     once to its connector admins as Composio's calls are), its money for the month is (`connectorUsdPerMonth`, ADR
+     0079 §4: each tool's most price checked before it runs, its real price from X's answer counted after, by
+     `X_PRICES`: US$ 0.015 a post, 0.20 one with a link, 0.005 a post read, 0.010 a user read or a delete), or X's own
+     usage cap for the server's app.
    - `connector.refused`: a vendor rule or a review not passed yet (a reply X doesn't allow, a permission Meta hasn't
      approved, TikTok's private-only posts before its audit): the vendor's words as untrusted text, and for the server's
      owner what to do (the checklist's step).

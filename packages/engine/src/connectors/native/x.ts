@@ -3,8 +3,9 @@ import { json, type NativeCall, NativeError, type NativeService, type NativeTool
 
 /**
  * X (ADR 0170): posts on the account a person signed in with, through this server's X app (OAuth 2.0 with PKCE, the
- * client in HTTP Basic). X bills the app per post written and read, so reads take small pages, and a workspace may be
- * capped per month (`CONNECTOR_X_CALLS_PER_MONTH`, checked by the tool source). Not built, by X's rules: replies (until X approves AI-written
+ * client in HTTP Basic). X bills the app per post written and read, so reads take small pages, each call's price
+ * counts against the workspace's `connectorUsdPerMonth` (`X_PRICES`), and a workspace may be capped per month in calls
+ * (`CONNECTOR_X_CALLS_PER_MONTH`, a server's own cap with no plan). Both are checked by the tool source. Not built, by X's rules: replies (until X approves AI-written
  * ones for the app), quotes, likes, follows and direct messages.
  */
 
@@ -93,6 +94,21 @@ export async function xCall<T = XAnswer>(
   throw new NativeError("connector.refused", `X refused it: "${said}"`);
 }
 
+/**
+ * X's pay-per-use prices (read 2026-11), in nano-US$: billed to this server's app per post written or deleted and per
+ * post or user an answer holds; a failed request bills nothing, so only an answer is priced. Media uploads are free.
+ */
+export const X_PRICES = { post: 15e6, postWithLink: 200e6, postRead: 5e6, userRead: 10e6, delete: 10e6 } as const;
+/** Anything X may turn into a link: its own parser knows the TLDs, so this errs toward the dearer price. */
+const LINK = /https?:\/\/|\b[\w-]+\.[a-z]{2,}\b/i;
+const count = (v: unknown) => (Array.isArray(v) ? v.length : v ? 1 : 0);
+/** An answer's price: its posts, and the users its expansion brought. */
+const readCost = (answer: { data?: unknown; includes?: unknown }) =>
+  count(answer.data) * X_PRICES.postRead +
+  count((answer.includes as { users?: unknown } | undefined)?.users) * X_PRICES.userRead;
+const postCost = (input: Record<string, unknown>) =>
+  LINK.test(str(input.text)) ? X_PRICES.postWithLink : X_PRICES.post;
+
 const idInput = { type: "string", pattern: "^[0-9]{1,20}$", description: "The post's id." } as const;
 const limitInput = { type: "integer", minimum: 1, maximum: 50, description: "How many (default 10)." } as const;
 
@@ -156,6 +172,7 @@ const tools: Record<string, NativeTool> = {
   get_my_posts: {
     description: "The account's own latest posts, newest first, with their counts (likes, reposts, replies, views).",
     input: { properties: { limit: limitInput } },
+    most: (input) => xPage(input.limit, 5) * X_PRICES.postRead,
     async run(input, call) {
       const me = call.connection.accountId;
       const page = await xCall(
@@ -163,13 +180,14 @@ const tools: Record<string, NativeTool> = {
         "GET",
         `/2/users/${me}/tweets?max_results=${xPage(input.limit, 5)}&${POST_FIELDS}`,
       );
-      return json(page.data ?? []);
+      return { ...json(page.data ?? []), costNanoUsd: readCost(page) };
     },
   },
   get_mentions: {
     description: "The latest posts that mention the account, newest first.",
     input: { properties: { limit: limitInput } },
     external: true,
+    most: (input) => xPage(input.limit, 5) * (X_PRICES.postRead + X_PRICES.userRead),
     async run(input, call) {
       const me = call.connection.accountId;
       const page = await xCall(
@@ -177,20 +195,24 @@ const tools: Record<string, NativeTool> = {
         "GET",
         `/2/users/${me}/mentions?max_results=${xPage(input.limit, 5)}&${POST_FIELDS}&expansions=author_id&user.fields=username`,
       );
-      return json({ posts: page.data ?? [], users: (page.includes as { users?: unknown } | undefined)?.users ?? [] });
+      return {
+        ...json({ posts: page.data ?? [], users: (page.includes as { users?: unknown } | undefined)?.users ?? [] }),
+        costNanoUsd: readCost(page),
+      };
     },
   },
   get_post: {
     description: "One post by its id, with its author and counts.",
     input: { properties: { id: idInput }, required: ["id"] },
     external: true,
+    most: () => X_PRICES.postRead + X_PRICES.userRead,
     async run(input, call) {
       const page = await xCall(
         call,
         "GET",
         `/2/tweets/${str(input.id)}?${POST_FIELDS}&expansions=author_id&user.fields=username`,
       );
-      return json(page);
+      return { ...json(page), costNanoUsd: readCost(page) };
     },
   },
   search_recent: {
@@ -201,6 +223,7 @@ const tools: Record<string, NativeTool> = {
       required: ["query"],
     },
     external: true,
+    most: (input) => xPage(input.limit, 10) * (X_PRICES.postRead + X_PRICES.userRead),
     async run(input, call) {
       const q = encodeURIComponent(str(input.query));
       const page = await xCall(
@@ -208,7 +231,10 @@ const tools: Record<string, NativeTool> = {
         "GET",
         `/2/tweets/search/recent?query=${q}&max_results=${xPage(input.limit, 10)}&${POST_FIELDS}&expansions=author_id&user.fields=username`,
       );
-      return json({ posts: page.data ?? [], users: (page.includes as { users?: unknown } | undefined)?.users ?? [] });
+      return {
+        ...json({ posts: page.data ?? [], users: (page.includes as { users?: unknown } | undefined)?.users ?? [] }),
+        costNanoUsd: readCost(page),
+      };
     },
   },
   get_user: {
@@ -218,6 +244,7 @@ const tools: Record<string, NativeTool> = {
       required: ["username"],
     },
     external: true,
+    most: () => X_PRICES.userRead,
     async run(input, call) {
       const name = str(input.username).replace(/^@/, "");
       const user = await xCall(
@@ -225,7 +252,7 @@ const tools: Record<string, NativeTool> = {
         "GET",
         `/2/users/by/username/${name}?user.fields=description,public_metrics,created_at,verified`,
       );
-      return json(user.data ?? null);
+      return { ...json(user.data ?? null), costNanoUsd: count(user.data) * X_PRICES.userRead };
     },
   },
   create_post: {
@@ -243,6 +270,7 @@ const tools: Record<string, NativeTool> = {
       },
       required: ["text"],
     },
+    most: postCost,
     async run(input, call) {
       const ids = Array.isArray(input.media) ? input.media.map(str).filter(Boolean) : [];
       const files = await Promise.all(ids.map((id) => call.file(id)));
@@ -263,15 +291,17 @@ const tools: Record<string, NativeTool> = {
       return {
         content: `Posted on X${id ? `: https://x.com/${handle}/status/${id}` : ""}.`,
         data: { postId: id ?? null },
+        costNanoUsd: postCost(input),
       };
     },
   },
   delete_post: {
     description: "Delete one of the account's posts. It can't be undone.",
     input: { properties: { id: idInput }, required: ["id"] },
+    most: () => X_PRICES.delete,
     async run(input, call) {
       await xCall(call, "DELETE", `/2/tweets/${str(input.id)}`, undefined, true);
-      return { content: "Deleted." };
+      return { content: "Deleted.", costNanoUsd: X_PRICES.delete };
     },
   },
 };

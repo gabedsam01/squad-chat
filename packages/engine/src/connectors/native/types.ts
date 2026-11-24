@@ -63,6 +63,11 @@ export interface NativeTool {
   input: { properties: Record<string, JsonSchema>; required?: string[] };
   /** What it returns is other people's words (messages, mentions, replies): read as data. */
   external?: true;
+  /**
+   * The most the call may cost, in nano-US$, where the vendor bills this server per call (X): checked against the
+   * workspace's `connectorUsdPerMonth` before it runs. What it did cost comes back as the output's `costNanoUsd`.
+   */
+  most?(input: Record<string, unknown>): number;
   run(input: Record<string, unknown>, call: NativeCall): Promise<ToolOutput>;
 }
 

@@ -15,7 +15,7 @@ import {
 } from "@agenteschat/client/lib/blocks";
 import { formatTime } from "@agenteschat/client/lib/format";
 import { PAGE_SANDBOX } from "@agenteschat/client/lib/isolated-page";
-import { Button, Menu, MenuItem, Spinner } from "@agenteschat/ui";
+import { BoundedMap, Button, Menu, MenuItem, Spinner } from "@agenteschat/ui";
 import { chartRamp } from "@agenteschat/ui/sky/chart";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -41,17 +41,12 @@ type Kept = { height?: number; open?: boolean; sent?: { text: string; at: string
  * What stays when a frame goes away (scrolled out, opened big). Its state is everyone's and lives on the server
  * (`useSharedBlock`); this is only how tall it was, whether it was shown whole and what this person sent from it.
  */
-const MAX_KEPT = 100;
-const kept = new Map<string, Kept>();
+const kept = new BoundedMap<string, Kept>(100);
 const keptOf = (key: string): Kept => {
   const found = kept.get(key);
   if (found) return found;
   const fresh: Kept = {};
   kept.set(key, fresh);
-  for (const old of kept.keys()) {
-    if (kept.size <= MAX_KEPT) break;
-    kept.delete(old);
-  }
   return fresh;
 };
 

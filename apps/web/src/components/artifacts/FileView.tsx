@@ -13,15 +13,19 @@ import {
   previewType,
 } from "@agenteschat/client/lib/files";
 import { Icon, Spinner, Tip, VideoPlayer, type VideoPlayerLabels } from "@agenteschat/ui";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
 import { CodeBlock } from "@/components/CodeBlock";
-import { OfficePreview } from "@/components/live/office/OfficePreview";
 import { useOrg } from "@/components/org-context";
 import { Markdown } from "@/lib/markdown";
 import { useNearViewport } from "@/lib/near-viewport";
 import { ImageZoom } from "./ImageZoom";
+
+// Decks and workbooks are heavy: loaded only when an Office file is opened, keeping the first load within its budget.
+const OfficePreview = lazy(() =>
+  import("@/components/live/office/OfficePreview").then((m) => ({ default: m.OfficePreview })),
+);
 
 /** Object URLs for blobs (swappable: test DOMs may lack `URL.createObjectURL`). */
 export const objectUrls = {
@@ -192,6 +196,7 @@ export function FileVideo({
             onOpen={onOpen}
             actions={actions}
             onFailed={() => setFailed(true)}
+            handoff={artifactId}
           />
         ) : (
           <span className="ac-video ac-video--tile">
@@ -237,7 +242,11 @@ export function FileView({
 
   // A spreadsheet, a presentation or a Word document the server reads for the apps to draw (ADR 0198).
   if (isOfficePreview(read) && content.size <= MAX_PREVIEW_BYTES) {
-    return <OfficePreview artifactId={artifactId} version={version} content={content} title={title} kind={read} />;
+    return (
+      <Suspense fallback={<Spinner />}>
+        <OfficePreview artifactId={artifactId} version={version} content={content} title={title} kind={read} />
+      </Suspense>
+    );
   }
 
   // A video fills the viewer, with its controls.
@@ -254,6 +263,7 @@ export function FileView({
             name={content.name}
             labels={videoLabels}
             onFailed={() => setVideoFailed(true)}
+            handoff={artifactId}
           />
         )}
       </div>

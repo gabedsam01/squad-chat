@@ -18,18 +18,6 @@ export function createDiskBlobStore(root: string): BlobStore {
     return path;
   };
   const missing = (error: unknown) => ["ENOENT", "ENOTDIR"].includes((error as { code?: string }).code ?? "");
-  const statObject = async (key: string): Promise<{ size: number; contentType: string } | null> => {
-    const path = pathOf(key);
-    try {
-      const file = Bun.file(path);
-      if (!(await file.exists())) return null;
-      const contentType = await readFile(`${path}.type`, "utf8");
-      return { size: file.size, contentType };
-    } catch (error) {
-      if (missing(error)) return null;
-      throw error;
-    }
-  };
   return {
     kind: "disk",
     async put(key, body, { contentType }) {
@@ -49,19 +37,10 @@ export function createDiskBlobStore(root: string): BlobStore {
         throw error;
       }
     },
-    async stream(key) {
+    async stream(key, range) {
       const file = Bun.file(pathOf(key));
-      return (await file.exists()) ? file.stream() : null;
-    },
-    async stat(key) {
-      return statObject(key);
-    },
-    async readRange(key, range) {
-      const info = await statObject(key);
-      if (!info) return null;
-      const file = Bun.file(pathOf(key));
-      const body = range ? file.slice(range.start, range.end + 1) : file;
-      return { body, size: info.size, contentType: info.contentType };
+      if (!(await file.exists())) return null;
+      return (range ? file.slice(range.start, range.end + 1) : file).stream();
     },
     async delete(key) {
       const path = pathOf(key);

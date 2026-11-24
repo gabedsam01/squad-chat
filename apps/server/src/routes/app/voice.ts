@@ -15,9 +15,8 @@ import {
   voiceOn,
 } from "@agenteschat/engine";
 import { createRoute, z } from "@hono/zod-openapi";
-import type { Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { rangedResponse, rangedStreamResponse } from "../../http/byte-range";
+import { storedResponse } from "../../http/byte-range";
 import { apiError, errorResponse } from "../../http/errors";
 import { type AppDeps, body, createAppRouter, errors, json, OrgParams, requireSession, security } from "./context";
 
@@ -33,29 +32,6 @@ const ChannelParams = OrgParams.extend({ channelId: z.uuid() });
 const ClipParams = OrgParams.extend({ clipId: z.uuid() });
 // The count is the engine's to refuse (`message.too_many_attachments`), as for a typed message.
 const AttachmentIds = z.array(z.uuid());
-
-function audioResponse(
-  c: Context,
-  audio:
-    | { body: Uint8Array; contentType: string }
-    | {
-        stream: {
-          size: number;
-          read: (range?: { start: number; end: number }) => Promise<Blob | ReadableStream<Uint8Array> | null>;
-        };
-        contentType: string;
-      },
-) {
-  const headers = {
-    "content-type": audio.contentType,
-    "cache-control": "private, max-age=300",
-    "x-content-type-options": "nosniff",
-  };
-  if ("stream" in audio) {
-    return rangedStreamResponse(audio.stream.size, audio.stream.read, c.req.header("range"), headers);
-  }
-  return rangedResponse(audio.body, c.req.header("range"), headers);
-}
 
 /**
  * Voice messages (ADR 0100): the app sends the finished recording and shows it at once; the message arrives over the
@@ -226,7 +202,11 @@ export function voiceRoutes(deps: AppDeps) {
       const audio = await voiceClipAudio(voice(), c.get("user").id, orgId, clipId);
       if ("expired" in audio) return apiError(c, 410, "voice.expired", "This recording is no longer kept");
       if ("url" in audio) return c.redirect(audio.url, 302);
-      return audioResponse(c, audio);
+      return storedResponse(audio, c.req.header("range"), {
+        "content-type": audio.contentType,
+        "cache-control": "private, max-age=300",
+        "x-content-type-options": "nosniff",
+      });
     },
   );
 
@@ -253,7 +233,7 @@ const SaveKey = z.object({
   model: z.string().trim().max(100).optional().openapi({ description: "`local`: the model it loads." }),
 });
 
-const notFound = "404 for everyone but the installation's pinned owner (ADR 0073), and on squadchat itself.";
+const notFound = "404 for everyone but the installation's pinned owner (ADR 0073), and on squadchat's own servers.";
 
 /** Who turns voice into text on this server (ADR 0100): only its pinned owner, and never on squadchat's servers. */
 export function speechKeyRoutes(deps: AppDeps) {

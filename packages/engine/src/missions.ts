@@ -1380,7 +1380,7 @@ const lastMode = (t: MachineTaskRow | null) => {
 };
 
 /** Whether a session's latest task still holds it (queued, running, or interrupted and may come back). */
-const isLive = isLiveTaskRow;
+const isLive: typeof isLiveTaskRow = (t) => isLiveTaskRow(t); // a call, not an alias: an import cycle can leave the binding unset at load
 
 export async function queueForSession(db: Executor, mission: MissionRow, entry: schema.MissionInboxEntry) {
   await db
