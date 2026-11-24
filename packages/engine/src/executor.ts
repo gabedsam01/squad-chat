@@ -2111,7 +2111,9 @@ async function executeRunInner(
             startGroup?.skip("tool_groups");
             const previous = await previousHere();
             const kept = keptToolGroups(previous, granted);
-            ctx.loadedGroups = [...kept.used, ...kept.listed];
+            const groups = [...new Set([...kept.used, ...kept.listed])];
+            toolChoice = { groups, scores: {}, source: "none", kept: groups };
+            ctx.loadedGroups = groups;
             tools = presentTools(granted, isSensitive, ctx.loadedGroups);
           })()
         : (async () => {

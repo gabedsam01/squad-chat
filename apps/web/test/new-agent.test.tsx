@@ -578,7 +578,7 @@ describe("Criar agente: what gets created", () => {
     expect(createdWith(state)?.model).toBe("~z-ai/glm-latest");
   });
 
-  const plan = (kind: "claude_code" | "codex", available: boolean) => ({
+  const plan = (kind: "claude_code" | "codex" | "opencode", available: boolean) => ({
     kind,
     available,
     ...(available ? {} : { reason: "not_installed" as const }),
