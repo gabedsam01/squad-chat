@@ -208,7 +208,7 @@ test("a picture is a snapshot: no versions, so a new one is refused in words the
   expect(((await shotV2.json()) as { error: { code: string } }).error.code).toBe("artifact.not_versioned");
 });
 
-test("versioned file downloads are privately cacheable and stream 206 byte ranges while unversioned files stay no-store", async () => {
+test("versioned file downloads are privately cacheable and stream 206 byte ranges while unversioned files are revalidated", async () => {
   const owner = browser(t);
   await signUp(owner, "owner@example.com");
   const { orgId } = await seedOrg(owner);
@@ -221,16 +221,16 @@ test("versioned file downloads are privately cacheable and stream 206 byte range
 
   const unversioned = await owner(`${base}/artifacts/${a.id}/file`);
   expect(unversioned.status).toBe(200);
-  expect(unversioned.headers.get("cache-control")).toBe("private, no-store, no-transform");
+  expect(unversioned.headers.get("cache-control")).toBe("private, no-cache, no-transform");
 
   const versioned = await owner(`${base}/artifacts/${a.id}/file?version=1`);
   expect(versioned.status).toBe(200);
-  expect(versioned.headers.get("cache-control")).toBe("private, max-age=86400, immutable, no-transform");
+  expect(versioned.headers.get("cache-control")).toBe("private, max-age=31536000, immutable, no-transform");
   expect(new Uint8Array(await versioned.arrayBuffer())).toEqual(PDF);
 
   const rangeRes = await owner(`${base}/artifacts/${a.id}/file?version=1`, { headers: { range: "bytes=1-4" } });
   expect(rangeRes.status).toBe(206);
-  expect(rangeRes.headers.get("cache-control")).toBe("private, max-age=86400, immutable, no-transform");
+  expect(rangeRes.headers.get("cache-control")).toBe("private, max-age=31536000, immutable, no-transform");
   expect(rangeRes.headers.get("content-range")).toBe(`bytes 1-4/${PDF.byteLength}`);
   expect(new Uint8Array(await rangeRes.arrayBuffer())).toEqual(PDF.subarray(1, 5));
 });
