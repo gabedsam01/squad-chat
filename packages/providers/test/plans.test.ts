@@ -167,6 +167,13 @@ describe("coding plans' models", () => {
     expect(planModelById("sonnet")).toBeUndefined();
   });
 
+  test("Claude's own fable: kept without a plan, the plan's opus with one", () => {
+    const kimi = CODING_PLANS.kimi;
+    expect(claudeCodeModel(undefined, "fable")).toBe("fable");
+    expect(claudeCodeModel(kimi, "fable")).toBe("opus");
+    expect(planModel(kimi, "fable").id).toBe(planModel(kimi, "opus").id);
+  });
+
   test("a turn's --model: an alias as is, the plan's own model by id, Claude's ids without a plan, else sonnet", () => {
     const kimi = CODING_PLANS.kimi;
     expect(claudeCodeModel(kimi, "opus")).toBe("opus");
