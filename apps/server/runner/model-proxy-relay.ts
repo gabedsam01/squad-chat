@@ -1,3 +1,5 @@
+import type { Server } from "bun";
+
 /**
  * A loopback relay in front of the server's model proxy (ADR 9007). A pooled `opencode acp` process lives across
  * turns but its provider's bearer is fixed when it starts, while the proxy wants the current turn's run tool token.
@@ -6,7 +8,7 @@
  * 127.0.0.1 only; with no turn running there is no bearer and nothing is forwarded.
  */
 export class ProxyRelay {
-  private server: { port: number; stop(force?: boolean): void } | null = null;
+  private server: Server<undefined> | null = null;
   private readonly routes = new Map<string, { upstream: string; bearer: () => string | undefined }>();
 
   /** Where the process `id` reaches the proxy at `upstream` (`<server>/api/model-proxy/v1`), as its provider's base URL. */

@@ -258,7 +258,7 @@ export function aiChoiceOf(row: AiChoiceRow, current: AiChoice | null): AiChoice
   // A key's model belongs to that key: another key starts on Automático, never carrying the old one's.
   const keep = current?.brain === row.brain && (row.type !== "key" || row.selected);
   const fresh = row.type === "key" ? AUTO : null;
-  const rest = keep
+  const rest: Pick<AiChoice, "model" | "effort" | "contextTokens"> = keep
     ? {
         model: current?.model ?? null,
         effort: current?.effort ?? null,
