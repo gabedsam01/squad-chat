@@ -35,6 +35,36 @@ export interface ModelProxyDeps {
   gateway: Pick<ModelGateway, "stream">;
   /** The server's cap (`AGENT_MAX_OUTPUT_TOKENS`), as the in-process brain takes it. */
   maxOutputTokens?: number;
+  /** Where a provider's refusal is told (status and words, never a key). */
+  log?: { warn(msg: string, fields?: Record<string, unknown>): void };
+}
+
+/**
+ * What a provider returned that the OpenAI format can't carry (Gemini's thought steps with their signatures), kept per
+ * run by the call id it came with and put back before that call when OpenCode sends the history again. Without it
+ * Gemini refuses the next call of a tool loop. In memory (shortcut: not shared between server replicas and lost on a
+ * restart; upgrade if proxied calls are balanced across replicas).
+ */
+const keptOpaque = new Map<string, Map<string, ContentBlock[]>>();
+const KEPT_RUNS = 200;
+
+function keepOpaque(runId: string, content: ContentBlock[]) {
+  const byCall = new Map<string, ContentBlock[]>(keptOpaque.get(runId));
+  let pending: ContentBlock[] = [];
+  for (const b of content) {
+    if (b.type === "opaque") pending.push(b);
+    else if (b.type === "tool_use") {
+      if (pending.length) byCall.set(b.id, pending);
+      pending = [];
+    }
+  }
+  if (byCall.size === 0) return;
+  keptOpaque.delete(runId);
+  keptOpaque.set(runId, byCall);
+  for (const old of keptOpaque.keys()) {
+    if (keptOpaque.size <= KEPT_RUNS) break;
+    keptOpaque.delete(old);
+  }
 }
 
 /** Who a proxied call is for: what the bearer's token says (`verifyRunToolTokenForProxy`). */
@@ -81,7 +111,10 @@ const isRecord = (v: unknown): v is Json => typeof v === "object" && v !== null 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
 /** An OpenAI message list as the gateway takes it: system text apart, tool results as `tool_result` blocks, roles alternating. */
-export function translateMessages(raw: unknown[]): { system: SystemBlock[]; messages: ModelMessage[] } {
+export function translateMessages(
+  raw: unknown[],
+  kept?: Map<string, ContentBlock[]>,
+): { system: SystemBlock[]; messages: ModelMessage[] } {
   const system: SystemBlock[] = [];
   const messages: ModelMessage[] = [];
   const push = (role: "user" | "assistant", blocks: ContentBlock[]) => {
@@ -125,6 +158,7 @@ export function translateMessages(raw: unknown[]): { system: SystemBlock[]; mess
         } catch {
           // The model's own malformed arguments: sent back as no input, as they ran.
         }
+        blocks.push(...(kept?.get(str(call.id)) ?? []));
         blocks.push({ type: "tool_use", id: str(call.id), name: str(call.function.name), input });
       }
       push("assistant", blocks);
@@ -205,9 +239,21 @@ export async function proxyChat(
   if (!isRecord(body) || !Array.isArray(body.messages)) {
     return error(400, "invalid_request_error", "invalid_request", "messages is required");
   }
+  const fail = (err: unknown) => {
+    if (err instanceof ProviderError) {
+      deps.log?.warn("model proxy: provider refused the call", {
+        runId: identity.runId,
+        status: err.status,
+        retryable: err.retryable,
+        said: err.said,
+        error: err.message,
+      });
+    }
+    return proxyFailure(err);
+  };
   try {
     const { agent, effort, personId } = await runModel(deps.db, identity);
-    const { system, messages } = translateMessages(body.messages);
+    const { system, messages } = translateMessages(body.messages, keptOpaque.get(identity.runId));
     const tools = translateTools(body.tools);
     const streaming = body.stream === true;
     const id = `chatcmpl-${crypto.randomUUID()}`;
@@ -254,7 +300,9 @@ export async function proxyChat(
       cacheTtl: "1h",
       onDelta: (text) => {
         if (!streaming) return;
-        send(chunk(first ? { role: "assistant", content: text } : { content: text }, null));
+        // The role goes alone, as OpenAI's own streams start, so no words ride on the one chunk clients treat apart.
+        if (first) send(chunk({ role: "assistant", content: "" }, null));
+        send(chunk({ content: text }, null));
         first = false;
         opened();
       },
@@ -266,8 +314,9 @@ export async function proxyChat(
     );
     if (!streaming) {
       const done = await result;
-      if (!done.ok) return proxyFailure(done.e);
+      if (!done.ok) return fail(done.e);
       const { r } = done;
+      keepOpaque(identity.runId, r.content);
       const calls = r.content.flatMap((b) =>
         b.type === "tool_use"
           ? [{ id: b.id, type: "function", function: { name: b.name, arguments: JSON.stringify(b.input) } }]
@@ -299,7 +348,7 @@ export async function proxyChat(
         if (sent) {
           let said: unknown = { error: { message: "The call failed", type: "api_error" } };
           try {
-            const failed = proxyFailure(done.e);
+            const failed = fail(done.e);
             if (failed.kind === "json") said = failed.body;
           } catch {
             // An error that is none of the gateway's: told as a plain failure.
@@ -312,12 +361,17 @@ export async function proxyChat(
         return;
       }
       const { r } = done;
+      keepOpaque(identity.runId, r.content);
       const calls = r.content.flatMap((b) => (b.type === "tool_use" ? [b] : []));
+      // A provider that sent no deltas (the words came whole) still gets its words said before the calls.
+      if (first) {
+        send(chunk({ role: "assistant", content: "" }, null));
+        if (r.text) send(chunk({ content: r.text }, null));
+      }
       if (calls.length > 0) {
         send(
           chunk(
             {
-              ...(first ? { role: "assistant" } : {}),
               tool_calls: calls.map((b, index) => ({
                 index,
                 id: b.id,
@@ -328,17 +382,17 @@ export async function proxyChat(
             null,
           ),
         );
-      } else if (first) send(chunk({ role: "assistant", content: r.text }, null));
+      }
       send(chunk({}, FINISH[r.stopReason], { usage: usageOf(r.usage) }));
       send("[DONE]");
       controller?.close();
       opened();
     });
     await firstOrEnd;
-    if (failure && !sent) return proxyFailure((failure as { e: unknown }).e);
+    if (failure && !sent) return fail((failure as { e: unknown }).e);
     return { kind: "sse", stream };
   } catch (err) {
-    return proxyFailure(err);
+    return fail(err);
   }
 }
 

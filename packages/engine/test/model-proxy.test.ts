@@ -1,6 +1,7 @@
 import { afterEach, expect, setDefaultTimeout, test } from "bun:test";
 import { MACHINE_PROTOCOL_VERSION, MODEL_PROXY_MODEL, MODEL_PROXY_PROTOCOL } from "@agenteschat/adapters";
 import { eq, schema } from "@agenteschat/db";
+import { ProviderError } from "@agenteschat/providers";
 import {
   insertMessage,
   issueRunToolToken,
@@ -113,9 +114,11 @@ test("a streamed call with a tool: text deltas, the call, a finish with usage, a
   const list = await events(first.stream);
   expect(list.at(-1)).toBe("[DONE]");
   const chunks = list.slice(0, -1) as Record<string, any>[];
-  expect(chunks[0]?.choices[0].delta).toEqual({ role: "assistant", content: "Let me " });
-  expect(chunks[1]?.choices[0].delta).toEqual({ content: "look" });
-  expect(chunks[2]?.choices[0].delta.tool_calls).toEqual([
+  // The role goes alone, then every word as it came: the first delta's text is not lost (nor merged into the role).
+  expect(chunks[0]?.choices[0].delta).toEqual({ role: "assistant", content: "" });
+  expect(chunks[1]?.choices[0].delta).toEqual({ content: "Let me " });
+  expect(chunks[2]?.choices[0].delta).toEqual({ content: "look" });
+  expect(chunks[3]?.choices[0].delta.tool_calls).toEqual([
     { index: 0, id: "call_1", type: "function", function: { name: "search", arguments: '{"q":"x"}' } },
   ]);
   const last = chunks.at(-1);
@@ -149,6 +152,58 @@ test("a streamed call with a tool: text deltas, the call, a finish with usage, a
   ]);
   // Two calls, two usage rows: the gateway records each, nothing else does.
   expect(await f.db.select().from(schema.usageRecords)).toHaveLength(2);
+});
+
+test("a tool round trip puts back the provider blocks the OpenAI format drops (Gemini's thought step)", async () => {
+  const thought = { type: "thinking", signature: "sig-1" };
+  let n = 0;
+  f = await setup({
+    reply: (request) => {
+      if (n++ === 0)
+        return {
+          chunks: [],
+          opaque: [thought],
+          toolUses: [{ id: "call_9", name: "search", input: { q: "x" } }],
+        };
+      // Like Gemini: a call's history without its thought step is refused.
+      const sent = JSON.stringify(request.messages);
+      return sent.includes("sig-1")
+        ? { chunks: ["ok"] }
+        : new ProviderError("provider rejected the request (400)", false, 400);
+    },
+  });
+  const run = await runRow();
+  const warned: Record<string, unknown>[] = [];
+  const logged = {
+    ...deps(),
+    log: { warn: (_: string, fields?: Record<string, unknown>) => void warned.push(fields ?? {}) },
+  };
+  const first = await proxyChat(logged, identity(run), {
+    messages: [{ role: "user", content: "find x" }],
+    tools: [{ type: "function", function: { name: "search", parameters: { type: "object" } } }],
+  });
+  if (first.kind !== "json") throw new Error("expected json");
+  const history = (id: string) => [
+    { role: "user", content: "find x" },
+    {
+      role: "assistant",
+      content: null,
+      tool_calls: [{ id, type: "function", function: { name: "search", arguments: '{"q":"x"}' } }],
+    },
+    { role: "tool", tool_call_id: id, content: "x is here" },
+  ];
+  const second = await proxyChat(logged, identity(run), { messages: history("call_9") });
+  if (second.kind !== "json") throw new Error("expected json");
+  expect(second.status).toBe(200);
+  expect(f.provider.calls[1]?.request.messages[1]?.content).toEqual([
+    { type: "opaque", provider: "anthropic", data: thought },
+    { type: "tool_use", id: "call_9", name: "search", input: { q: "x" } },
+  ]);
+  // A call the proxy never saw has nothing to put back: the provider's refusal is logged and told in OpenAI's words.
+  const refused = await proxyChat(logged, identity(run), { messages: history("call_unknown") });
+  if (refused.kind !== "json") throw new Error("expected json");
+  expect(refused).toMatchObject({ status: 502, body: { error: { message: "provider rejected the request (400)" } } });
+  expect(warned.at(-1)).toMatchObject({ status: 400, error: "provider rejected the request (400)" });
 });
 
 test("an exhausted budget answers 402 before any provider call, streamed or not", async () => {
