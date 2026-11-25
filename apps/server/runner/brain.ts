@@ -523,6 +523,11 @@ export class ClaudeStreamParser {
   private uncached = new Map<string, number>();
   /** Each API call's whole input (cache included), by message id: the largest is the turn's biggest step. */
   private context = new Map<string, number>();
+  /**
+   * The model the turn's last API call ran on (`message.model`). A resumed session's `result.modelUsage` also lists the
+   * models its earlier turns used, so its first key is not this turn's model.
+   */
+  private answeredBy: string | undefined;
 
   /** The calls of the main conversation (ours and its own) whose result hasn't come yet, oldest first. */
   inFlight(): InFlightTool[] {
@@ -534,6 +539,7 @@ export class ClaudeStreamParser {
   }
 
   beginTurn() {
+    this.answeredBy = undefined;
     this.uncached.clear();
     this.context.clear();
     this.tools.clear();
@@ -638,6 +644,8 @@ export class ClaudeStreamParser {
           this.stats.firstAssistantAt ??= Date.now();
         }
         const messageId = isObj(ev.message) ? str(ev.message.id) : "";
+        const ranOn = isObj(ev.message) ? str(ev.message.model) : "";
+        if (ranOn && !ranOn.startsWith("<")) this.answeredBy = ranOn;
         if (messageId && isObj(ev.message) && isObj(ev.message.usage)) {
           const u = ev.message.usage;
           this.uncached.set(messageId, num(u.input_tokens));
@@ -814,6 +822,7 @@ export class ClaudeStreamParser {
     const input = num(usage.input_tokens) + cacheRead + cacheWrite;
     const output = num(usage.output_tokens);
     const models = isObj(ev.modelUsage) ? Object.keys(ev.modelUsage) : [];
+    const model = this.answeredBy ?? models.at(-1);
     // `usage` adds up every API call of the turn: how many there were, and the largest ones (uncached, and whole),
     // tell more calls from bigger ones.
     const calls = num(ev.num_turns);
@@ -827,7 +836,7 @@ export class ClaudeStreamParser {
         input,
         output,
         source: "plan",
-        ...(models[0] ? { model: models[0] } : {}),
+        ...(model ? { model } : {}),
         ...(cacheRead > 0 ? { cacheRead } : {}),
         ...(cacheWrite > 0 ? { cacheWrite } : {}),
         ...(calls > 0 ? { calls } : {}),

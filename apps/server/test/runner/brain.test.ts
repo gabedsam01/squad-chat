@@ -3315,3 +3315,41 @@ test.if(posix)(
     expect(spawns().at(-1)?.args.slice(-2)).toEqual(["--session-id", SESSION(3)]);
   },
 );
+
+test("parser: a resumed session's usage names the model its last call ran on, not an earlier turn's in modelUsage", () => {
+  const p = new ClaudeStreamParser();
+  p.beginTurn();
+  p.push(
+    line({
+      type: "assistant",
+      parent_tool_use_id: null,
+      message: { id: "m1", model: "claude-opus-5-5", content: [], usage: { input_tokens: 3 } },
+    }),
+  );
+  const end = p.push(
+    line({
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      result: "Hi",
+      session_id: SESSION(1),
+      usage: { input_tokens: 3, output_tokens: 2 },
+      modelUsage: { "claude-fable-5-2": {}, "claude-opus-5-5": {} },
+    }),
+  );
+  expect(end.events[0]).toMatchObject({ type: "usage", model: "claude-opus-5-5" });
+  p.beginTurn();
+  expect(
+    p.push(
+      line({
+        type: "result",
+        subtype: "success",
+        is_error: false,
+        result: "Hi",
+        session_id: SESSION(1),
+        usage: { input_tokens: 1, output_tokens: 1 },
+        modelUsage: { "claude-fable-5-2": {}, "claude-haiku-5": {} },
+      }),
+    ).events[0],
+  ).toMatchObject({ model: "claude-haiku-5" });
+});
