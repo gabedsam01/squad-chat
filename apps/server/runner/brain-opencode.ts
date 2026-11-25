@@ -238,7 +238,14 @@ export function opencodeConfig(input: {
     provider = { opencode: { options: { apiKey: `{env:${OPENCODE_KEY_ENV}}` } } };
   }
   return JSON.stringify({
-    permission: input.chat ? OPENCODE_CHAT_PERMISSION : opencodePermissions(input.profile),
+    permission: input.chat
+      ? OPENCODE_CHAT_PERMISSION
+      : {
+          ...opencodePermissions(input.profile),
+          // A proxied turn searches and fetches through the server's own web tools, which are guarded, recorded and
+          // seen by the turn-end judge; OpenCode's own are not (ADR 9007 addendum of 2026-11-25).
+          ...(input.proxy ? { webfetch: "deny", websearch: "deny" } : {}),
+        },
     ...(input.model ? { model: input.model, small_model: input.model } : {}),
     // No session title: OpenCode's `ensureTitle` makes a model call per new session unless the `title` agent is gone,
     // a second paid call (and seconds of latency) for a name nothing here shows (ADR 9007).
