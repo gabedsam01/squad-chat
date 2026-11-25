@@ -3637,6 +3637,8 @@ const FIRST_ROWS = 30;
 const REVEAL_CHUNK = 30;
 
 const MAX_CACHED_ROW_HEIGHTS = 2000;
+/** Window changes one frame takes from layout effects before the rest waits for the next frame. */
+const MAX_SYNC_PASSES = 8;
 
 function recordRowHeight(map: Map<string, number>, key: string, height: number) {
   if (height <= 0) return;
@@ -3970,31 +3972,43 @@ const Timeline = memo(function Timeline({
     const el = scroller.current;
     const { persistedKeys: keys, pinnedIndex: pinned } = latestRef.current;
     const vh = el?.clientHeight ?? 0;
-    const next = computeTimelineWindow({
-      keys,
-      heights: heightsRef.current,
-      defaultHeight: DEFAULT_ROW_HEIGHT,
-      scrollTop: el?.scrollTop ?? 0,
-      viewportHeight: vh,
-      overscanPx: Math.max(900, vh * 1.25),
-      pinnedIndex: pinned >= 0 ? pinned : undefined,
-      stickToBottom: stickRef?.current,
-    });
-    setWin((prev) =>
-      prev.start === next.start &&
-      prev.end === next.end &&
-      prev.topSpacer === next.topSpacer &&
-      prev.bottomSpacer === next.bottomSpacer
+    const scrollTop = el?.scrollTop ?? 0;
+    const stickToBottom = stickRef?.current;
+    setWin((prev) => {
+      const next = computeTimelineWindow({
+        keys,
+        heights: heightsRef.current,
+        defaultHeight: DEFAULT_ROW_HEIGHT,
+        scrollTop,
+        viewportHeight: vh,
+        overscanPx: Math.max(900, vh * 1.25),
+        pinnedIndex: pinned >= 0 ? pinned : undefined,
+        stickToBottom,
+        current: prev,
+      });
+      return prev.start === next.start &&
+        prev.end === next.end &&
+        prev.topSpacer === next.topSpacer &&
+        prev.bottomSpacer === next.bottomSpacer
         ? prev
-        : next,
-    );
+        : next;
+    });
   }, [scroller, stickRef]);
+
+  // Window changes chained inside one frame (each measures rows that move the window again) go on in the next frame
+  // past a few passes: a layout effect's setState is synchronous, and React stops at 50 nested updates with an error
+  // that takes the whole page down.
+  const passes = useRef(0);
+  const syncFromLayout = () => {
+    if (passes.current === 0) requestAnimationFrame(() => (passes.current = 0));
+    if (++passes.current <= MAX_SYNC_PASSES) syncWindow();
+    else if (passes.current === MAX_SYNC_PASSES + 1) requestAnimationFrame(() => syncWindow());
+  };
 
   if (windowSyncRef) windowSyncRef.current = syncWindow;
 
-  // Measure rendered persisted rows and recompute window when list size, focus, or visible slice shifts.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally tracks structural keys and active slice
-  useLayoutEffect(() => {
+  // Measures the persisted rows drawn now: on every window change and, as media in them loads, on every scroll and resize.
+  const measureRows = useCallback(() => {
     const el = scroller.current;
     if (el && el.clientHeight > 0) {
       const { persisted: entries, effectiveWin: curWin } = latestRef.current;
@@ -4089,7 +4103,13 @@ const Timeline = memo(function Timeline({
         }
       }
     }
-    syncWindow();
+  }, [scroller]);
+
+  // Measure rendered persisted rows and recompute window when list size, focus, or visible slice shifts.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally tracks structural keys and active slice
+  useLayoutEffect(() => {
+    measureRows();
+    syncFromLayout();
   }, [
     persistedKeys.length,
     persistedKeys[0],
@@ -4108,6 +4128,7 @@ const Timeline = memo(function Timeline({
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
+        measureRows();
         syncWindow();
       });
     };
@@ -4119,20 +4140,28 @@ const Timeline = memo(function Timeline({
       el.removeEventListener("scroll", schedule);
       ro?.disconnect();
     };
-  }, [scroller, syncWindow]);
+  }, [scroller, syncWindow, measureRows]);
 
   const visiblePersisted = persisted.slice(effectiveWin.start, effectiveWin.end);
 
   // One flat keyed list: an answer seen live is drawn under its block's key, so the final message
   // takes a drawn block's place without a remount (even across virtualized persisted vs tail rows).
   const rendered: ReactElement[] = [];
+  // Spacers are never the browser's scroll anchor: one resizes as rows are measured, and anchoring to it moved the
+  // scroll, which moved the window, which resized it again.
   if (effectiveWin.topSpacer > 0) {
     rendered.push(
       <div
         key="virt-top"
         data-virt-spacer="top"
         aria-hidden="true"
-        style={{ height: effectiveWin.topSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
+        style={{
+          height: effectiveWin.topSpacer,
+          margin: 0,
+          flexShrink: 0,
+          pointerEvents: "none",
+          overflowAnchor: "none",
+        }}
       />,
     );
   }
@@ -4154,7 +4183,13 @@ const Timeline = memo(function Timeline({
         key="virt-bottom"
         data-virt-spacer="bottom"
         aria-hidden="true"
-        style={{ height: effectiveWin.bottomSpacer, margin: 0, flexShrink: 0, pointerEvents: "none" }}
+        style={{
+          height: effectiveWin.bottomSpacer,
+          margin: 0,
+          flexShrink: 0,
+          pointerEvents: "none",
+          overflowAnchor: "none",
+        }}
       />,
     );
   }
