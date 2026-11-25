@@ -739,7 +739,6 @@ function KeysSection() {
   const { org } = useOrg();
   const allowed = can(org, "manage_credentials");
   const credentials = useCredentials(org.id, allowed);
-  const settings = useSettings(org.id);
   const platform = usePlatformKey(org.id);
   const updateSettings = useUpdateSettings(org.id);
   const remove = useRemoveCredential(org.id);
@@ -803,7 +802,7 @@ function KeysSection() {
       {live.length > 0 && (
         <List className="key-list">
           {live.map((c) => {
-            const isDefault = settings.data?.defaultCredentialId === c.id;
+            const isDefault = c.isDefault;
             return (
               <div key={c.id} className="ac-list__row key-row ac-mediarow ac-mediarow--row">
                 <span className="ac-mediarow__face">

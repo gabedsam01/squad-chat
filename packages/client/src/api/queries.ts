@@ -3455,6 +3455,8 @@ export function updateSettingsMutation(api: ApiClient, qc: QueryClient, orgId: s
       // The default agent budget moves every percentage that follows it.
       void qc.invalidateQueries({ queryKey: keys.usageReport(orgId) });
       void qc.invalidateQueries({ queryKey: keys.agents(orgId) });
+      // A key made the default reads so in the keys list (`isDefault`), which the screens show.
+      void qc.invalidateQueries({ queryKey: keys.credentials(orgId) });
       // A new GIF rating (or GIFs back on) changes what every search finds (ADR 0091).
       void qc.invalidateQueries({ queryKey: keys.gifs(orgId) });
       void qc.invalidateQueries({

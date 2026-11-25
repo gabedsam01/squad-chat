@@ -280,3 +280,24 @@ test("the same key saved again comes back as the saved one; copies made before l
   expect((await removed.json()) as object).toEqual({ removed: 1 });
   expect((await list()).map((k) => k.id)).toEqual([kept?.id ?? ""]);
 });
+
+test("Tornar padrão through the settings: the key reads as the default in the settings and in the credentials list", async () => {
+  t = await createTestServer();
+  const owner = browser(t);
+  await signUp(owner, "owner@example.com");
+  const { orgId } = await seedOrg(owner);
+  const api = (path: string, init?: Parameters<typeof owner>[1]) =>
+    owner(`/api/app/organizations/${orgId}${path}`, init);
+  const make = async (label: string, apiKey: string) =>
+    ((await (await api("/credentials", { json: { provider: "openai", label, apiKey } })).json()) as { id: string }).id;
+  const a = await make("a", "sk-proj-aaaaaaaa");
+  const b = await make("b", "sk-proj-bbbbbbbb");
+  const patched = await api("/settings", { method: "PATCH", json: { defaultCredentialId: b } });
+  expect(patched.status).toBe(200);
+  expect(await patched.json()).toMatchObject({ defaultCredentialId: b, defaultCredentialIds: { openai: b } });
+  const { credentials: listed } = (await (await api("/credentials")).json()) as {
+    credentials: { id: string; isDefault: boolean }[];
+  };
+  expect(listed.find((k) => k.id === a)?.isDefault).toBe(false);
+  expect(listed.find((k) => k.id === b)?.isDefault).toBe(true);
+});
