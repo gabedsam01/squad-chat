@@ -1,4 +1,4 @@
-import { useAiChoice, useAiHub } from "@agenteschat/client";
+import { useAiChoice, useAiHub, useSettings } from "@agenteschat/client";
 import {
   type AiChoice,
   type AiChoiceRow,
@@ -61,6 +61,7 @@ export function AiChoiceFields({
   const meId = useMeId();
   const state = useAiChoice(orgId, target);
   const { hub } = useAiHub(orgId);
+  const workspaceKeyId = useSettings(orgId).data?.defaultCredentialId;
   const controlled = onChange !== undefined;
   const current = controlled ? (value ?? null) : state.current;
   const rows = controlled ? aiChoiceRows(hub, { target, viewerId: meId ?? "", current }) : state.rows;
@@ -75,7 +76,7 @@ export function AiChoiceFields({
 
   const pickAccount = async () => {
     const options: PickOption[] = rows.map((r) => {
-      const text = choiceText(t, r, i18n.language);
+      const text = choiceText(t, r, i18n.language, new Date(), workspaceKeyId);
       const group = GROUP_NAMES[r.group];
       return {
         key: r.key,
@@ -158,7 +159,7 @@ export function AiChoiceFields({
     apply({ ...current, ...(id ? { model: id } : {}), effort: picked as EffortLevel });
   };
 
-  const account = selected ? choiceText(t, selected, i18n.language) : null;
+  const account = selected ? choiceText(t, selected, i18n.language, new Date(), workspaceKeyId) : null;
   const autoModel = !model || isAuto(model.value);
   return (
     <GroupedList>

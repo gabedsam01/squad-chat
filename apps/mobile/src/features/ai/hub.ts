@@ -169,7 +169,13 @@ export interface ChoiceText {
 }
 
 /** An option of the "Conta" choice: its name, its plan and owner (or why it can't be used), its use of the plan. */
-export function choiceText(t: TFunction, row: AiChoiceRow, locale: string, now = new Date()): ChoiceText {
+export function choiceText(
+  t: TFunction,
+  row: AiChoiceRow,
+  locale: string,
+  now = new Date(),
+  workspaceKeyId?: string | null,
+): ChoiceText {
   if (row.type === "workspace")
     return {
       label: t("mobile.aiHub.choice.workspace"),
@@ -181,7 +187,7 @@ export function choiceText(t: TFunction, row: AiChoiceRow, locale: string, now =
     const k = row.apiKey;
     return {
       label: k.label,
-      sub: [t("mobile.aiHub.choice.key"), k.isDefault ? t("mobile.aiHub.choice.keyDefault") : null]
+      sub: [t("mobile.aiHub.choice.key"), workspaceKeyId === k.id ? t("mobile.aiHub.choice.keyDefault") : null]
         .filter(Boolean)
         .join(" · "),
       keywords: providerLabel(k.provider),
