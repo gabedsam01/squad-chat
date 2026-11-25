@@ -3628,12 +3628,12 @@
     "how": "Jak wybierani są agenci",
     "by": {
       "jev": "Jev wybiera, kto odpowie na każdą wiadomość bez wzmianki.",
+      "decision": "{{model}} picks who answers each message without a mention.",
       "model": "{{model}} wybiera, kto odpowie na każdą wiadomość bez wzmianki.",
       "plans": "Każdy plan wybiera tylko dla wiadomości swojego właściciela.",
       "rules": "Agenci odpowiadają na wzmianki, odpowiedzi i kontynuacje.",
       "off": "Agenci odpowiadają tylko na wzmianki.",
-      "noSmall": "{{provider}} nie ma do tego małego modelu. Agenci odpowiadają na wzmianki, odpowiedzi i kontynuacje.",
-      "decision": "{{model}} picks who answers each message without a mention."
+      "noSmall": "{{provider}} nie ma do tego małego modelu. Agenci odpowiadają na wzmianki, odpowiedzi i kontynuacje."
     }
   },
   "noAi": {
@@ -11398,6 +11398,62 @@
     "keepEditing": "Edytuj dalej",
     "discard": "Odrzuć"
   },
+  "decision": {
+    "title": "Decision model",
+    "offHint": "Off. Jev decides when it has a key. Otherwise, the small model on your key.",
+    "onHint": "On. This model decides before Jev, which keeps images and boxes and takes over if it fails.",
+    "setupHint": "Choose where it runs, then turn it on. Jev decides until then.",
+    "providersLabel": "Where the decision model runs",
+    "recommendedTag": "Recommended",
+    "providers": {
+      "local": "On this server",
+      "localText": "Laya, a small decision model that runs on this server.",
+      "openai": "OpenAI",
+      "openaiText": "GPT-6 Luna through OpenAI's Decisions API.",
+      "gemini": "Gemini",
+      "geminiText": "Gemini Decision 1, with text, image, audio, video and PDF."
+    },
+    "key": "API key",
+    "keyHint": "The key is encrypted on the server and never returned to the browser.",
+    "keyKept": "Saved key ending in {{hint}}. Paste another to replace it.",
+    "host": "{{cpus}} CPUs · {{memory}} GB of RAM · {{disk}} GB free on disk",
+    "recommended": "Recommended for this server: {{model}}.",
+    "hostLoading": "Reading this server's size...",
+    "localHint": "The local runtime downloads and loads Laya in the background. Jev decides while that happens.",
+    "activate": "Turn on",
+    "activateLocal": "Turn on and download Laya",
+    "cancel": "Cancel",
+    "check": "Check",
+    "change": "Change",
+    "remove": "Remove",
+    "removeAsk": "Remove the decision model?",
+    "removeText": "Jev decides again.",
+    "removeYes": "Remove",
+    "switchAsk": "Switch the decision model?",
+    "switchCurrent": "Each model's key stays saved: going back to one takes no new key.",
+    "switchSlow": "The new model may take a while to be fully configured.",
+    "switchConfirm": "Switch and prepare",
+    "note": "Laya needs about 2 GB of RAM and 0.5 GB of disk.",
+    "failed": "The model could not be prepared: {{error}}",
+    "state": {
+      "off": "Off",
+      "ok": "On",
+      "invalid": "Key refused",
+      "no_credit": "No credit",
+      "unreachable": "No answer"
+    },
+    "install": {
+      "idle": "Idle",
+      "queued": "Queued",
+      "checking": "Checking",
+      "deleting": "Switching the model",
+      "downloading": "Downloading",
+      "configuring": "Configuring",
+      "ready": "Ready",
+      "failed": "Failed",
+      "cancelled": "Canceled"
+    }
+  },
   "jev": {
     "title": "Jev",
     "about": "Szybki model od TypeSafe, stworzony do szybkich decyzji. squadchat zadaje mu drobne pytania, na przykład kto ma odpowiedzieć. Płacisz bezpośrednio TypeSafe albo przez OpenRouter w tej samej cenie.",
@@ -16787,6 +16843,7 @@
       "privateNetwork": "Ten adres jest w sieci prywatnej. Użyj adresu publicznego albo na własnym serwerze zezwól na niego w `OUTBOUND_ALLOW_CIDRS`.",
       "tooLong": "To za długie. Skróć i spróbuj ponownie.",
       "updateComputerApp": "Aplikacja na komputerze jest na to zbyt stara. Zaktualizuj ją i spróbuj ponownie.",
+      "planNeedsOpenCode": "Plany do kodowania działają tylko w OpenCode. Wybierz OpenCode dla tego konta.",
       "computerUpdatesItself": "Komputer przestrzeni roboczej sam się do tego aktualizuje. Spróbuj ponownie za chwilę.",
       "notInvited": "Nie ma cię wśród zaproszonych na to wydarzenie.",
       "offHere": "To jest tutaj wyłączone.",
@@ -22869,62 +22926,6 @@
       "alwaysOn": "Od teraz takie zgłoszenia będą wysyłane bez pytania.",
       "askFirst": "Pytaj przed wysłaniem"
     }
-  },
-  "decision": {
-    "title": "Decision model",
-    "offHint": "Off. Jev decides when it has a key. Otherwise, the small model on your key.",
-    "onHint": "On. This model decides before Jev, which keeps images and boxes and takes over if it fails.",
-    "providers": {
-      "local": "On this server",
-      "localText": "Laya, a small decision model that runs on this server.",
-      "openai": "OpenAI",
-      "openaiText": "GPT-6 Luna through OpenAI's Decisions API.",
-      "gemini": "Gemini",
-      "geminiText": "Gemini Decision 1, with text, image, audio, video and PDF."
-    },
-    "key": "API key",
-    "keyHint": "The key is encrypted on the server and never returned to the browser.",
-    "keyKept": "Saved key ending in {{hint}}. Paste another to replace it.",
-    "host": "{{cpus}} CPUs · {{memory}} GB of RAM · {{disk}} GB free on disk",
-    "recommended": "Recommended for this server: {{model}}.",
-    "hostLoading": "Reading this server's size...",
-    "localHint": "The local runtime downloads and loads Laya in the background. Jev decides while that happens.",
-    "activate": "Turn on",
-    "activateLocal": "Turn on and download Laya",
-    "cancel": "Cancel",
-    "check": "Check",
-    "change": "Change",
-    "remove": "Remove",
-    "removeAsk": "Remove the decision model?",
-    "removeYes": "Remove",
-    "note": "Laya needs about 2 GB of RAM and 0.5 GB of disk.",
-    "failed": "The model could not be prepared: {{error}}",
-    "state": {
-      "off": "Off",
-      "ok": "On",
-      "invalid": "Key refused",
-      "no_credit": "No credit",
-      "unreachable": "No answer"
-    },
-    "install": {
-      "idle": "Idle",
-      "queued": "Queued",
-      "checking": "Checking",
-      "deleting": "Switching the model",
-      "downloading": "Downloading",
-      "configuring": "Configuring",
-      "ready": "Ready",
-      "failed": "Failed",
-      "cancelled": "Canceled"
-    },
-    "setupHint": "Choose where it runs, then turn it on. Jev decides until then.",
-    "providersLabel": "Where the decision model runs",
-    "recommendedTag": "Recommended",
-    "removeText": "Jev decides again.",
-    "switchAsk": "Switch the decision model?",
-    "switchCurrent": "Each model's key stays saved: going back to one takes no new key.",
-    "switchSlow": "The new model may take a while to be fully configured.",
-    "switchConfirm": "Switch and prepare"
   },
   "live": {
     "slides": {
