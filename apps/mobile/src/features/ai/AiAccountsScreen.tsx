@@ -658,7 +658,7 @@ function KeysSection({ locale }: { locale: string }) {
       {credentials.isError && !credentials.data ? <LoadFailed onRetry={() => void credentials.refetch()} /> : null}
       <GroupedList>
         {live.map((k) => {
-          const isDefault = k.isDefault;
+          const isDefault = k.isDefault === true;
           return (
             <GroupedRow
               key={k.id}
