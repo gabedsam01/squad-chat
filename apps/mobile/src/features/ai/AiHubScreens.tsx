@@ -7,6 +7,7 @@ import {
   useRoles,
   useSetAccountPermissions,
   useSetKeyFallback,
+  useSettings,
 } from "@agenteschat/client";
 import { orderDrop, orderStep } from "@agenteschat/client/lib/ai-accounts";
 import { errorText } from "@agenteschat/client/lib/errors";
@@ -88,6 +89,8 @@ function StateLine({ text, tone }: { text: string; tone: StateTone }) {
 /** The hub's list on Contas de IA: its header with Ordem de uso, the accounts, then Conectar uma IA. */
 export function HubList({ hub, connect, before }: { hub: AiHub; connect: boolean; before?: ReactNode }) {
   const { t, i18n } = useTranslation();
+  const { orgId } = useOrg();
+  const workspaceKeyId = useSettings(orgId).data?.defaultCredentialId;
   const meId = useMeId();
   const accounts = hubAccounts(hub, meId ?? "");
   const orders = hub.order.length > 0 || hub.canConfigure;
@@ -124,7 +127,10 @@ export function HubList({ hub, connect, before }: { hub: AiHub; connect: boolean
                 key={k.id}
                 leading={<ProviderLogo id={k.provider} size="sm" />}
                 label={k.label}
-                sub={[t("mobile.aiHub.choice.key"), k.isDefault ? t("mobile.aiHub.choice.keyDefault") : null]
+                sub={[
+                  t("mobile.aiHub.choice.key"),
+                  workspaceKeyId === k.id ? t("mobile.aiHub.choice.keyDefault") : null,
+                ]
                   .filter(Boolean)
                   .join(" · ")}
               />
