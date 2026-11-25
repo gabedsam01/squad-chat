@@ -975,3 +975,15 @@ test("a proxied turn's config points at the server's proxy and holds no provider
   // The bearer reaches OpenCode through env only, never the config text.
   expect(config).not.toContain("agk_");
 });
+
+test("a proxied turn denies OpenCode's own web tools, a plan account's turn does not (ADR 9007)", () => {
+  const baseUrl = "https://chat.example/api/model-proxy/v1";
+  const proxied = JSON.parse(opencodeConfig({ profile: "work", model: PROXY_MODEL, proxy: { baseUrl } }));
+  expect(proxied.permission).toMatchObject({ "*": "allow", webfetch: "deny", websearch: "deny" });
+  expect(proxied.permission.bash).toBeUndefined();
+  const plan = JSON.parse(opencodeConfig({ profile: "plan", model: PROXY_MODEL, proxy: { baseUrl } }));
+  expect(plan.permission).toMatchObject({ bash: "deny", webfetch: "deny", websearch: "deny" });
+  const own = JSON.parse(opencodeConfig({ profile: "work", planKey: { provider: "zai" } }));
+  expect(own.permission.webfetch).toBeUndefined();
+  expect(own.permission.websearch).toBeUndefined();
+});
