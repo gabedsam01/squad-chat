@@ -1,4 +1,13 @@
-import { currentOf, keys, useAgentBrain, useAiAccounts, useApi, useModels, useSetupPreview } from "@agenteschat/client";
+import {
+  currentOf,
+  keys,
+  useAgentBrain,
+  useAiAccounts,
+  useApi,
+  useModels,
+  useSettings,
+  useSetupPreview,
+} from "@agenteschat/client";
 import {
   autonomyName,
   changes,
@@ -75,6 +84,7 @@ export function AgentSetupScreen({
   const view = brain.data && !withAutonomy ? { ...brain.data, autonomy: undefined } : brain.data;
   const others = dir.agents.filter((a) => a.id !== agentId);
   const ai = useAiAccounts(orgId);
+  const settings = useSettings(orgId);
   const hub = ai.data?.hub ?? null;
   // An older server has no hub: the account is still in its plain list.
   const login = account
@@ -93,7 +103,12 @@ export function AgentSetupScreen({
   const base = view ? setupOfBrain(view) : null;
   const setup = choice ? { ...base, ...aiChoiceSetup(choice) } : base;
   const pickedRow = choice
-    ? aiChoiceRows(hub, { target, viewerId: meId ?? "", current: choice }).find((r) => r.selected)
+    ? aiChoiceRows(hub, {
+        target,
+        viewerId: meId ?? "",
+        current: choice,
+        defaultKeyId: settings.data?.defaultCredentialId ?? null,
+      }).find((r) => r.selected)
     : null;
   const preview = useSetupPreview(
     orgId,
