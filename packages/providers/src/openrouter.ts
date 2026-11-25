@@ -337,7 +337,7 @@ interface Chunk {
   choices?: {
     finish_reason?: string | null;
     delta?: {
-      content?: string | null;
+      content?: string | { type?: string; text?: unknown }[] | null;
       tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[];
       reasoning_details?: Raw[];
     };
@@ -356,6 +356,13 @@ type Message =
     };
 
 const isClaude = (model: string) => /^~?anthropic\//.test(model);
+
+/** A delta's text: a string, or (Mistral) an array of parts where only "text" parts are reply words; "thinking" parts stay out. */
+export function deltaText(content: string | { type?: string; text?: unknown }[] | null | undefined): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.map((p) => (p?.type === "text" && typeof p.text === "string" ? p.text : "")).join("");
+}
 
 /** The `reasoning` to send: the nearest effort the model takes (a tie goes up), thinking off only where it can be. */
 export function reasoningFor(
@@ -597,10 +604,11 @@ export function createOpenRouterProvider(
           if (!choice) continue;
           if (choice.finish_reason) finish = choice.finish_reason;
           const delta = choice.delta;
-          if (typeof delta?.content === "string" && delta.content) {
-            text += delta.content;
-            partial.outputChars += delta.content.length;
-            onDelta(delta.content);
+          const piece = deltaText(delta?.content);
+          if (piece) {
+            text += piece;
+            partial.outputChars += piece.length;
+            onDelta(piece);
           }
           for (const tc of delta?.tool_calls ?? []) {
             // Some compatible servers leave out `index`: a new id is a new call, else the last one goes on.

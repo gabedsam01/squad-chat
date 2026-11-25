@@ -2916,7 +2916,8 @@ export function createFakeHttpApi(state: FakeState): Omit<HttpApi, FakedParts> {
           ...(state.extraModels ?? []),
         ],
       }),
-      credentials: async () => [...state.credentials],
+      credentials: async () =>
+        state.credentials.map((c) => ({ ...c, isDefault: c.id === (state.defaultCredentialId ?? null) })),
       openRouterModels: async () => ({
         models: OPENROUTER_MODELS.map((m) => ({
           id: m.id,

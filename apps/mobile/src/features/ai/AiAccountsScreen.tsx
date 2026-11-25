@@ -9,7 +9,6 @@ import {
   useMachines,
   useMoveAccountInOrder,
   usePlatformKey,
-  useSettings,
   useUpdateSettings,
 } from "@agenteschat/client";
 import {
@@ -565,7 +564,6 @@ function KeysSection({ locale }: { locale: string }) {
   const qc = useQueryClient();
   const toast = useToast();
   const credentials = useCredentials(orgId);
-  const settings = useSettings(orgId);
   const update = useUpdateSettings(orgId);
   const all = (credentials.data ?? []).filter((k) => !k.revokedAt);
   const live = shownKeys(credentials.data ?? []);
@@ -660,7 +658,7 @@ function KeysSection({ locale }: { locale: string }) {
       {credentials.isError && !credentials.data ? <LoadFailed onRetry={() => void credentials.refetch()} /> : null}
       <GroupedList>
         {live.map((k) => {
-          const isDefault = settings.data?.defaultCredentialId === k.id;
+          const isDefault = k.isDefault === true;
           return (
             <GroupedRow
               key={k.id}

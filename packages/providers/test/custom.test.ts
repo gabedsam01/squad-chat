@@ -156,6 +156,43 @@ describe("calls", () => {
     expect(req?.headers.get("user-agent")).not.toStartWith("squadchat/");
   });
 
+  test("Chat Completions: a delta's content as an array of parts keeps its text parts and drops thinking", async () => {
+    const { fetcher } = scripted(
+      chat([
+        {
+          choices: [
+            {
+              index: 0,
+              delta: {
+                role: "assistant",
+                content: [
+                  { type: "thinking", thinking: [{ type: "text", text: "hmm" }] },
+                  { type: "text", text: "Oi" },
+                ],
+              },
+            },
+          ],
+        },
+        { choices: [{ index: 0, delta: { content: "! Em que posso ajudar?" } }] },
+        {
+          choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+          usage: { prompt_tokens: 3, completion_tokens: 5 },
+        },
+      ]),
+    );
+    const deltas: string[] = [];
+    const result = await createCustomProvider({ fetch: fetcher, maxRetries: 0 }).stream(
+      { model: id, system: "s", messages: [{ role: "user", content: "hi" }], maxTokens: 100 },
+      {
+        apiKey: "k-123456789",
+        endpoint: { style: "openai", baseURL: "https://gw.example/v1" },
+        onDelta: (d) => deltas.push(d),
+      },
+    );
+    expect(deltas.join("")).toBe("Oi! Em que posso ajudar?");
+    expect(result.text).toBe("Oi! Em que posso ajudar?");
+  });
+
   test("Chat Completions: no effort, or none, sends no reasoning_effort", async () => {
     for (const effort of [undefined, "none"] as const) {
       const { fetcher, requests } = scripted(

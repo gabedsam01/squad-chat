@@ -906,6 +906,8 @@ export interface Credential {
   provider: string;
   label: string;
   keyHint: string;
+  /** In a list of keys: the workspace's default key for its provider. */
+  isDefault?: boolean;
   /** Last characters of the Anthropic workspace the key is scoped to, if set. */
   workspaceIdHint?: string | null;
   /** `custom` (ADR 0146): the endpoint's address, API and models. */
