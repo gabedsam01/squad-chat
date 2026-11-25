@@ -64,7 +64,9 @@ export function AiChoiceFields({
   const workspaceKeyId = useSettings(orgId).data?.defaultCredentialId;
   const controlled = onChange !== undefined;
   const current = controlled ? (value ?? null) : state.current;
-  const rows = controlled ? aiChoiceRows(hub, { target, viewerId: meId ?? "", current }) : state.rows;
+  const rows = controlled
+    ? aiChoiceRows(hub, { target, viewerId: meId ?? "", current, defaultKeyId: workspaceKeyId ?? null })
+    : state.rows;
   const extraOn = extras.find((e) => e.selected);
   const selected = extraOn ? null : (rows.find((r) => r.selected) ?? null);
   const locked = disabled || !state.canEdit || state.saving;

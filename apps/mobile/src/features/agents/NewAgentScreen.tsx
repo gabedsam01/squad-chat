@@ -17,6 +17,7 @@ import {
   useModels,
   useNewAgentSetup,
   usePlatformKey,
+  useSettings,
   useSkills,
 } from "@agenteschat/client";
 import { type Level, saveLevels } from "@agenteschat/client/lib/access-levels";
@@ -844,8 +845,14 @@ function ReviewStep({ d }: StepProps) {
       : newAgentAi(start);
   const choice = pick ?? newAgentChoice(chosen?.pick, chosen ? null : start, usable.size > 0);
   const { hub, loading: hubLoading } = useAiHub(orgId);
+  const settings = useSettings(orgId);
   const pickRow = pick
-    ? aiChoiceRows(hub, { target: NEW_AGENT, viewerId: meId ?? "", current: pick }).find((r) => r.selected)
+    ? aiChoiceRows(hub, {
+        target: NEW_AGENT,
+        viewerId: meId ?? "",
+        current: pick,
+        defaultKeyId: settings.data?.defaultCredentialId ?? null,
+      }).find((r) => r.selected)
     : undefined;
   const startText = start
     ? newAgentStartText(t, i18n.language, start, {
