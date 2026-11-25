@@ -486,6 +486,7 @@ export function useBrainState(view: AgentBrain, opts: { added: readonly MachineA
     listed,
     currentAccount,
     currentRow,
+    defaultId,
     rows,
     usage,
     limitedNow,

@@ -48,6 +48,11 @@ const ALL_PARTS: readonly AiChoicePart[] = ["account", "model", "effort"];
 /** The row a choice stands for: an account by any of its logins, a key, a mission's brain, Lodi's "A do workspace". */
 export function rowOfChoice(rows: readonly AiChoiceRow[], c: AiChoice | null | undefined): AiChoiceRow | undefined {
   if (!c) return undefined;
+  // No key of its own: the workspace default, which the rows already mark; `isDefault` alone is per provider.
+  if (c.brain === "model" && !c.key) {
+    const chosen = rows.find((r) => r.type === "key" && r.selected);
+    if (chosen) return chosen;
+  }
   return rows.find((r) => {
     if (r.type === "plan")
       return c.brain !== "model" && !!c.account && (r.account?.id === c.account || r.account?.sameAs === c.account);

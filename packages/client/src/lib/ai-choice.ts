@@ -82,6 +82,8 @@ export interface AiChoiceContext {
   machineId?: string | null;
   /** The accounts that may think for the target as the server says (an agent's "Quem pensa", `usable`). */
   usable?: ReadonlySet<string>;
+  /** The workspace's default key (`defaultCredentialId`): what an agent with no key of its own thinks with. */
+  defaultKeyId?: string | null;
   /** A mission's brains (it picks a brain and a model, never an account). */
   brains?: readonly BrainOption[];
 }
@@ -102,6 +104,10 @@ export function hubAccountsInOrder<A extends AiHubAccount>(accounts: readonly A[
     (x, y) => kindRank(first(x).kind) - kindRank(first(y).kind) || inOrder(first(x), first(y)),
   );
 }
+
+/** The key a null `key` means: the workspace default when known (`defaultKeyId`), else the provider-level flag. */
+const isWorkspaceDefault = (k: AiHubKey, ctx: AiChoiceContext) =>
+  ctx.defaultKeyId ? k.id === ctx.defaultKeyId : k.isDefault;
 
 /** The target thinks with keys too: not Lodi's own AI (its "A do workspace" is the workspace's key). */
 const takesKeys = (t: AiChoiceTarget) => t.kind !== "mission" && !(t.kind === "lodi" && t.scope === "mine");
@@ -188,7 +194,7 @@ export function aiChoiceRows(hub: AiHub | null | undefined, ctx: AiChoiceContext
         brain: "model",
         apiKey: k,
         usable: true,
-        selected: current?.brain === "model" && (current.key ? current.key === k.id : k.isDefault),
+        selected: current?.brain === "model" && (current.key ? current.key === k.id : isWorkspaceDefault(k, ctx)),
       });
     }
   }
@@ -268,7 +274,8 @@ export function aiChoiceOf(row: AiChoiceRow, current: AiChoice | null): AiChoice
   if (row.type === "plan" && row.account)
     return { brain: row.brain, account: row.account.id, machineId: row.account.machineId, ...rest };
   if (row.type === "key")
-    return { brain: "model", key: row.apiKey?.isDefault ? null : (row.apiKey?.id ?? null), ...rest };
+    // Always the key's own id: `isDefault` is per provider, and null would land on the workspace default's provider.
+    return { brain: "model", key: row.apiKey?.id ?? null, ...rest };
   return { brain: row.brain, ...rest };
 }
 

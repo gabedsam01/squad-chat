@@ -169,7 +169,7 @@ describe("what a row chooses and saves", () => {
       model: "opus",
       effort: "high",
     });
-    expect(aiChoiceOf(def, current)).toEqual({ brain: "model", key: null, model: "auto", effort: "auto" });
+    expect(aiChoiceOf(def, current)).toEqual({ brain: "model", key: "k1", model: "auto", effort: "auto" });
     expect(aiChoiceOf(other, null)).toMatchObject({ brain: "model", key: "k2" });
     expect(aiChoiceBrainInput(aiChoiceOf(plan, current), "mine")).toEqual({
       scope: "mine",
@@ -187,13 +187,26 @@ describe("what a row chooses and saves", () => {
     expect(aiChoiceSetup(aiChoiceOf(plan, current))).toMatchObject({ machineId: "m1", account: "w1" });
   });
 
+  test("a provider's default key that is not the workspace default is picked by its own id", () => {
+    const keys = [
+      key("or", { provider: "openrouter", isDefault: true }),
+      key("lite", { provider: "custom", isDefault: true }),
+    ];
+    const rows = aiChoiceRows(hub([], keys), ctx({ defaultKeyId: "or", current: { brain: "model", key: null } }));
+    const lite = rows.find((r) => r.key === "key:lite");
+    if (!lite) throw new Error("rows");
+    expect(aiChoiceOf(lite, null)).toMatchObject({ brain: "model", key: "lite" });
+    // An agent with no key of its own follows the workspace default: only that row reads selected.
+    expect(rows.filter((r) => r.selected).map((r) => r.key)).toEqual(["key:or"]);
+  });
+
   test("another key starts on Automático, never carrying the old key's model; the same key keeps it", () => {
     const rows = aiChoiceRows(hub([], [key("k1", { isDefault: true }), key("k2")]), ctx());
     const [k1, k2] = rows;
     if (!k1 || !k2) throw new Error("rows");
     const current = { brain: "model" as const, key: "k2", model: "custom:x:river", effort: "high" as const };
     const sel = aiChoiceRows(hub([], [key("k1", { isDefault: true }), key("k2")]), ctx({ current }));
-    expect(aiChoiceOf(k1, current)).toMatchObject({ key: null, model: "auto", effort: "auto" });
+    expect(aiChoiceOf(k1, current)).toMatchObject({ key: "k1", model: "auto", effort: "auto" });
     expect(aiChoiceOf(sel.find((r) => r.key === "key:k2") as never, current)).toMatchObject({
       key: "k2",
       model: "custom:x:river",

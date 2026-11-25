@@ -166,6 +166,7 @@ export function useAiChoice(orgId: string, target: AiChoiceTarget): AiChoiceStat
     target,
     viewerId,
     current,
+    defaultKeyId: settings.data?.defaultCredentialId ?? null,
     // An agent's plan thinks on its computer; Lodi's on any.
     ...(target.kind === "agent" ? { machineId: view?.computer?.machineId ?? null } : {}),
     ...(target.kind === "agent" && view
