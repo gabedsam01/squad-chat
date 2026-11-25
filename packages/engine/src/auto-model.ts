@@ -288,7 +288,10 @@ export function brainModelForTier(kind: BrainKind, tier: ModelTier, planProvider
     const sonnet = pool.find((m) => m.alias === "sonnet");
     const pick =
       tier === "small"
-        ? (pool.find((m) => m.alias === "haiku") ?? pool.find((m) => m.tag === "cheap" || m.tag === "fast") ?? sonnet ?? pool[0])
+        ? (pool.find((m) => m.alias === "haiku") ??
+          pool.find((m) => m.tag === "cheap" || m.tag === "fast") ??
+          sonnet ??
+          pool[0])
         : tier === "large"
           ? (pool.find((m) => m.alias === "opus") ?? pool.find((m) => m.tag === "smart") ?? sonnet ?? pool[0])
           : (sonnet ?? pool[0]);

@@ -67,19 +67,15 @@ test("a chat completion runs the agent's own model through the gateway and recor
     reply: () => ({ chunks: ["Hi", " there"], usage: { inputTokens: 1000, outputTokens: 200, cacheReadTokens: 50 } }),
   });
   const run = await runRow();
-  const reply = await proxyChat(
-    deps(),
-    identity(run),
-    {
-      // The name OpenCode sends decides nothing.
-      model: "gpt-9-whatever",
-      messages: [
-        { role: "system", content: "You are dev." },
-        { role: "user", content: [{ type: "text", text: "hello" }] },
-      ],
-      tools: [{ type: "function", function: { name: "search", description: "Find", parameters: { type: "object" } } }],
-    },
-  );
+  const reply = await proxyChat(deps(), identity(run), {
+    // The name OpenCode sends decides nothing.
+    model: "gpt-9-whatever",
+    messages: [
+      { role: "system", content: "You are dev." },
+      { role: "user", content: [{ type: "text", text: "hello" }] },
+    ],
+    tools: [{ type: "function", function: { name: "search", description: "Find", parameters: { type: "object" } } }],
+  });
   if (reply.kind !== "json") throw new Error("expected json");
   expect(reply.status).toBe(200);
   expect(reply.body).toMatchObject({
@@ -184,7 +180,10 @@ test("the bearer is the turn's run token: a run's, alive while it goes on, bound
   expect(await verifyRunToolTokenForProxy(f.db, "nonsense")).toMatchObject({ ok: false });
   expect(await verifyRunToolTokenForProxy(f.db, token.slice(0, -2))).toMatchObject({ ok: false });
   await f.db.update(schema.agentRuns).set({ status: "done" }).where(eq(schema.agentRuns.id, run.id));
-  expect(await verifyRunToolTokenForProxy(f.db, token)).toMatchObject({ ok: false, error: { code: "bridge.run_ended" } });
+  expect(await verifyRunToolTokenForProxy(f.db, token)).toMatchObject({
+    ok: false,
+    error: { code: "bridge.run_ended" },
+  });
 });
 
 const online = (id: string, over: Partial<MachineStatus> = {}): MachineStatus => ({
@@ -225,9 +224,9 @@ test("an API-key agent thinks through OpenCode when its computer can, else in th
   expect((await plan(online(machineId, { online: false }))).kind).toBe("model");
   expect((await plan(online(machineId, { paused: { until: null, timezone: null } }))).kind).toBe("model");
   expect((await plan(online(machineId, { executors: { detectedAt: new Date().toISOString() } }))).kind).toBe("model");
-  expect((await plan(online(machineId, { access: { tools: { opencode: false } } as MachineStatus["access"] }))).kind).toBe(
-    "model",
-  );
+  expect(
+    (await plan(online(machineId, { access: { tools: { opencode: false } } as MachineStatus["access"] }))).kind,
+  ).toBe("model");
   expect((await plan(null)).kind).toBe("model");
   expect((await plan(online(machineId), { noProxy: true })).kind).toBe("model");
   // No computer is wired at all (a test or a server without them): the model.

@@ -226,7 +226,9 @@ export function opencodeConfig(input: {
           name: plan.name,
           npm: "@ai-sdk/anthropic",
           options: { baseURL, apiKey: `{env:${plan.claudeCode.tokenEnv}}` },
-          models: Object.fromEntries(plan.claudeCode.models.map((m) => [m.id.replace(/\[1m\]$/, ""), { name: m.label }])),
+          models: Object.fromEntries(
+            plan.claudeCode.models.map((m) => [m.id.replace(/\[1m\]$/, ""), { name: m.label }]),
+          ),
         },
       };
       enabled = [p];

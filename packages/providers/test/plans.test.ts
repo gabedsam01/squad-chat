@@ -481,8 +481,8 @@ test("OpenCode gets a plan's model as prefix/id without Claude Code's [1m] suffi
   expect(opencodePlanModel("nobody", "x/y")).toBe("x/y");
   expect(opencodePlanPrefix("opencode")).toBe("opencode-go");
   expect(opencodePlanPrefix("kimi")).toBe("kimi");
-  for (const p of PLAN_IDS) for (const m of CODING_PLANS[p].claudeCode.models)
-    expect(opencodePlanModel(p, m.id)).not.toContain("[1m]");
+  for (const p of PLAN_IDS)
+    for (const m of CODING_PLANS[p].claudeCode.models) expect(opencodePlanModel(p, m.id)).not.toContain("[1m]");
 });
 
 test("a stored prefixed plan model is still a plan model, and Claude Code runs it by its bare id", () => {

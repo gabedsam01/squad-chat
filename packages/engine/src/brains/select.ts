@@ -5,9 +5,9 @@ import {
   CODEX_WINDOWS_PROTOCOL,
   CURSOR_PROTOCOL,
   GROK_PROTOCOL,
+  isBrainEffort,
   MODEL_PROXY_MODEL,
   MODEL_PROXY_PROTOCOL,
-  isBrainEffort,
   OPENCODE_ACP_PROTOCOL,
   OPENCODE_PROTOCOL,
   type PlanUsage,
@@ -396,7 +396,7 @@ export function computerBrainUnavailable(
   /** What the runner last said about that plan (`storedPlanUsage`). */
   usage?: PlanUsage | null,
   /** The model the turn would run (`BrainPlan.model`): on a plan whose models have their own limits, its own counts. */
-  model?: string,
+  model?: string | null,
 ): BrainUnavailability | null {
   if (kind === "model") return null;
   const name = BRAIN_NAMES[kind];

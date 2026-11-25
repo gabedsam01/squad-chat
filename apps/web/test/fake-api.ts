@@ -4914,6 +4914,7 @@ export function fakeAgentBrain(agentId: string, patch: Partial<AgentBrain> = {})
     agentId,
     brain: "model",
     model: null,
+    key: null,
     effectiveModel: null,
     computer: { machineId: "machine_1", name: "MacBook", online: true },
     options: [

@@ -199,7 +199,8 @@ describe("one decision, mapped per brain", () => {
         const id = brainModelForTier("opencode", tier, p)?.split("/").slice(1).join("/");
         const m = CODING_PLANS[p].claudeCode.models.find((x) => x.id.replace(/\[1m\]$/, "") === id);
         expect(m).toBeDefined();
-        expect(m?.needs ?? m?.free).toBeUndefined();
+        const flags = m as { needs?: unknown; free?: boolean } | undefined;
+        expect(flags?.needs ?? flags?.free).toBeUndefined();
       }
   });
 

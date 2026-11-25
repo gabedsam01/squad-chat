@@ -19,8 +19,6 @@ import {
   OpencodeTurnReader,
   opencodeBridge,
   opencodeConfig,
-  PROXY_KEY_ENV,
-  PROXY_MODEL,
   opencodeConfigDir,
   opencodePermissions,
   opencodeProblem,
@@ -28,6 +26,8 @@ import {
   opencodeSessionKey,
   opencodeSessionsFile,
   opencodeTurnEnv,
+  PROXY_KEY_ENV,
+  PROXY_MODEL,
   runOpencodeTurn,
 } from "../../runner/brain-opencode";
 import { accessToStore, effectiveAccess } from "../../runner/config";

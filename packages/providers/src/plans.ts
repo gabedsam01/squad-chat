@@ -503,19 +503,23 @@ export const PLAN_INACTIVE_TEXT = /Account\.Disabled|active (?:OpenCode )?Go sub
  */
 export function autoPlanModel(
   provider: unknown,
-  value: string | undefined,
+  value: string | null | undefined,
   usage: { models?: Parameters<typeof modelLimitOf>[0]; answered?: string } | null | undefined,
   now = Date.now(),
 ): string | undefined {
   const own = ownLimitsModel(provider, value);
   const held = own ? modelLimitOf(usage?.models, own.id, now) : null;
   // No active subscription refuses every model alike: another one would only be refused too.
-  if (!own || !held || held.inactive) return value;
+  if (!own || !held || held.inactive) return value ?? undefined;
   const models = planOf(provider)?.claudeCode.models ?? [];
   const free = (id: string) => id !== own.id && !modelLimitOf(usage?.models, id, now);
   const answered = usage?.answered;
   if (answered && models.some((m) => m.id === answered) && free(answered)) return answered;
-  return models.find((m) => (m.tag === "cheap" || m.tag === "smart") && !m.needs && !m.free && free(m.id))?.id ?? value;
+  return (
+    models.find((m) => (m.tag === "cheap" || m.tag === "smart") && !m.needs && !m.free && free(m.id))?.id ??
+    value ??
+    undefined
+  );
 }
 
 /** A coding plan's model by its id, whichever plan has it. */
