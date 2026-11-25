@@ -19,12 +19,11 @@ import {
   antigravityGroupOfLabel,
   autoPlanModel,
   claudeCodeModel,
-  isPlanId,
   modelLimitOf,
-  opencodePlanModel,
   ownLimitsModel,
   PLAN_FORBIDDEN_TEXT,
   PLAN_INACTIVE_TEXT,
+  planBrainModel,
   planOf,
   speedFits,
 } from "@agenteschat/providers/plans";
@@ -855,9 +854,9 @@ export async function resolveBrain(
   const runs =
     kind === "claude_code" && model && !isAutoModel(model)
       ? claudeCodeModel(planOf(account?.provider), model)
-      : kind === "opencode" && isPlanId(account?.provider) && !isAutoModel(model)
-        ? opencodePlanModel(account.provider, model)
-        : model;
+      : isAutoModel(model)
+        ? model
+        : planBrainModel(kind, account?.provider, model);
   const effort = brainEffortFor(agent, kind);
   const unavailable =
     (isRightHand(agent) && (agent.brainAccountId || agent.machineId)

@@ -1322,7 +1322,11 @@ export const AgentBrain = z
     brain: BrainKind,
     model: z.string().nullable().openapi({
       description:
-        "As stored; null = the brain's default. Always null for the `model` brain: an agent on an API key or a workspace endpoint keeps its model in the agent's own `model` (`GET …/agents/{agentId}`).",
+        "As stored; null = the brain's default. For the `model` brain, the agent's own `model` (null never: `auto` when automatic).",
+    }),
+    key: z.string().nullable().openapi({
+      description:
+        "The `model` brain's API key or workspace endpoint, by credential id, as the agent thinks with it; null = the workspace's default key or a computer brain.",
     }),
     effectiveModel: z.string().nullable().openapi({
       description:

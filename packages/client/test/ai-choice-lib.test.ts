@@ -213,6 +213,22 @@ describe("what a row chooses and saves", () => {
     ).toEqual({ brain: "model", model: "x/y" });
     expect(currentOf({ kind: "agents", agentIds: ["a"] }, {})).toBeNull();
   });
+
+  test("an agent on a non-default key: its key's row is the selected one and its model the checked one", () => {
+    const models: Model[] = [
+      { id: "claude-a", label: "Claude A", provider: "anthropic", inputUsdPerMTok: 1, outputUsdPerMTok: 1 },
+    ];
+    const current = currentOf(
+      { kind: "agent", agentId: "a" },
+      { brain: { brain: "model", account: null, model: "claude-a", key: "k2", effort: null, computer: null } },
+    );
+    expect(current).toMatchObject({ brain: "model", key: "k2", model: "claude-a" });
+    const rows = aiChoiceRows(hub([], [key("k1", { isDefault: true }), key("k2")]), ctx({ current }));
+    expect(rows.filter((r) => r.selected).map((r) => r.key)).toEqual(["key:k2"]);
+    const row = rows.find((r) => r.key === "key:k2");
+    if (!row) throw new Error("row");
+    expect(aiChoiceModels(t, row, { current, options: [], models }).find((m) => m.checked)?.value).toBe("claude-a");
+  });
 });
 
 describe("accountChain follows the one order and the server's word", () => {

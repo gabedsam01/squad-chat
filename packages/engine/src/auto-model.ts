@@ -281,17 +281,17 @@ export function brainModelForTier(kind: BrainKind, tier: ModelTier, planProvider
     return claudeCodeModels().find((o) => o.modelId === id)?.value ?? "sonnet";
   }
   if (kind === "opencode" && isPlanId(planProvider)) {
-    const models = planOf(planProvider)?.claudeCode.models ?? [];
+    // Models that need nothing from the account and aren't free-tier: the ones `autoPlanModel` would pick too.
+    const all = planOf(planProvider)?.claudeCode.models ?? [];
+    const models = all.filter((m) => !m.needs && !m.free);
+    const pool = models.length ? models : all;
+    const sonnet = pool.find((m) => m.alias === "sonnet");
     const pick =
       tier === "small"
-        ? (models.find((m) => m.tag === "cheap" || m.alias === "haiku" || m.tag === "fast") ??
-          models.find((m) => m.alias === "sonnet") ??
-          models[0])
+        ? (pool.find((m) => m.alias === "haiku") ?? pool.find((m) => m.tag === "cheap" || m.tag === "fast") ?? sonnet ?? pool[0])
         : tier === "large"
-          ? (models.find((m) => m.tag === "smart" || m.alias === "opus") ??
-            models.find((m) => m.alias === "sonnet") ??
-            models[0])
-          : (models.find((m) => m.alias === "sonnet") ?? models[0]);
+          ? (pool.find((m) => m.alias === "opus") ?? pool.find((m) => m.tag === "smart") ?? sonnet ?? pool[0])
+          : (sonnet ?? pool[0]);
     return pick ? opencodePlanModel(planProvider, pick.id) : undefined;
   }
   if (kind === "codex") return modelForTier("openai", tier) ?? undefined;

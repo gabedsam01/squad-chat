@@ -191,6 +191,18 @@ describe("one decision, mapped per brain", () => {
     expect(tiers("opencode")).toEqual(["Claude Haiku 5.5", "MiniMax M3", "MiniMax M3"]);
   });
 
+  test("OpenCode on a plan runs the plan's alias model for the tier, never a model needing the account or a free one", () => {
+    expect(brainModelForTier("opencode", "small", "zai")).toBe("zai/glm-5.3-flash");
+    expect(brainModelForTier("opencode", "large", "zai")).toBe("zai/glm-5.3");
+    for (const p of ["zai", "kimi", "minimax", "opencode"] as const)
+      for (const tier of MODEL_TIERS) {
+        const id = brainModelForTier("opencode", tier, p)?.split("/").slice(1).join("/");
+        const m = CODING_PLANS[p].claudeCode.models.find((x) => x.id.replace(/\[1m\]$/, "") === id);
+        expect(m).toBeDefined();
+        expect(m?.needs ?? m?.free).toBeUndefined();
+      }
+  });
+
   test("the API brain: the model of the tier from the agent's key's line, and the effort", () => {
     const plan: BrainPlan = { kind: "model" };
     expect(needsAutoChoice(agent, plan)).toBe(true);

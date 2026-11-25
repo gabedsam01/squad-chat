@@ -290,6 +290,7 @@ export function currentOf(
       brain: AiChoice["brain"];
       account: string | null;
       model: string | null;
+      key?: string | null;
       effort: AiChoice["effort"];
       contextTokens?: number | null;
       computer: { machineId: string } | null;
@@ -314,6 +315,7 @@ export function currentOf(
       return {
         brain: b.brain,
         account: b.brain === "model" ? null : b.account,
+        ...(b.key ? { key: b.key } : {}),
         machineId: b.computer?.machineId ?? null,
         model: b.model,
         effort: b.effort,

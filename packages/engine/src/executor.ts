@@ -48,6 +48,7 @@ import {
   isPlanId,
   opencodePlanModel,
   ownLimitsModel,
+  planBrainModel,
   planModel,
   planOf,
 } from "@agenteschat/providers/plans";
@@ -3560,10 +3561,7 @@ async function executeRunInner(
     }
     if (autoBrain) {
       const picked = autoPlanModel(brainPlan.account?.provider, brainPlan.model, brainPlan.usage);
-      const model =
-        brainPlan.kind === "opencode" && isPlanId(brainPlan.account?.provider)
-          ? opencodePlanModel(brainPlan.account.provider, picked)
-          : picked;
+      const model = planBrainModel(brainPlan.kind, brainPlan.account?.provider, picked);
       if (model) brainPlan = { ...brainPlan, model };
     }
     if (!kept) {
@@ -5970,10 +5968,7 @@ async function executeRunInner(
             );
             const from = turnPlan.model;
             const picked = autoPlanModel(turnPlan.account?.provider, from, stored);
-            const to =
-              turnPlan.kind === "opencode" && isPlanId(turnPlan.account?.provider)
-                ? opencodePlanModel(turnPlan.account.provider, picked)
-                : picked;
+            const to = planBrainModel(turnPlan.kind, turnPlan.account?.provider, picked);
             const provider = turnPlan.account?.provider;
             if (to && to !== from) {
               plan = { ...plan, model: to };

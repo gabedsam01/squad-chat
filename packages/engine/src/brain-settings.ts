@@ -719,10 +719,12 @@ export interface AgentBrainView {
   /** The team's right hand, `mine` only. */
   workspaceAi?: RightHandWorkspaceAi;
   brain: BrainKind;
-  /** As stored (null = the brain's default). */
+  /** As stored (null = the brain's default); for the model brain, the agent's own `model`. */
   model: string | null;
-  /** What it runs with (`model ?? defaultModel`), null for the model brain: its model is the agent's own `model`. */
+  /** What it runs with (`model ?? defaultModel`), null for the model brain: its model is `model`. */
   effectiveModel: string | null;
+  /** The model brain's API key (the agent's own, or its endpoint's) as the agent thinks with it; null = the workspace's. */
+  key: string | null;
   /**
    * Deprecated, read-only: phone builds without the switches' removal still draw them from these, so they say what
    * happens. Always false: the API never stands in for a computer brain (ADR 0032's 2026-11-15 addendum).
@@ -919,8 +921,10 @@ function view(
   return {
     agentId: agent.id,
     brain,
-    model: brain === "model" ? null : agent.brainModel,
+    model: brain === "model" ? agent.model : agent.brainModel,
     effectiveModel: brain === "model" ? null : (agent.brainModel ?? defaultBrainModel(brain)),
+    // The same rule the model calls take (`workspaceKey`); computer brains have no key here.
+    key: brain === "model" ? (parseCustomModel(agent.model)?.credentialId ?? agent.credentialId ?? null) : null,
     fallback: false,
     extraUsage: paysExtraUsage(agent),
     computer: machine ? { machineId: machine.id, name: machine.name, online: shownOnline(machine) } : null,

@@ -97,7 +97,7 @@ test("agent brain: defaults, who may, letting others talk to a plan, what the co
   const first = await api(`/agents/${agentId}/brain`);
   expect(first.status).toBe(200);
   const fresh = (await first.json()) as Brain;
-  expect(fresh).toMatchObject({ brain: "model", model: null, effectiveModel: null, computer: null });
+  expect(fresh).toMatchObject({ brain: "model", effectiveModel: null, key: expect.any(String), computer: null });
   expect(fresh).toMatchObject({ fallback: false, extraUsage: true });
   // Accounts (ADR 0041): none without a computer.
   expect(fresh).toMatchObject({
@@ -235,9 +235,9 @@ test("agent brain: defaults, who may, letting others talk to a plan, what the co
   expect(codex.status).toBe(200);
   expect(await codex.json()).toMatchObject({ brain: "codex", model: "gpt-6.1-codex" });
 
-  // Back to the API: no confirmation, the model is cleared.
+  // Back to the API: no confirmation, the computer brain's model is cleared.
   const back = await api(`/agents/${agentId}/brain`, { method: "PUT", json: { brain: "model" } });
-  expect(await back.json()).toMatchObject({ brain: "model", model: null });
+  expect(await back.json()).toMatchObject({ brain: "model", effectiveModel: null });
 });
 
 test("Outros agentes podem consultar: the audience carries the switch, on by default, kept when absent", async () => {
@@ -434,7 +434,9 @@ test("a new agent starts on Automático on every brain; one with a fixed model k
   expect(await codex.json()).toMatchObject({ brain: "codex", model: "auto", effort: "auto" });
   // A fixed model belongs to its brain: back on the API and over to Claude Code, it's that brain's default again.
   expect((await brain(eva.id, { model: "gpt-6-sol" })).status).toBe(200);
-  await brain(eva.id, { brain: "model" });
+  const onApi = await brain(eva.id, { brain: "model" });
+  // The model brain says the agent's own model (what the dialog checks), not null: here still Automático.
+  expect(await onApi.json()).toMatchObject({ brain: "model", model: "auto", effectiveModel: null });
   const again = await brain(eva.id, { brain: "claude_code" });
   expect(await again.json()).toMatchObject({ model: null, effectiveModel: "sonnet" });
 

@@ -4,9 +4,8 @@ import { isAutoModel } from "@agenteschat/providers";
 import {
   autoPlanModel,
   claudeCodeModel,
-  isPlanId,
   NEXT_ACCOUNT_KINDS,
-  opencodePlanModel,
+  planBrainModel,
   planOf,
 } from "@agenteschat/providers/plans";
 import type { Agent } from "./agents";
@@ -68,9 +67,9 @@ export async function spillPlan(
   const model =
     plan.kind === "claude_code" && plan.model && !isAutoModel(plan.model)
       ? claudeCodeModel(planOf(account?.provider), plan.model)
-      : plan.kind === "opencode" && isPlanId(account?.provider) && !isAutoModel(plan.model)
-        ? opencodePlanModel(account.provider, plan.model)
-        : plan.model;
+      : isAutoModel(plan.model)
+        ? plan.model
+        : planBrainModel(plan.kind, account?.provider, plan.model);
   const ownersPlan = await planIsOwners(
     deps.db,
     { orgId: agent.orgId, ownerUserId: agent.ownerUserId },
