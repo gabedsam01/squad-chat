@@ -683,6 +683,8 @@ export interface Transcript {
   postedCount: number;
   /** The words of the last message it posted (trimmed): saying exactly them again next adds nothing. */
   lastPosted?: string;
+  /** The message a turn posted before the run's end (an answer judged untried): the run's reply if nothing follows it. */
+  postedId?: string;
   /**
    * A reply judged `untried` and held back (ADR 0109): nobody saw it. It goes out with the run's next words
    * (`heldWords`), or alone when the run ends without any (a pass, an empty turn, a closing line, a failure).
@@ -3889,7 +3891,11 @@ async function executeRunInner(
     await addRunStep(db, run, "context", {
       passed: { how, ...(reason ? { reason } : {}), ...(silent ? { silent } : {}) },
     });
-    const done = await transitionRun(db, run.id, "running", "done", { error: null, transcript: storedTranscript(t) });
+    const done = await transitionRun(db, run.id, "running", "done", {
+      ...(t.postedId ? { replyMessageId: t.postedId } : {}),
+      error: null,
+      transcript: storedTranscript(t),
+    });
     if (!done) throw new PermanentJobError("run changed state while executing");
     // Said nothing at all: the apps drop its "thinking" and show nobody is answering.
     if (silent) await publishChannelEvent(deps.pubsub, { type: "agent.passed", ...where });
@@ -6846,6 +6852,7 @@ async function executeRunInner(
                 const m = await post(tx, replyThreadId, text, withFallback(t, withCode(takeMemoryUpdates(t), code)));
                 t.postedUpTo = t.messages.length;
                 t.postedCount++;
+                t.postedId = m.id;
                 if (addsTo) t.addsTo = true;
                 await addRunStep(tx, run, "message", { messageId: m.id });
                 await saveTranscript(tx, t);
@@ -6894,7 +6901,7 @@ async function executeRunInner(
         }
         // State, reply and transcript in one statement.
         const done = await transitionRun(tx, run.id, "running", "done", {
-          ...(message ? { replyMessageId: message.id } : {}),
+          ...(message || t.postedId ? { replyMessageId: message?.id ?? t.postedId } : {}),
           error: null,
           transcript: storedTranscript(t),
         });
