@@ -294,6 +294,18 @@ test("a turn that went wrong: OpenCode 2's error names, ACP's auth required, a l
   expect(acpProblem(new AcpError(-32000, "Authentication required")).auth).toBe(true);
   expect(opencodeProblem("Rate limit exceeded (429)")[1]).toMatchObject({ code: "plan_limit" });
   expect(opencodeProblem("401 invalid api key")[0]).toMatchObject({ code: "not_logged_in" });
+  // Model access switched off in the OpenCode console: a refusal that ends the turn, not an outage to retry.
+  const off = opencodeProblem(
+    "Model access is disabled. Change model access at https://opencode.ai/console/wrk_1/models.",
+  );
+  expect(off).toEqual([
+    {
+      type: "error",
+      code: "opencode_failed",
+      message: expect.stringContaining("Enable it in the OpenCode console"),
+      retryable: false,
+    },
+  ]);
   expect(opencodeProblem("model not found: x")).toEqual([
     { type: "error", code: "opencode_failed", message: "model not found: x", retryable: true },
   ]);

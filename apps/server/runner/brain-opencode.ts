@@ -317,9 +317,23 @@ export const OPENCODE_AUTH =
 const LIMIT_ERRORS =
   /^provider\.(?:free-limit|go-limit|rate-limit|quota|budget-limit|model-budget-limit|chatgpt-limit)$/;
 const AUTH_ERRORS = /^provider\.auth$/;
+/** OpenCode's refusal of a model its account has switched off. */
+const MODEL_ACCESS_OFF = /model access is disabled/i;
 
 /** How a turn that went wrong ends: `limit` then `plan_limit`, `not_logged_in`, or `opencode_failed`. */
 export function opencodeProblem(problem: string, worked = false, errorName?: string): CodexBrainEvent[] {
+  // OpenCode's console switches models on per account ("Model access is disabled. Change model access at
+  // https://opencode.ai/console/…/models."): every call gets the same refusal, so it is not an outage to retry.
+  if (MODEL_ACCESS_OFF.test(problem)) {
+    return [
+      {
+        type: "error",
+        code: "opencode_failed",
+        message: `OpenCode refused this model: model access is turned off for the account. Enable it in the OpenCode console (Models) or change the agent's model. OpenCode said: ${problem}`,
+        retryable: false,
+      },
+    ];
+  }
   if ((errorName && LIMIT_ERRORS.test(errorName)) || USAGE_LIMIT.test(problem))
     return [{ type: "limit" }, { type: "error", code: "plan_limit", message: problem, worked }];
   if ((errorName && AUTH_ERRORS.test(errorName)) || OPENCODE_AUTH.test(problem))
