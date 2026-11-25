@@ -258,8 +258,8 @@ type AutoAgent = Pick<Agent, "model" | "brain" | "brainModel" | "brainEffort"> &
  * The agent's `auto` API model thinks in a run on `kind`: on the API brain, or as the right hand's stand-in on its key
  * (the only computer brain the API stands in for). A computer brain whose model and effort are both pinned asks nothing.
  */
-const autoApiModelFor = (agent: AutoAgent, kind: BrainKind) =>
-  isAutoModel(agent.model) && (kind === "model" || isRightHand(agent));
+const autoApiModelFor = (agent: AutoAgent, kind: BrainKind, proxy?: boolean) =>
+  isAutoModel(agent.model) && (kind === "model" || proxy === true || isRightHand(agent));
 
 /** The agent's effort is `auto` and it applies to this brain (its own computer brain, like `brainEffortFor`). */
 const autoEffortFor = (agent: AutoAgent, kind: BrainKind) =>
@@ -271,8 +271,8 @@ export const autoWanted = (agent: AutoAgent) =>
   (brainOf(agent.brain) !== "model" && (isAutoModel(agent.brainModel) || isAutoModel(agent.brainEffort)));
 
 /** This run needs a choice: its API model, its brain's model or effort. */
-export const needsAutoChoice = (agent: AutoAgent, plan: Pick<BrainPlan, "kind" | "model">) =>
-  autoApiModelFor(agent, plan.kind) || isAutoModel(plan.model) || autoEffortFor(agent, plan.kind);
+export const needsAutoChoice = (agent: AutoAgent, plan: Pick<BrainPlan, "kind" | "model" | "proxy">) =>
+  autoApiModelFor(agent, plan.kind, plan.proxy) || isAutoModel(plan.model) || autoEffortFor(agent, plan.kind);
 
 /** A computer brain's model for a tier: Claude Code's alias, a coding plan's OpenCode id, or a Codex model. */
 export function brainModelForTier(kind: BrainKind, tier: ModelTier, planProvider?: string | null): string | undefined {
@@ -380,7 +380,7 @@ export function autoModelFor(
  */
 export function autoApplied(
   agent: AutoAgent,
-  plan: Pick<BrainPlan, "kind" | "model">,
+  plan: Pick<BrainPlan, "kind" | "model" | "proxy">,
   choice: Pick<AutoModelRecord, "tier" | "effort" | "apiModel">,
   provider: string,
   tiers?: Partial<Record<ModelTier, string>>,
@@ -390,11 +390,12 @@ export function autoApplied(
   reach?: (model: string) => boolean,
 ): AutoApplied {
   const out: AutoApplied = {};
-  if (autoApiModelFor(agent, plan.kind)) {
+  if (autoApiModelFor(agent, plan.kind, plan.proxy)) {
     const model = choice.apiModel ?? autoModelFor(provider, choice.tier, tiers, endpoint, allowed, reach);
     if (model) out.apiModel = model;
   }
-  if (plan.kind === "model") {
+  // A proxied turn (ADR 9007) is the API model's, run by OpenCode: its effort and model are the API's.
+  if (plan.kind === "model" || plan.proxy) {
     if (isAutoModel(agent.model)) out.effort = choice.effort;
     return out;
   }

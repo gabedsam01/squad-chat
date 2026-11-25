@@ -13,7 +13,7 @@ import type {
   BrainWarmReply,
   BrainWarmRequest,
 } from "@agenteschat/adapters/machine-protocol";
-import { isAccountId } from "@agenteschat/adapters/machine-protocol";
+import { isAccountId, MODEL_PROXY_MODEL } from "@agenteschat/adapters/machine-protocol";
 import { redactSecrets } from "@agenteschat/adapters/secret-box";
 import { type PlanId, planOf } from "@agenteschat/providers/plans";
 import {
@@ -112,6 +112,8 @@ export interface OpencodeBrainTurnRequest {
   keepAlive?: boolean;
   /** No account on a computer nobody connected: OpenCode's own free tier and nothing else (ADR 0132). */
   freeTier?: boolean;
+  /** The turn thinks through the server's model proxy (ADR 9007); `mcp.token` is its bearer. */
+  proxy?: true;
 }
 
 /** Where our session → OpenCode session ids live in the runner home. */
@@ -152,6 +154,11 @@ export const opencodeHomePlanted = (home: string) =>
 /** The env name an account's key reaches the `opencode` provider through. */
 export const OPENCODE_KEY_ENV = "OPENCODE_API_KEY";
 
+/** The server's model proxy as an OpenCode provider (ADR 9007), and the env name its bearer reaches it through. */
+export const PROXY_PROVIDER = "squadchat";
+export const PROXY_MODEL = MODEL_PROXY_MODEL;
+export const PROXY_KEY_ENV = "SQUADCHAT_PROXY_KEY";
+
 /** Our bridge's tools as OpenCode names them (`<server>_<tool>`). */
 const BRIDGE_PREFIX = `${CODEX_MCP_SERVER}_`;
 
@@ -191,10 +198,22 @@ export function opencodeConfig(input: {
   planKey?: { provider: PlanId };
   /** OpenCode's own provider alone. */
   freeTier?: boolean;
+  /** The server's model proxy alone (ADR 9007): `baseUrl` is `<server>/api/model-proxy/v1`; the bearer is in env. */
+  proxy?: { baseUrl: string };
 }): string {
   let provider: Record<string, unknown> | undefined;
   let enabled: string[] | undefined = input.freeTier ? ["opencode"] : undefined;
-  if (input.planKey?.provider === "opencode") {
+  if (input.proxy) {
+    provider = {
+      [PROXY_PROVIDER]: {
+        name: "squadchat",
+        npm: "@ai-sdk/openai-compatible",
+        options: { baseURL: input.proxy.baseUrl, apiKey: `{env:${PROXY_KEY_ENV}}` },
+        models: { agent: { name: "agent" } },
+      },
+    };
+    enabled = [PROXY_PROVIDER];
+  } else if (input.planKey?.provider === "opencode") {
     provider = { "opencode-go": { options: { apiKey: `{env:${OPENCODE_KEY_ENV}}` } } };
     enabled = ["opencode-go"];
   } else if (input.planKey) {
@@ -495,6 +514,8 @@ export interface OpencodeTurnInput {
   freeTier?: boolean;
   /** Protocol 41: the team's right hand, OpenCode's tools all off, stopped at the first one it calls anyway. */
   chat?: boolean;
+  /** The turn thinks through the server's model proxy: `baseUrl` is `<server>/api/model-proxy/v1`, the bearer `mcp.token`. */
+  proxy?: { baseUrl: string };
   /** The turn's agent (for `brain.steer`). */
   agentId?: string;
   /** The agent's own folder (for matching `brain.warm` checkout fallback). */
@@ -523,8 +544,12 @@ export interface OpencodeTurnOptions {
 export const opencodeSessionKey = (sessionId: string, account: string | undefined, cwd: string) =>
   `${codexThreadKey(sessionId, account)}|${cwd}`;
 
-function accountKeySecrets(account: { key?: string; planKey?: { provider: PlanId; key: string } } | undefined) {
+function accountKeySecrets(
+  account: { key?: string; planKey?: { provider: PlanId; key: string } } | undefined,
+  proxyKey?: string,
+) {
   const out: { name: string; value: string }[] = [];
+  if (proxyKey) out.push({ name: PROXY_KEY_ENV, value: proxyKey });
   if (account?.key) out.push({ name: OPENCODE_KEY_ENV, value: account.key });
   if (account?.planKey) {
     const name =
@@ -545,6 +570,8 @@ export function opencodeTurnEnv(input: {
   account?: { home: string; key?: string; planKey?: { provider: PlanId; key: string } };
   freeTier?: boolean;
   chat?: boolean;
+  /** The turn's bearer for the server's model proxy (ADR 9007). */
+  proxyKey?: string;
   platform?: NodeJS.Platform;
 }): NodeJS.ProcessEnv {
   const platform = input.platform ?? process.platform;
@@ -565,6 +592,7 @@ export function opencodeTurnEnv(input: {
   env.OPENCODE_CONFIG_DIR = input.configDir;
   env.OPENCODE_CONFIG_CONTENT = input.config;
   if (input.account?.key) env[OPENCODE_KEY_ENV] = input.account.key;
+  if (input.proxyKey) env[PROXY_KEY_ENV] = input.proxyKey;
   if (input.account?.planKey) {
     const { provider, key } = input.account.planKey;
     const plan = planOf(provider);
@@ -656,14 +684,16 @@ export async function runOpencodeTurn(input: OpencodeTurnInput, opts: OpencodeTu
       key: Boolean(key),
       ...(planKey ? { planKey: { provider: planKey.provider } } : {}),
       freeTier,
+      ...(input.proxy ? { proxy: input.proxy } : {}),
     }),
     ...(input.account ? { account: input.account } : {}),
     freeTier,
     ...(input.chat ? { chat: true } : {}),
+    ...(input.proxy ? { proxyKey: input.mcp.token } : {}),
     platform,
   });
   // The agent's shell could print the key (its env, its file in the lent folder).
-  const secrets = accountKeySecrets(input.account);
+  const secrets = accountKeySecrets(input.account, input.proxy ? input.mcp.token : undefined);
   const redact = secrets.length
     ? (text: string) => redactSecrets(opts.redact ? opts.redact(text) : text, secrets)
     : opts.redact;
@@ -1694,6 +1724,8 @@ export interface OpencodeBrainContext {
   runnerHome: string;
   secretsDir?: string;
   mcp?: { socketPath: string; command: string[] };
+  /** The server this computer is paired with (`HandlerContext.server`): where a proxied turn thinks. */
+  server?: string;
   sessions?: CodexThreads;
   pool?: OpencodeServers;
   bin?: string;
@@ -1724,7 +1756,12 @@ export async function handleOpencodeBrainTurn(
   if (typeof req.model === "string" && req.model && !/^[\w.-]{1,40}\/[\w.:[\]-]{1,79}$/.test(req.model)) {
     throw new RunnerError("bad_request", "model is provider/model");
   }
-  const freeTier = req.freeTier === true && !req.account;
+  // The server's model proxy (ADR 9007): its one model, at the server this computer is paired with, never a key.
+  const proxy = req.proxy === true;
+  if (proxy && (req.model !== PROXY_MODEL || !ctx.server)) {
+    throw new RunnerError("bad_request", `a proxied turn thinks with ${PROXY_MODEL}, at the paired server`);
+  }
+  const freeTier = !proxy && req.freeTier === true && !req.account;
   if (freeTier && typeof req.model === "string" && req.model && !req.model.startsWith("opencode/")) {
     throw new RunnerError("bad_request", "OpenCode's free tier thinks only with OpenCode's own models");
   }
@@ -1777,6 +1814,7 @@ export async function handleOpencodeBrainTurn(
       ...(account ? { account } : {}),
       profile: codexProfileOf(req),
       ...(freeTier ? { freeTier } : {}),
+      ...(proxy && ctx.server ? { proxy: { baseUrl: `${ctx.server.replace(/\/+$/, "")}/api/model-proxy/v1` } } : {}),
       ...(chat ? { chat } : {}),
       ...(req.keepAlive === false ? { keepAlive: false } : {}),
       folder: ctx.folder,
@@ -1792,7 +1830,9 @@ export async function handleOpencodeBrainTurn(
       ...(ctx.bin ? { bin: ctx.bin } : {}),
       ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
     };
-    if (ctx.pool && !turnInput.mcp.url) {
+    // shortcut: a proxied turn's bearer changes every run and lives in the process's env, so it skips the pool and
+    // starts OpenCode cold; relay the bearer through a loopback port if that latency matters (ADR 9007).
+    if (ctx.pool && !turnInput.mcp.url && !proxy) {
       const owned = release;
       release = undefined;
       await ctx.pool.turn(turnInput, turnOpts, owned);
@@ -1812,7 +1852,7 @@ export async function handleOpencodeBrainWarm(
   const no: BrainWarmReply = { open: false, started: false };
   if (!ctx.exec || !ctx.pool || !req.agent) return no;
   if (typeof req.session?.id !== "string" || !/^[a-zA-Z0-9-]{8,64}$/.test(req.session.id)) return no;
-  if (req.permissions?.mode === "chat") return no;
+  if (req.permissions?.mode === "chat" || (req as { proxy?: unknown }).proxy === true) return no;
   if (typeof req.model === "string" && req.model && !/^[\w.-]{1,40}\/[\w.:[\]-]{1,79}$/.test(req.model)) return no;
   const freeTier = req.freeTier === true && !req.account;
   if (freeTier && typeof req.model === "string" && req.model && !req.model.startsWith("opencode/")) return no;

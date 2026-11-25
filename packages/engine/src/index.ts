@@ -319,6 +319,7 @@ export * from "./run-inbox";
 export * from "./run-resume";
 export { STOP_REASON_MAX, setStopReason, stoppedText, tellAgentStopped } from "./run-stopped";
 export * from "./run-timings";
+export * from "./model-proxy";
 export * from "./run-tool-tokens";
 export * from "./run-tools";
 export * from "./runs";

@@ -46,6 +46,8 @@ const LIMITS: [RegExp, number][] = [
   [/\/organizations\/[^/]+\/wiki\/import$/, 32 * MIB],
   // Another server's feedback with its pictures as base64 (ADR 0160 §13).
   [/^\/api\/feedback\/inbox$/, FEEDBACK_INBOX_BYTES],
+  // A model call's whole conversation with its tool results, from a computer's OpenCode (ADR 9007).
+  [/^\/api\/model-proxy\//, 64 * MIB],
 ];
 
 /** The most a request to `path` may send, or null where the route caps it itself. */

@@ -1613,6 +1613,7 @@ async function doCodexTurn(
           ...(codex.mcp ? { mcp: codex.mcp } : {}),
           ...(ctx.grants && !chat ? { grants: ctx.grants } : {}),
           ...(ctx.accounts || codex.accounts ? { accounts: ctx.accounts ?? codex.accounts } : {}),
+          ...(ctx.server ? { server: ctx.server } : {}),
           ...(codex.opencode ? { pool: codex.opencode } : {}),
           ...(codex.spawn ? { spawn: codex.spawn } : {}),
           ...(ctx.grant ? { grant: ctx.grant } : {}),

@@ -19,6 +19,8 @@ import {
   OpencodeTurnReader,
   opencodeBridge,
   opencodeConfig,
+  PROXY_KEY_ENV,
+  PROXY_MODEL,
   opencodeConfigDir,
   opencodePermissions,
   opencodeProblem,
@@ -943,4 +945,19 @@ test("the engine's prefix for a plan is the provider OpenCode's config registers
       expect(Object.keys(config.provider[provider].models).some((id) => id.includes("[1m]"))).toBe(false);
     }
   }
+});
+
+test("a proxied turn's config points at the server's proxy and holds no provider key", () => {
+  const baseUrl = "https://chat.example/api/model-proxy/v1";
+  const config = opencodeConfig({ profile: "work", model: PROXY_MODEL, proxy: { baseUrl } });
+  const parsed = JSON.parse(config);
+  expect(parsed.model).toBe("squadchat/agent");
+  expect(parsed.enabled_providers).toEqual(["squadchat"]);
+  expect(parsed.provider.squadchat).toMatchObject({
+    npm: "@ai-sdk/openai-compatible",
+    options: { baseURL: baseUrl, apiKey: `{env:${PROXY_KEY_ENV}}` },
+    models: { agent: { name: "agent" } },
+  });
+  // The bearer reaches OpenCode through env only, never the config text.
+  expect(config).not.toContain("agk_");
 });

@@ -12,6 +12,7 @@ import {
   CURSOR_PROTOCOL,
   GROK_PROTOCOL,
   LOCKED_BRAIN_PROTOCOL,
+  MODEL_PROXY_PROTOCOL,
   OPENCODE_ACP_PROTOCOL,
   OPENCODE_PROTOCOL,
   type PubSub,
@@ -308,14 +309,15 @@ export class CodexBrain implements Brain {
 
   async warm(turn: BrainTurn): Promise<void> {
     const session = turn.session;
-    if (!this.cli.warmable || !session || this.deps.keepAlive === false || !this.deps.link.warm) return;
+    // A proxied turn's bearer is its own (ADR 9007): nothing to warm.
+    if (!this.cli.warmable || !session || this.deps.keepAlive === false || !this.deps.link.warm || turn.proxy) return;
     const status = await this.deps.link.status(session.machineId).catch(() => null);
     if (!status?.online || status.paused || (status.protocol ?? 0) < BRAIN_WARM_PROTOCOL) return;
     if (!brainRunsOn(this.kind, status.os)) return;
     const windowsProtocol = this.cli.windowsProtocol;
     if (status.os === "windows" && windowsProtocol !== undefined && (status.protocol ?? 0) < windowsProtocol) return;
     if (this.cli.check(status.executors) || accountUnavailable(status, turn.account, this.kind)) return;
-    const freeTier = this.kind === "opencode" && !turn.account && status.pairedByUserId === null;
+    const freeTier = this.kind === "opencode" && !turn.account && status.pairedByUserId === null && !turn.proxy;
     try {
       const [agent, asked] = await Promise.all([this.deps.agent?.(turn), this.deps.permissions?.(turn)]);
       const permissions = askingPermissions(asked, false);
@@ -423,7 +425,16 @@ export class CodexBrain implements Brain {
       return;
     }
     // OpenCode with no account on a computer nobody connected: its free tier, never a key the computer holds.
-    const freeTier = this.kind === "opencode" && !turn.account && status.pairedByUserId === null;
+    if (turn.proxy && (status.protocol ?? 0) < MODEL_PROXY_PROTOCOL) {
+      yield {
+        type: "error",
+        code: "runner_outdated",
+        message: `The runner on the computer is too old to think through the server's models. ${runnerUpdateWay(status)}`,
+        retryable: true,
+      };
+      return;
+    }
+    const freeTier = this.kind === "opencode" && !turn.account && status.pairedByUserId === null && !turn.proxy;
     if (freeTier && turn.model && !turn.model.startsWith("opencode/")) {
       yield {
         type: "error",
@@ -486,6 +497,7 @@ export class CodexBrain implements Brain {
       ...(permissions ? { permissions } : {}),
       ...(this.deps.keepAlive === false ? { keepAlive: false } : {}),
       ...(freeTier ? { freeTier } : {}),
+      ...(turn.proxy ? { proxy: true as const } : {}),
       ...(turn.personWaiting ? { personWaiting: true } : {}),
       // Each answer the turn finishes before it goes on is its own message (ADR 0112).
       answers: "each",
