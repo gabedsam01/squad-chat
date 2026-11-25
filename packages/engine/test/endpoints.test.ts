@@ -186,6 +186,22 @@ describe("calls", () => {
     expect(automatic.model).toBe(customModelId(cred.id, "first"));
   });
 
+  test("a key sent alone leaves a model of another key behind: Automático, not the old endpoint's pin", async () => {
+    f = await setup();
+    const cred = await addEndpoint(f, [{ id: "first" }]);
+    const other = await createCredential(f.db, f.keyWrapper, f.owner.id, f.org.id, {
+      provider: "openai",
+      label: "oa",
+      apiKey: "sk-test-openai-key-1234567890",
+    });
+    await updateAgent(f.db, f.owner.id, f.org.id, f.agent.id, { credentialId: cred.id, model: "auto" });
+    const moved = await updateAgent(f.db, f.owner.id, f.org.id, f.agent.id, { credentialId: other.id });
+    expect(moved.credentialId).toBe(other.id);
+    expect(moved.model).toBe("auto");
+    const home = await updateAgent(f.db, f.owner.id, f.org.id, f.agent.id, { credentialId: cred.id });
+    expect(home.model).toBe(customModelId(cred.id, "first"));
+  });
+
   test("an endpoint key on Automatic pins the model whose test called a tool, not the first one listed", async () => {
     f = await setup({
       reply: (request) =>

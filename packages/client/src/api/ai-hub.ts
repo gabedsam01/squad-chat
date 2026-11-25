@@ -23,6 +23,7 @@ import {
   useAgentBrain,
   useAiAccounts,
   useBrainMachines,
+  useCredentials,
   useMe,
   useModels,
   useNewAgentSetup,
@@ -152,6 +153,7 @@ export function useAiChoice(orgId: string, target: AiChoiceTarget): AiChoiceStat
   const settings = useSettings(orgId);
   const updateSettings = useUpdateSettings(orgId);
   const models = useModels();
+  const credentials = useCredentials(orgId, !!hub);
 
   const current = currentOf(target, {
     brain: brain.data,
@@ -257,7 +259,17 @@ export function useAiChoice(orgId: string, target: AiChoiceTarget): AiChoiceStat
     rows,
     current,
     selected: rows.find((r) => r.selected) ?? null,
-    models: (row, t) => aiChoiceModels(t, row, { current, options: optionsFor(row), models: catalog }),
+    models: (row, t) =>
+      aiChoiceModels(t, row, {
+        current,
+        options: optionsFor(row),
+        models: catalog,
+        chosen: new Set(
+          (credentials.data ?? []).flatMap((c) =>
+            c.provider === "openrouter" && !c.revokedAt ? (c.openrouter?.models ?? []) : [],
+          ),
+        ),
+      }),
     efforts: aiChoiceEfforts,
     effortScale: (row, model) => {
       if (row.type === "workspace") return [];

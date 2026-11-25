@@ -15,7 +15,7 @@ import type {
   ModelTier,
 } from "../api/types";
 import { ACCOUNT_KINDS, accountTitle, orderAccounts } from "./ai-accounts";
-import { type EffortLevel, effortLevelsOf } from "./brain-advanced";
+import { EFFORT_LEVELS, type EffortLevel, effortLevelsOf } from "./brain-advanced";
 import { type ModelRow, modelRows } from "./brain-picker";
 import { firstName } from "./format";
 import { type BrainModelFamily, brainModelChoices, familyOfModel, isPlanId, planOf } from "./plans";
@@ -202,15 +202,24 @@ export function aiChoiceRows(hub: AiHub | null | undefined, ctx: AiChoiceContext
 export function aiChoiceModels(
   t: TFunction,
   row: AiChoiceRow,
-  ctx: { current: AiChoice | null; options: readonly BrainOption[]; models: readonly Model[] },
+  ctx: {
+    current: AiChoice | null;
+    options: readonly BrainOption[];
+    models: readonly Model[];
+    /** The ids the workspace's OpenRouter keys chose (`Credential.openrouter.models`). */
+    chosen?: ReadonlySet<string>;
+  },
 ): ModelRow[] {
   if (row.type === "workspace") return [];
   const same = ctx.current?.brain === row.brain && (row.type !== "plan" || row.selected);
   if (row.type === "key") {
     const k = row.apiKey;
     const chosen = same ? (ctx.current?.model ?? AUTO) : AUTO;
+    // The workspace's own OpenRouter choice (ADR 9005) joins the picks, without repeats.
     const list = ctx.models.filter((m) =>
-      k?.endpoint ? m.endpoint?.credentialId === k.id : m.provider === k?.provider && m.pick !== false,
+      k?.endpoint
+        ? m.endpoint?.credentialId === k.id
+        : m.provider === k?.provider && (m.pick !== false || (ctx.chosen?.has(m.id) ?? false)),
     );
     return [
       { value: AUTO, label: t("brain.auto.label"), sub: t("brain.auto.hint"), checked: isAuto(chosen) },
@@ -246,14 +255,16 @@ export const aiChoiceEfforts = (row: AiChoiceRow): readonly EffortLevel[] =>
 export function aiChoiceOf(row: AiChoiceRow, current: AiChoice | null): AiChoice {
   // Lodi's "A do workspace": the workspace's own AI, nothing of the person's to carry.
   if (row.type === "workspace") return { brain: "model" };
-  const keep = current?.brain === row.brain;
-  const rest = keep
+  // A key's model belongs to that key: another key starts on Automático, never carrying the old one's.
+  const keep = current?.brain === row.brain && (row.type !== "key" || row.selected);
+  const fresh = row.type === "key" ? AUTO : null;
+  const rest: Pick<AiChoice, "model" | "effort" | "contextTokens"> = keep
     ? {
         model: current?.model ?? null,
         effort: current?.effort ?? null,
         ...(current?.contextTokens !== undefined ? { contextTokens: current.contextTokens } : {}),
       }
-    : { model: null, effort: null, ...(current?.contextTokens !== undefined ? { contextTokens: null } : {}) };
+    : { model: fresh, effort: fresh, ...(current?.contextTokens !== undefined ? { contextTokens: null } : {}) };
   if (row.type === "plan" && row.account)
     return { brain: row.brain, account: row.account.id, machineId: row.account.machineId, ...rest };
   if (row.type === "key")
@@ -297,3 +308,14 @@ export const accountShortName = (
 /** Why a row is dimmed, in words: its owner by name. */
 export const reasonText = (t: TFunction, row: Pick<AiChoiceRow, "reason" | "account">) =>
   row.reason ? t(`aiAccounts.useReason.${row.reason}`, { owner: firstName(row.account?.ownerName ?? "") }) : "";
+
+/** Where a fixed model starts after Automático: Médio if its scale has it, else the closest level it has, else none. */
+export function startLevel(scale: readonly string[] | null | undefined): EffortLevel | null {
+  const at = (l: string) => EFFORT_LEVELS.indexOf(l as EffortLevel);
+  const have = EFFORT_LEVELS.filter((l) => scale?.includes(l));
+  const mid = at("medium");
+  return have.reduce<EffortLevel | null>(
+    (best, l) => (best === null || Math.abs(at(l) - mid) < Math.abs(at(best) - mid) ? l : best),
+    null,
+  );
+}

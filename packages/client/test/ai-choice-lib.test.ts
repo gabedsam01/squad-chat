@@ -12,6 +12,7 @@ import {
   aiChoiceRows,
   aiChoiceSetup,
   effortFamilyOf,
+  startLevel,
 } from "../src/lib/ai-choice";
 
 const t = ((key: string) => key) as TFunction;
@@ -168,7 +169,7 @@ describe("what a row chooses and saves", () => {
       model: "opus",
       effort: "high",
     });
-    expect(aiChoiceOf(def, current)).toEqual({ brain: "model", key: null, model: null, effort: null });
+    expect(aiChoiceOf(def, current)).toEqual({ brain: "model", key: null, model: "auto", effort: "auto" });
     expect(aiChoiceOf(other, null)).toMatchObject({ brain: "model", key: "k2" });
     expect(aiChoiceBrainInput(aiChoiceOf(plan, current), "mine")).toEqual({
       scope: "mine",
@@ -177,8 +178,59 @@ describe("what a row chooses and saves", () => {
       model: "opus",
       effort: "high",
     });
-    expect(aiChoiceSetup(aiChoiceOf(other, null))).toEqual({ brain: "model", model: null, key: "k2", effort: null });
+    expect(aiChoiceSetup(aiChoiceOf(other, null))).toEqual({
+      brain: "model",
+      model: "auto",
+      key: "k2",
+      effort: "auto",
+    });
     expect(aiChoiceSetup(aiChoiceOf(plan, current))).toMatchObject({ machineId: "m1", account: "w1" });
+  });
+
+  test("another key starts on Automático, never carrying the old key's model; the same key keeps it", () => {
+    const rows = aiChoiceRows(hub([], [key("k1", { isDefault: true }), key("k2")]), ctx());
+    const [k1, k2] = rows;
+    if (!k1 || !k2) throw new Error("rows");
+    const current = { brain: "model" as const, key: "k2", model: "custom:x:river", effort: "high" as const };
+    const sel = aiChoiceRows(hub([], [key("k1", { isDefault: true }), key("k2")]), ctx({ current }));
+    expect(aiChoiceOf(k1, current)).toMatchObject({ key: null, model: "auto", effort: "auto" });
+    expect(aiChoiceOf(sel.find((r) => r.key === "key:k2") as never, current)).toMatchObject({
+      key: "k2",
+      model: "custom:x:river",
+      effort: "high",
+    });
+    // from a subscription account to a key
+    const fromPlan = { brain: "opencode" as const, account: "w0", model: "m", effort: "low" as const };
+    expect(aiChoiceOf(k2, fromPlan)).toMatchObject({ brain: "model", key: "k2", model: "auto" });
+  });
+
+  test("an OpenRouter key lists the workspace's chosen models beside the picks, once each", () => {
+    const [k] = aiChoiceRows(hub([], [key("or", { provider: "openrouter" })]), ctx());
+    if (!k) throw new Error("row");
+    const m = (id: string, pick?: boolean): Model => ({
+      id,
+      label: id,
+      provider: "openrouter",
+      inputUsdPerMTok: 1,
+      outputUsdPerMTok: 1,
+      ...(pick === undefined ? {} : { pick }),
+    });
+    const models = [m("alias", true), m("xiaomi/mimo", false), m("other/x", false)];
+    const rows = aiChoiceModels(t, k, {
+      current: null,
+      options: [],
+      models,
+      chosen: new Set(["xiaomi/mimo", "alias"]),
+    });
+    expect(rows.map((r) => r.value)).toEqual(["auto", "alias", "xiaomi/mimo"]);
+  });
+
+  test("a fixed model after Automático starts on Médio, else the closest level it has", () => {
+    expect(startLevel(["low", "medium", "high"])).toBe("medium");
+    expect(startLevel(["low", "high", "max"])).toBe("low");
+    expect(startLevel(["high", "xhigh"])).toBe("high");
+    expect(startLevel([])).toBeNull();
+    expect(startLevel(null)).toBeNull();
   });
 
   test("models: a key's from its provider's catalog with Automático first; efforts by brain", () => {

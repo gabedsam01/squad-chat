@@ -652,6 +652,19 @@ export async function updateAgent(
       if (key && model && key.provider !== model.provider) patch = { ...patch, credentialId: null };
     }
   }
+  // A key sent alone while the agent's model belongs to another key (an endpoint's pinned id, or another provider's):
+  // the choice moves with the key, on Automático, instead of keeping a model the new key would refuse.
+  if (patch.credentialId !== undefined && patch.model === undefined && current.model && !isAutoModel(current.model)) {
+    const pinned = parseCustomModel(current.model)?.credentialId;
+    const [key, model] = pinned
+      ? []
+      : await Promise.all([
+          patch.credentialId ? usableCredentialRow(db, orgId, patch.credentialId) : null,
+          modelInfoFor(db, current.model, orgId),
+        ]);
+    if (pinned ? pinned !== patch.credentialId : key && model && key.provider !== model.provider)
+      patch = { ...patch, model: AUTO_MODEL };
+  }
   // The connect flow may send only the key when the agent is already on Automatic.
   if (patch.credentialId !== undefined || isAutoModel(patch.model)) {
     const selected = await endpointModel(db, orgId, {

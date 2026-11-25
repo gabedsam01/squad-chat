@@ -7,6 +7,7 @@ import {
   accountShortName,
   aiChoiceOf,
   reasonText,
+  startLevel,
 } from "@agenteschat/client/lib/ai-choice";
 import { EFFORT_LEVELS, type EffortLevel, effortOf } from "@agenteschat/client/lib/brain-advanced";
 import { contextSize } from "@agenteschat/client/lib/context-limits";
@@ -230,8 +231,8 @@ export function AiChoiceFields({
   ];
   const pickModel = (v: string) => {
     if (!row || !shown || v === model) return;
-    // Automático picks the effort too; a fixed model after it starts on Médio.
-    const effort = isAuto(v) ? AUTO : isAuto(shown.effort) ? "medium" : shown.effort;
+    // Automático picks the effort too; a fixed model after it starts on Médio, or the closest level its scale has.
+    const effort = isAuto(v) ? AUTO : isAuto(shown.effort) ? startLevel(state.effortScale(row, v)) : shown.effort;
     commit({ ...shown, model: v, ...(effort !== undefined ? { effort } : {}) }, row);
   };
 

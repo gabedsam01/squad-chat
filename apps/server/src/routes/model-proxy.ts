@@ -47,7 +47,12 @@ export function modelProxyRoutes(deps: ModelProxyRouteDeps) {
   app.post("/chat/completions", async (c) => {
     const body = (await c.req.json().catch(() => null)) as unknown;
     const reply = await proxyChat(
-      { db, gateway, ...(deps.maxOutputTokens ? { maxOutputTokens: deps.maxOutputTokens } : {}) },
+      {
+        db,
+        gateway,
+        ...(log ? { log } : {}),
+        ...(deps.maxOutputTokens ? { maxOutputTokens: deps.maxOutputTokens } : {}),
+      },
       c.get("identity"),
       body,
       c.req.raw.signal,
