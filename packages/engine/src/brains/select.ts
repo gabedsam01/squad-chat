@@ -33,6 +33,7 @@ import { planFull, planState, planWindows } from "@agenteschat/ui/plan-state";
 import type { Agent } from "../agents";
 import { replyRefusal } from "../ai-accounts/reply";
 import { accountServes } from "../ai-accounts/serves";
+import { defaultBrainModel } from "../brain-settings";
 import type { CodeSessionContext } from "../code-sessions";
 import type { ModelGateway } from "../gateway";
 import type { MachineStatus } from "../machine-hub";
@@ -631,7 +632,7 @@ async function proxyPlanFor(
   return null;
 }
 
-/** What a Claude Code brain's model is when nobody chose one (Codex: its own default). */
+/** What a computer brain's model is when nobody chose one: the default the picker shows, so what runs is what it says. */
 const DEFAULT_MODELS: Partial<Record<BrainKind, string>> = { claude_code: "sonnet" };
 
 /**
@@ -646,7 +647,12 @@ export function brainModelFor(
 ): string | undefined {
   if (kind === "model") return undefined;
   const agentModel = kindOf(agent.brain) === kind ? (agent.brainModel ?? undefined) : undefined;
-  return mission?.model ?? agentModel ?? DEFAULT_MODELS[kind];
+  return (
+    mission?.model ??
+    agentModel ??
+    DEFAULT_MODELS[kind] ??
+    (kind === "codex" ? (defaultBrainModel("codex") ?? undefined) : undefined)
+  );
 }
 
 /**

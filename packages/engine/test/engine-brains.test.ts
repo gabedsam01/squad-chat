@@ -87,6 +87,7 @@ import {
   taskManager,
   transitionRun,
 } from "../src";
+import { defaultBrainModel } from "../src/brain-settings";
 import { computerPrompt } from "../src/brains/prompt";
 import { SYSTEM_REFUSED } from "../src/brains/types";
 import { afterSteered } from "../src/steering";
@@ -273,8 +274,9 @@ test("availability: no computer, offline, old runner, not logged in, Codex missi
 test("a computer brain's model: the mission's, else the agent's only for the same brain, else the brain's default", () => {
   const agent = { brain: "claude_code", brainModel: "opus" };
   expect(brainModelFor("claude_code", agent)).toBe("opus");
-  // The agent's Claude Code model means nothing to Codex (a mission on Codex): Codex's own default.
-  expect(brainModelFor("codex", agent)).toBeUndefined();
+  // The agent's Claude Code model means nothing to Codex (a mission on Codex): the default its picker shows.
+  expect(brainModelFor("codex", agent)).toBe(defaultBrainModel("codex") as string);
+  expect(brainModelFor("codex", { brain: "codex", brainModel: null })).toBe(defaultBrainModel("codex") as string);
   expect(brainModelFor("codex", agent, { model: "gpt-6.1-codex" })).toBe("gpt-6.1-codex");
   expect(brainModelFor("claude_code", { brain: "codex", brainModel: "gpt-6.1-codex" })).toBe("sonnet");
   expect(brainModelFor("claude_code", { brain: "claude_code", brainModel: null }, { model: "haiku" })).toBe("haiku");
