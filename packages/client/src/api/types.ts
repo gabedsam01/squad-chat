@@ -6494,9 +6494,11 @@ export interface AgentBrain {
     key?: { provider: string; label: string } | null;
   };
   brain: BrainKind;
-  /** As stored; null = the brain's default. */
+  /** As stored; null = the brain's default. The model brain's: the agent's own `model`. */
   model: string | null;
   effectiveModel: string | null;
+  /** The model brain's key (credential id); null = the workspace's default key. */
+  key: string | null;
   computer: { machineId: string; name: string; online: boolean } | null;
   options: BrainOption[];
   /** Every computer the caller may give the agent, with what each offers ("Vai para o Mac mini"). */

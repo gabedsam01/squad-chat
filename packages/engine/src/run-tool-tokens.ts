@@ -117,6 +117,41 @@ export async function verifyRunToolToken(
   return { ok: true, identity: { orgId: row.orgId, agentId: row.agentId, runId: row.runId, machineId } };
 }
 
+/**
+ * Checks the bearer of a proxied model call (ADR 9007) by its hash alone: the computer's call arrives over plain HTTP,
+ * not on the socket `verifyRunToolToken` pins the token to. A run's token only (never a task's); the run must still
+ * be going on. A run that waits for a person still may finish the call it started, so only an ended run is refused.
+ */
+export async function verifyRunToolTokenForProxy(
+  db: Executor,
+  token: string,
+  now = new Date(),
+): Promise<RunToolTokenCheck> {
+  if (!isRunToolToken(token)) return refuse("bridge.invalid_token", "Not allowed: unknown tool token.");
+  const [row] = await db
+    .select()
+    .from(runToolTokens)
+    .where(eq(runToolTokens.tokenHash, sha256(token)));
+  if (!row || row.revokedAt || row.taskId || !row.runId) {
+    return refuse("bridge.invalid_token", "Not allowed: unknown tool token.");
+  }
+  if (row.expiresAt.getTime() <= now.getTime()) return refuse("bridge.expired", "This run's tool token expired.");
+  const [run] = await db
+    .select({ status: agentRuns.status, orgId: agentRuns.orgId, agentId: agentRuns.agentId })
+    .from(agentRuns)
+    .where(eq(agentRuns.id, row.runId));
+  if (!run || run.orgId !== row.orgId || run.agentId !== row.agentId) {
+    return refuse("bridge.invalid_token", "Not allowed: unknown run.");
+  }
+  if (run.status !== "running" && run.status !== "waiting_approval" && run.status !== "waiting_input") {
+    return refuse("bridge.run_ended", "This run has ended: stop now.");
+  }
+  return {
+    ok: true,
+    identity: { orgId: row.orgId, agentId: row.agentId, runId: row.runId, machineId: row.machineId },
+  };
+}
+
 /** Revokes a run's (or a task's) tokens: call it when the run finishes or the task ends. */
 export async function revokeRunToolTokens(db: Executor, of: { runId: string } | { taskId: string }) {
   await db

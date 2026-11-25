@@ -3,6 +3,7 @@ import { MODEL_CATALOG, PROVIDER_IDS } from "@agenteschat/providers";
 import type { TFunction } from "i18next";
 import {
   apiModelName,
+  autoLineProvider,
   autoMakerOf,
   keyLine,
   keyLooksValid,
@@ -15,6 +16,7 @@ import {
   providerOf,
   providersForKey,
   shownKeys,
+  usableModels,
 } from "../src/lib/providers";
 
 const ids = (key: string) => providersForKey(key).map((p) => p.id);
@@ -187,5 +189,39 @@ describe("an OpenRouter key's models", () => {
       "openai/gpt-6-luna",
       "z-ai/glm-5.3",
     ]);
+  });
+});
+
+describe("Automático's models", () => {
+  const model = (id: string, provider: string, endpoint?: { credentialId: string; name: string }) => ({
+    id,
+    label: id,
+    provider,
+    inputUsdPerMTok: 1,
+    outputUsdPerMTok: 2,
+    ...(endpoint ? { endpoint } : {}),
+  });
+  const keys = [
+    { id: "or", provider: "openrouter", createdAt: "2026-01-01" },
+    { id: "gw", provider: "custom", createdAt: "2026-02-01" },
+    { id: "old", provider: "gemini", createdAt: "2026-03-01", revokedAt: "2026-03-02" },
+  ];
+
+  test("the tiers sit under the default key's provider, an endpoint's included, else the newest key's", () => {
+    expect(autoLineProvider(keys, "gw")).toBe("custom");
+    expect(autoLineProvider(keys, "or")).toBe("openrouter");
+    expect(autoLineProvider(keys, null)).toBe("custom");
+    expect(autoLineProvider([], null)).toBeNull();
+  });
+
+  test("a tier offers the models of every connected key, grouped by key, and none of a key that is gone", () => {
+    const models = [
+      model("openai/gpt-6-luna", "openrouter"),
+      model("custom:gw:m-1", "custom", { credentialId: "gw", name: "lite llm" }),
+      model("gemini-pro", "gemini"),
+    ];
+    const groups = modelChoices(models, keys, false);
+    expect(groups.map(([group]) => group)).toEqual(["openrouter", "lite llm"]);
+    expect([...usableModels(groups)].sort()).toEqual(["custom:gw:m-1", "openai/gpt-6-luna"]);
   });
 });

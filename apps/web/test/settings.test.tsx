@@ -393,6 +393,8 @@ describe("Configurações do workspace", () => {
     // A model OpenRouter stopped listing: the tier runs on the default, so it reads as the default.
     const seeded = seedState({
       extraModels: OPENROUTER_MODELS,
+      // The line is the default key's provider's (a tier may name any key's model).
+      defaultCredentialId: OPENROUTER_KEY.id,
       autoModels: { openrouter: { medium: "acme/retired" } },
     });
     seeded.credentials.push(OPENROUTER_KEY);

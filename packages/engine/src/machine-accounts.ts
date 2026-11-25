@@ -1545,7 +1545,9 @@ export async function beginAccountLogin(
     provider !== undefined &&
     !cliKey &&
     !enterprise &&
-    ((kind !== "claude_code" && kind !== "opencode") || !isPlanId(provider))
+    (kind !== "opencode" || !isPlanId(provider)) &&
+    // A coding plan runs on OpenCode only. An older Claude Code key account may still sign in again (its agents keep it).
+    !(kind === "claude_code" && isPlanId(provider) && accountId !== undefined)
   ) {
     throw new ValidationError("Choose one of the coding plans", "account.invalid_plan");
   }

@@ -258,8 +258,8 @@ type AutoAgent = Pick<Agent, "model" | "brain" | "brainModel" | "brainEffort"> &
  * The agent's `auto` API model thinks in a run on `kind`: on the API brain, or as the right hand's stand-in on its key
  * (the only computer brain the API stands in for). A computer brain whose model and effort are both pinned asks nothing.
  */
-const autoApiModelFor = (agent: AutoAgent, kind: BrainKind) =>
-  isAutoModel(agent.model) && (kind === "model" || isRightHand(agent));
+const autoApiModelFor = (agent: AutoAgent, kind: BrainKind, proxy?: boolean) =>
+  isAutoModel(agent.model) && (kind === "model" || proxy === true || isRightHand(agent));
 
 /** The agent's effort is `auto` and it applies to this brain (its own computer brain, like `brainEffortFor`). */
 const autoEffortFor = (agent: AutoAgent, kind: BrainKind) =>
@@ -271,8 +271,8 @@ export const autoWanted = (agent: AutoAgent) =>
   (brainOf(agent.brain) !== "model" && (isAutoModel(agent.brainModel) || isAutoModel(agent.brainEffort)));
 
 /** This run needs a choice: its API model, its brain's model or effort. */
-export const needsAutoChoice = (agent: AutoAgent, plan: Pick<BrainPlan, "kind" | "model">) =>
-  autoApiModelFor(agent, plan.kind) || isAutoModel(plan.model) || autoEffortFor(agent, plan.kind);
+export const needsAutoChoice = (agent: AutoAgent, plan: Pick<BrainPlan, "kind" | "model" | "proxy">) =>
+  autoApiModelFor(agent, plan.kind, plan.proxy) || isAutoModel(plan.model) || autoEffortFor(agent, plan.kind);
 
 /** A computer brain's model for a tier: Claude Code's alias, a coding plan's OpenCode id, or a Codex model. */
 export function brainModelForTier(kind: BrainKind, tier: ModelTier, planProvider?: string | null): string | undefined {
@@ -281,17 +281,20 @@ export function brainModelForTier(kind: BrainKind, tier: ModelTier, planProvider
     return claudeCodeModels().find((o) => o.modelId === id)?.value ?? "sonnet";
   }
   if (kind === "opencode" && isPlanId(planProvider)) {
-    const models = planOf(planProvider)?.claudeCode.models ?? [];
+    // Models that need nothing from the account and aren't free-tier: the ones `autoPlanModel` would pick too.
+    const all = planOf(planProvider)?.claudeCode.models ?? [];
+    const models = all.filter((m) => !m.needs && !m.free);
+    const pool = models.length ? models : all;
+    const sonnet = pool.find((m) => m.alias === "sonnet");
     const pick =
       tier === "small"
-        ? (models.find((m) => m.tag === "cheap" || m.alias === "haiku" || m.tag === "fast") ??
-          models.find((m) => m.alias === "sonnet") ??
-          models[0])
+        ? (pool.find((m) => m.alias === "haiku") ??
+          pool.find((m) => m.tag === "cheap" || m.tag === "fast") ??
+          sonnet ??
+          pool[0])
         : tier === "large"
-          ? (models.find((m) => m.tag === "smart" || m.alias === "opus") ??
-            models.find((m) => m.alias === "sonnet") ??
-            models[0])
-          : (models.find((m) => m.alias === "sonnet") ?? models[0]);
+          ? (pool.find((m) => m.alias === "opus") ?? pool.find((m) => m.tag === "smart") ?? sonnet ?? pool[0])
+          : (sonnet ?? pool[0]);
     return pick ? opencodePlanModel(planProvider, pick.id) : undefined;
   }
   if (kind === "codex") return modelForTier("openai", tier) ?? undefined;
@@ -345,6 +348,8 @@ export function autoModelFor(
   endpoint?: AutoEndpoint | null,
   /** The models the workspace chose on this line (OpenRouter, ADR 9005); absent or null: all of them. */
   allowed?: readonly string[] | null,
+  /** Whether a model of another line has a live key of the workspace: its pick for a tier then stands (it calls with its own key). */
+  reach?: (model: string) => boolean,
 ): string | null {
   const own = tiers?.[tier];
   // Another provider's (or another endpoint's) model needs another key: only this line's own pick stands.
@@ -353,7 +358,7 @@ export function autoModelFor(
       ? endpoint?.credentialId === parseCustomModel(id)?.credentialId
       : modelInfo(id)?.provider === provider;
   const ownHere = own ? onLine(own) && (!allowed || allowed.includes(own)) : false;
-  if (own && ownHere) return own;
+  if (own && (ownHere || (!onLine(own) && reach?.(own)))) return own;
   // An endpoint declares no catalog tiers: its one best model answers for every tier.
   if (provider === "custom") return endpoint ? endpointModelId(endpoint.credentialId, endpoint.models) : null;
   // The models the workspace chose, by tier; without one of that tier, the nearest with an answer in a schema.
@@ -378,20 +383,22 @@ export function autoModelFor(
  */
 export function autoApplied(
   agent: AutoAgent,
-  plan: Pick<BrainPlan, "kind" | "model">,
+  plan: Pick<BrainPlan, "kind" | "model" | "proxy">,
   choice: Pick<AutoModelRecord, "tier" | "effort" | "apiModel">,
   provider: string,
   tiers?: Partial<Record<ModelTier, string>>,
   endpoint?: AutoEndpoint | null,
   allowed?: readonly string[] | null,
   planProvider?: string | null,
+  reach?: (model: string) => boolean,
 ): AutoApplied {
   const out: AutoApplied = {};
-  if (autoApiModelFor(agent, plan.kind)) {
-    const model = choice.apiModel ?? autoModelFor(provider, choice.tier, tiers, endpoint, allowed);
+  if (autoApiModelFor(agent, plan.kind, plan.proxy)) {
+    const model = choice.apiModel ?? autoModelFor(provider, choice.tier, tiers, endpoint, allowed, reach);
     if (model) out.apiModel = model;
   }
-  if (plan.kind === "model") {
+  // A proxied turn (ADR 9007) is the API model's, run by OpenCode: its effort and model are the API's.
+  if (plan.kind === "model" || plan.proxy) {
     if (isAutoModel(agent.model)) out.effort = choice.effort;
     return out;
   }

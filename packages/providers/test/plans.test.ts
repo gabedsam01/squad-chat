@@ -17,12 +17,15 @@ import {
   learnedPlanModels,
   learnPlanModels,
   modelLimitOf,
+  opencodePlanModel,
+  opencodePlanPrefix,
   PLAN_ALIASES,
   PLAN_FORBIDDEN_TEXT,
   PLAN_IDS,
   PLAN_INACTIVE_TEXT,
   type PlanId,
   type PlanModel,
+  planBrainModel,
   planForTurn,
   planModel,
   planModelById,
@@ -469,4 +472,29 @@ test("before this process has read the plan's live list, no model counts as drop
 console.log(JSON.stringify([droppedPlanModel("opencode", "glm-9"), droppedPlanModel("opencode", "hy3")]));`;
   const run = Bun.spawnSync([process.execPath, "-e", code]);
   expect(run.stdout.toString().trim()).toBe("[null,null]");
+});
+
+test("OpenCode gets a plan's model as prefix/id without Claude Code's [1m] suffix", () => {
+  expect(opencodePlanModel("zai", "sonnet")).toBe("zai/glm-5.3");
+  expect(opencodePlanModel("zai", "zai/glm-5.3-flash[1m]")).toBe("zai/glm-5.3-flash");
+  expect(opencodePlanModel("opencode", "opencode-go/glm-5.3")?.startsWith("opencode-go/")).toBe(true);
+  expect(opencodePlanModel("nobody", "x/y")).toBe("x/y");
+  expect(opencodePlanPrefix("opencode")).toBe("opencode-go");
+  expect(opencodePlanPrefix("kimi")).toBe("kimi");
+  for (const p of PLAN_IDS)
+    for (const m of CODING_PLANS[p].claudeCode.models) expect(opencodePlanModel(p, m.id)).not.toContain("[1m]");
+});
+
+test("a stored prefixed plan model is still a plan model, and Claude Code runs it by its bare id", () => {
+  expect(isPlanModelId("zai/glm-5.3[1m]")).toBe(true);
+  expect(isPlanModelId("opencode-go/glm-5.3[1m]")).toBe(isPlanModelId("glm-5.3[1m]"));
+  expect(droppedPlanModel("zai", "zai/sonnet")).toBeNull();
+  expect(claudeCodeModel(CODING_PLANS.zai, "zai/glm-5.3[1m]")).toBe("glm-5.3[1m]");
+  expect(claudeCodeModel(CODING_PLANS.zai, "opencode-go/sonnet")).toBe("sonnet");
+});
+
+test("planBrainModel prefixes only an OpenCode brain on a plan", () => {
+  expect(planBrainModel("opencode", "zai", "sonnet")).toBe("zai/glm-5.3");
+  expect(planBrainModel("claude_code", "zai", "sonnet")).toBe("sonnet");
+  expect(planBrainModel("opencode", null, "m")).toBe("m");
 });

@@ -16066,6 +16066,7 @@ export const ptBR = {
         "Este endereço está numa rede privada. Use um endereço público ou, num servidor próprio, libere-o com `OUTBOUND_ALLOW_CIDRS`.",
       tooLong: "Ficou longo demais. Encurte e tente de novo.",
       updateComputerApp: "O app do computador é antigo demais para isso. Atualize e tente de novo.",
+      planNeedsOpenCode: "Planos de código só rodam no OpenCode. Escolha o OpenCode para essa conta.",
       computerUpdatesItself: "O computador do workspace se atualiza sozinho para isso. Tente de novo daqui a pouco.",
       notInvited: "Você não está entre os convidados deste evento.",
       offHere: "Isso está desligado aqui.",

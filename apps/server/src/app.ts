@@ -97,6 +97,7 @@ import { githubAppRoutes, registerGitHubAppWebhook } from "./routes/github-app";
 import { registerHealth } from "./routes/health";
 import { registerInstance } from "./routes/instance";
 import { machineAppRoutes, registerMachinePublicRoutes } from "./routes/machines";
+import { modelProxyRoutes } from "./routes/model-proxy";
 import { type AppsRouteOptions, registerAppsRoot, registerOauthRoutes } from "./routes/oauth";
 import { pushRelayRoutes } from "./routes/push-relay";
 import { registerWaitlist } from "./routes/waitlist";
@@ -144,6 +145,7 @@ export interface AppOptions {
  * - `/api/partners/waitlist` public: join the partner program's waiting list (the landing page, only with LANDING_URL)
  * - `/api/oauth/*`        public: the OAuth 2.1 authorization server for AI apps (ADR 0119)
  * - `/api/push-relay/v1/*` other installations' phone pushes, server to server (only with PUSH_RELAY_SERVE, ADR 0152)
+ * - `/api/model-proxy/v1/*` the models OpenCode thinks through on a computer, bearer = the turn's token (ADR 9007)
  * - `/mcp`                AI apps' MCP endpoint, bearer tokens only (ADR 0119); `/.well-known/oauth-*` its discovery
  * - `/api/ws`             WebSocket (real-time)
  * - `/api/live`           WebSocket: one live file, a spreadsheet, presentation or canvas (ADR 0196)
@@ -306,6 +308,20 @@ export function createApp(options: AppOptions) {
           }),
         );
       }
+    }
+    // The models an API-key agent's OpenCode turn thinks through (ADR 9007), over the Model Gateway.
+    const gateway = deps.extras?.context?.gateway;
+    if (gateway) {
+      api.route(
+        "/model-proxy/v1",
+        modelProxyRoutes({
+          db: deps.db,
+          gateway,
+          rateLimiter: deps.adapters.rateLimiter,
+          maxOutputTokens: deps.config.AGENT_MAX_OUTPUT_TOKENS,
+          log,
+        }),
+      );
     }
     if (deps.extras?.gitProxy) registerGitProxy(api, deps.extras.gitProxy);
   }

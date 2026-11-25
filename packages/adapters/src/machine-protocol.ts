@@ -7,7 +7,7 @@ import type { MergeDone } from "./command-policy";
  */
 
 /** Bumped on breaking changes; the server refuses runners older than `MIN_RUNNER_PROTOCOL`. */
-export const MACHINE_PROTOCOL_VERSION = 77;
+export const MACHINE_PROTOCOL_VERSION = 78;
 export const MIN_RUNNER_PROTOCOL = 1;
 /** From this protocol on, requests carry `agent` and each agent works in its own folder. */
 export const AGENT_FOLDERS_PROTOCOL = 2;
@@ -704,6 +704,14 @@ export const TERMINAL_CWD_PROTOCOL = 76;
  * person closed it). The server sends `keep` to no older runner, where each open is a new shell.
  */
 export const TERMINAL_KEEP_PROTOCOL = 77;
+/**
+ * From this protocol on, an `opencode` `brain.turn` may carry `proxy` (ADR 9007): OpenCode thinks through the server's
+ * model proxy, authenticated with the turn's `mcp.token`, so the agent's API key never reaches the computer. The server
+ * sends `proxy` to no older runner (its agent thinks in the server's process instead).
+ */
+export const MODEL_PROXY_PROTOCOL = 78;
+/** The one model a proxied turn names: the server picks the real one from the run (`proxy` of `BrainTurnRequest`). */
+export const MODEL_PROXY_MODEL = "squadchat/agent";
 /** A kept terminal's name: the server puts the person's id in front of the app's, so each person reaches only theirs. */
 export const isTerminalKeep = (v: unknown): v is string => typeof v === "string" && /^[A-Za-z0-9_.-]{8,128}$/.test(v);
 /**
@@ -2395,6 +2403,11 @@ export interface BrainTurnRequest {
    * no key from the runner's env); ADR 0132.
    */
   freeTier?: boolean;
+  /**
+   * `opencode`, protocol 78 (`MODEL_PROXY_PROTOCOL`, ADR 9007): the turn's model is the server's (`squadchat/agent`),
+   * reached at `<server>/api/model-proxy/v1` with `mcp.token` as the bearer; no key of any provider is on the computer.
+   */
+  proxy?: true;
   /** Protocol 28: the most context it reads, in tokens; absent: the model's own window. */
   contextTokens?: number;
   /**

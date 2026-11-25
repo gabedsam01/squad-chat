@@ -191,6 +191,19 @@ describe("one decision, mapped per brain", () => {
     expect(tiers("opencode")).toEqual(["Claude Haiku 5.5", "MiniMax M3", "MiniMax M3"]);
   });
 
+  test("OpenCode on a plan runs the plan's alias model for the tier, never a model needing the account or a free one", () => {
+    expect(brainModelForTier("opencode", "small", "zai")).toBe("zai/glm-5.3-flash");
+    expect(brainModelForTier("opencode", "large", "zai")).toBe("zai/glm-5.3");
+    for (const p of ["zai", "kimi", "minimax", "opencode"] as const)
+      for (const tier of MODEL_TIERS) {
+        const id = brainModelForTier("opencode", tier, p)?.split("/").slice(1).join("/");
+        const m = CODING_PLANS[p].claudeCode.models.find((x) => x.id.replace(/\[1m\]$/, "") === id);
+        expect(m).toBeDefined();
+        const flags = m as { needs?: unknown; free?: boolean } | undefined;
+        expect(flags?.needs ?? flags?.free).toBeUndefined();
+      }
+  });
+
   test("the API brain: the model of the tier from the agent's key's line, and the effort", () => {
     const plan: BrainPlan = { kind: "model" };
     expect(needsAutoChoice(agent, plan)).toBe(true);
@@ -271,6 +284,28 @@ describe("one decision, mapped per brain", () => {
     // Every other line keeps its own rule: OpenRouter's is its list, another provider's is the Anthropic line.
     expect(autoModelFor("openrouter", "medium")).toBeNull();
     expect(autoModelFor("nobody", "large")).toBe("claude-opus-5-5");
+  });
+
+  test("a tier may name a model of another connected key, called with that key", () => {
+    const other = customModelId("11111111-1111-4111-8111-111111111111", "x");
+    const endpoint = {
+      credentialId: "22222222-2222-4222-8222-222222222222",
+      models: [{ id: "good", check: "ok" as const }],
+    };
+    // Without the workspace's keys at hand a foreign pick gives way to the line's own, as before.
+    expect(autoModelFor("custom", "small", { small: other }, endpoint)).toBe(
+      customModelId(endpoint.credentialId, "good"),
+    );
+    // With a live key behind it, the pick stands, on an endpoint line and on a catalog line.
+    const reach = (m: string) => m === other || m === "claude-opus-5-5";
+    expect(autoModelFor("custom", "small", { small: other }, endpoint, null, reach)).toBe(other);
+    expect(autoModelFor("openai", "large", { large: "claude-opus-5-5" }, undefined, null, reach)).toBe(
+      "claude-opus-5-5",
+    );
+    // A model no live key reaches never stands.
+    expect(autoModelFor("openai", "large", { large: "claude-opus-5-5" }, undefined, null, () => false)).not.toBe(
+      "claude-opus-5-5",
+    );
   });
 
   test("an OpenRouter key: its good picks per tier, or the workspace's own while OpenRouter lists them", () => {

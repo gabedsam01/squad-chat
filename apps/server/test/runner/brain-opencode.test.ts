@@ -5,6 +5,7 @@ import path from "node:path";
 import type { MachineRequest } from "@agenteschat/adapters";
 import { accountCodeAad, OPENCODE_KEY_PROVIDER } from "@agenteschat/adapters/machine-protocol";
 import { sealSecret } from "@agenteschat/adapters/secret-box";
+import { opencodePlanPrefix, PLAN_IDS } from "@agenteschat/providers/plans";
 import { setTool } from "../../runner/access";
 import { AccountManager, accountEnv, opencodeKeyOf } from "../../runner/accounts";
 import { AcpError } from "../../runner/acp";
@@ -25,6 +26,8 @@ import {
   opencodeSessionKey,
   opencodeSessionsFile,
   opencodeTurnEnv,
+  PROXY_KEY_ENV,
+  PROXY_MODEL,
   runOpencodeTurn,
 } from "../../runner/brain-opencode";
 import { accessToStore, effectiveAccess } from "../../runner/config";
@@ -932,4 +935,29 @@ test("the pool: keepAccount closes idle processes of other accounts only; a rota
   expect(sig("k1")).toBe(sig("k1"));
   expect(sig("k1")).not.toContain("k1");
   expect(keyPrint(undefined)).toBeNull();
+});
+
+test("the engine's prefix for a plan is the provider OpenCode's config registers, with models under their bare id", () => {
+  for (const provider of PLAN_IDS) {
+    const config = JSON.parse(opencodeConfig({ profile: "work", planKey: { provider } }));
+    expect(Object.keys(config.provider)).toEqual([opencodePlanPrefix(provider)]);
+    if (provider !== "opencode") {
+      expect(Object.keys(config.provider[provider].models).some((id) => id.includes("[1m]"))).toBe(false);
+    }
+  }
+});
+
+test("a proxied turn's config points at the server's proxy and holds no provider key", () => {
+  const baseUrl = "https://chat.example/api/model-proxy/v1";
+  const config = opencodeConfig({ profile: "work", model: PROXY_MODEL, proxy: { baseUrl } });
+  const parsed = JSON.parse(config);
+  expect(parsed.model).toBe("squadchat/agent");
+  expect(parsed.enabled_providers).toEqual(["squadchat"]);
+  expect(parsed.provider.squadchat).toMatchObject({
+    npm: "@ai-sdk/openai-compatible",
+    options: { baseURL: baseUrl, apiKey: `{env:${PROXY_KEY_ENV}}` },
+    models: { agent: { name: "agent" } },
+  });
+  // The bearer reaches OpenCode through env only, never the config text.
+  expect(config).not.toContain("agk_");
 });

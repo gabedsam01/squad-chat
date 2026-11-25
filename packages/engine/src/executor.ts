@@ -32,6 +32,7 @@ import {
   isAutoModel,
   type ModelMessage,
   type ModelResult,
+  modelProvider,
   PROVIDERS,
   ProviderError,
   type StopReason,
@@ -47,6 +48,7 @@ import {
   isPlanId,
   opencodePlanModel,
   ownLimitsModel,
+  planBrainModel,
   planModel,
   planOf,
 } from "@agenteschat/providers/plans";
@@ -240,7 +242,7 @@ import {
   triedCalls,
   verdictRecord,
 } from "./continuation";
-import { modelInfoFor, openRouterSelection } from "./credentials";
+import { liveKeyReach, modelInfoFor, openRouterSelection } from "./credentials";
 import { sha256 } from "./crypto";
 import { widgetRunWaitChanged } from "./dashboards/refresh-fire";
 import { WIDGET_FAILURES } from "./dashboards/types";
@@ -3396,6 +3398,8 @@ async function executeRunInner(
     fresh: Boolean(viaRoutine) || run.background,
     promptKey: transcript.promptKey,
     codeSession: ctx.codeSession ?? null,
+    // A confidential thread's words stay in this process (ADR 9007).
+    noProxy: Boolean(ctx.confidential),
   });
   if (brainPlan.standIn) {
     standInUsed = brainPlan.standIn;
@@ -3538,10 +3542,12 @@ async function executeRunInner(
       endpoint,
       allowed,
       brainPlan.account?.provider,
+      // A tier may name a model of another connected key (Settings, Automático): it calls with that key.
+      tiers ? await liveKeyReach(db, run.orgId).catch(() => undefined) : undefined,
     );
     // No model for the tier: OpenRouter's list couldn't be read, or an endpoint offers none (never a call on the
     // wrong provider's line). Waited out like a provider outage, with the choice kept for the next attempt.
-    if (brainPlan.kind === "model" && isAutoModel(agent.model) && !applied.apiModel) {
+    if ((brainPlan.kind === "model" || brainPlan.proxy) && isAutoModel(agent.model) && !applied.apiModel) {
       const outage = new ProviderError("could not reach provider", true);
       outage.provider = PROVIDERS[provider as keyof typeof PROVIDERS]?.label;
       if (options.finalAttempt) return (await parkOutage(outage)) ? undefined : fail(gaveUp(outage));
@@ -3551,12 +3557,13 @@ async function executeRunInner(
       throw outage;
     }
     ({ agent: thinker, plan: brainPlan } = withAuto(agent, brainPlan, applied));
+    // A tier's model from another line is called with that line's key, never with the agent's key of this one.
+    if (applied.apiModel && thinker.credentialId && modelProvider(applied.apiModel) !== provider) {
+      thinker = { ...thinker, credentialId: null };
+    }
     if (autoBrain) {
       const picked = autoPlanModel(brainPlan.account?.provider, brainPlan.model, brainPlan.usage);
-      const model =
-        brainPlan.kind === "opencode" && isPlanId(brainPlan.account?.provider)
-          ? opencodePlanModel(brainPlan.account.provider, picked)
-          : picked;
+      const model = planBrainModel(brainPlan.kind, brainPlan.account?.provider, picked);
       if (model) brainPlan = { ...brainPlan, model };
     }
     if (!kept) {
@@ -4150,7 +4157,12 @@ async function executeRunInner(
     }
     // Only the right hand stands in on the key, and any agent once its whole order is at its limit while the workspace
     // turned "Continuar com a chave de API" on.
-    if ((rightHandKey || keyAfterPlans) && (await deps.gateway.hasModelCredential(thinker).catch(() => false))) {
+    // An API-key agent whose computer can't run OpenCode now thinks in this process, as it did before (ADR 9007).
+    const proxyFallback = plan.proxy === true && u.code !== "busy" && !u.queued && !onlyThisComputer;
+    if (
+      (rightHandKey || keyAfterPlans || proxyFallback) &&
+      (await deps.gateway.hasModelCredential(thinker).catch(() => false))
+    ) {
       await leaveLine();
       standIn = { plan, brain, toolGroups: t.toolGroups, loadedGroups: ctx.loadedGroups };
       t.fallback = {
@@ -4161,7 +4173,8 @@ async function executeRunInner(
         quiet: true,
       };
       // On "Automático" the API answers with the model and effort chosen for this run.
-      const autoEffort = isAutoModel(agent.model) ? t.autoModel?.effort : undefined;
+      const autoEffort =
+        (isAutoModel(agent.model) ? t.autoModel?.effort : undefined) ?? (plan.proxy ? plan.effort : undefined);
       plan = {
         kind: "model",
         ...(plan.missionId ? { missionId: plan.missionId } : {}),
@@ -5585,7 +5598,10 @@ async function executeRunInner(
             );
       try {
         // A plan brain's turn costs nothing through the gateway: its person's limit is checked here.
-        if (personId && turnPlan.kind !== "model") await assertPersonUnderLimit(db, run.orgId, personId);
+        // A proxied turn's calls go through the gateway, which checks it (ADR 9007).
+        if (personId && turnPlan.kind !== "model" && !turnPlan.proxy) {
+          await assertPersonUnderLimit(db, run.orgId, personId);
+        }
         result = await thinkOnce(
           brain,
           // Memory and wiki once per run: its first turn, or a session started afresh.
@@ -5610,8 +5626,10 @@ async function executeRunInner(
           deltas.push,
           {
             // Plan usage of a computer brain: tokens on the run, cost zero (the person's plan).
+            // A proxied turn's usage and cost are the gateway's, recorded by the proxy (ADR 9007): never twice.
             onUsage: (u) =>
               turnPlan.kind !== "model" &&
+              !turnPlan.proxy &&
               later(() =>
                 recordPlanUsage(db, {
                   orgId: run.orgId,
@@ -5963,10 +5981,7 @@ async function executeRunInner(
             );
             const from = turnPlan.model;
             const picked = autoPlanModel(turnPlan.account?.provider, from, stored);
-            const to =
-              turnPlan.kind === "opencode" && isPlanId(turnPlan.account?.provider)
-                ? opencodePlanModel(turnPlan.account.provider, picked)
-                : picked;
+            const to = planBrainModel(turnPlan.kind, turnPlan.account?.provider, picked);
             const provider = turnPlan.account?.provider;
             if (to && to !== from) {
               plan = { ...plan, model: to };
@@ -7110,6 +7125,7 @@ function brainTurnOf(
     ...(plan.session ? { session: t.sessionLost ? { ...plan.session, ownFolder: true } : plan.session } : {}),
     ...(plan.account ? { account: plan.account } : {}),
     ...(plan.effort ? { effort: plan.effort } : {}),
+    ...(plan.proxy ? { proxy: true } : {}),
     ...(speed ? { speed } : {}),
     ...(agent.contextTokens ? { contextTokens: agent.contextTokens } : {}),
     trigger,

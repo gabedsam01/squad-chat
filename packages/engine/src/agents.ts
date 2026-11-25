@@ -636,6 +636,11 @@ export async function updateAgent(
       if (qualified.model !== patch.model) patch = { ...patch, model: qualified.model };
     }
   }
+  // An endpoint's model sent alone runs only on its own endpoint's key: the agent moves there with it.
+  if (patch.credentialId === undefined && patch.model) {
+    const pinned = parseCustomModel(patch.model)?.credentialId;
+    if (pinned && pinned !== current.credentialId) patch = { ...patch, credentialId: pinned };
+  }
   // A model of another provider than the agent's own key (the model picker sends only the model): the key would refuse
   // every turn, so the agent goes on the workspace's default key for the new provider.
   if (patch.credentialId === undefined && patch.model && !isAutoModel(patch.model) && !parseCustomModel(patch.model)) {

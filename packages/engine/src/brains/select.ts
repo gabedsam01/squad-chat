@@ -6,11 +6,13 @@ import {
   CURSOR_PROTOCOL,
   GROK_PROTOCOL,
   isBrainEffort,
+  MODEL_PROXY_MODEL,
+  MODEL_PROXY_PROTOCOL,
   OPENCODE_ACP_PROTOCOL,
   OPENCODE_PROTOCOL,
   type PlanUsage,
 } from "@agenteschat/adapters";
-import { and, desc, type Executor, eq, isNotNull, ne, schema, sql } from "@agenteschat/db";
+import { and, desc, type Executor, eq, inArray, isNotNull, isNull, ne, schema, sql } from "@agenteschat/db";
 import { AUTO_MODEL, isAutoModel } from "@agenteschat/providers";
 import {
   type AntigravityGroup,
@@ -19,12 +21,11 @@ import {
   antigravityGroupOfLabel,
   autoPlanModel,
   claudeCodeModel,
-  isPlanId,
   modelLimitOf,
-  opencodePlanModel,
   ownLimitsModel,
   PLAN_FORBIDDEN_TEXT,
   PLAN_INACTIVE_TEXT,
+  planBrainModel,
   planOf,
   speedFits,
 } from "@agenteschat/providers/plans";
@@ -49,7 +50,14 @@ import { runState } from "../run-state";
 import { runnerUpdateWay } from "../runner-update";
 import type { AgentRun } from "../runs";
 import { accountUnavailable, brainSessionId, claudeCodeAvailability, cliMissingMessage, toolOff } from "./claude-code";
-import { BRAIN_NAMES, BRAIN_PLAN_NAMES, type BrainAccount, type BrainKind, type BrainSession } from "./types";
+import {
+  BRAIN_NAMES,
+  BRAIN_PLAN_NAMES,
+  type BrainAccount,
+  type BrainKind,
+  type BrainSession,
+  brainRunsOn,
+} from "./types";
 
 const KINDS: readonly BrainKind[] = ["model", "claude_code", "codex", "cursor", "opencode", "grok", "antigravity"];
 const kindOf = (v: unknown): BrainKind => (KINDS.includes(v as BrainKind) ? (v as BrainKind) : "model");
@@ -388,7 +396,7 @@ export function computerBrainUnavailable(
   /** What the runner last said about that plan (`storedPlanUsage`). */
   usage?: PlanUsage | null,
   /** The model the turn would run (`BrainPlan.model`): on a plan whose models have their own limits, its own counts. */
-  model?: string,
+  model?: string | null,
 ): BrainUnavailability | null {
   if (kind === "model") return null;
   const name = BRAIN_NAMES[kind];
@@ -562,6 +570,65 @@ export interface BrainPlan {
   settingsChanged?: boolean;
   /** The right hand's own plan can't think now: this thinks for it (`rightHandStandIn`), and its reply says so. */
   standIn?: RightHandStandIn;
+  /** An API-key agent's turn on OpenCode through the server's model proxy (ADR 9007): `model` is `MODEL_PROXY_MODEL`. */
+  proxy?: true;
+}
+
+/**
+ * Whether a computer can run a proxied turn now (ADR 9007): online, awake, OpenCode on and installed, a runner that
+ * reads `proxy`. No account or plan is involved, so none of their checks apply.
+ */
+export function proxyCapable(status: MachineStatus | null): status is MachineStatus {
+  if (!status?.online || status.paused || status.standby || !status.execAllowed) return false;
+  return (
+    status.protocol >= MODEL_PROXY_PROTOCOL &&
+    brainRunsOn("opencode", status.os) &&
+    toolOff(status, "opencode") === null &&
+    Boolean(status.executors?.detectedAt && status.executors.opencode)
+  );
+}
+
+/**
+ * The plan of a model agent's turn when a computer can think it through OpenCode (ADR 9007), else null (the model
+ * brain answers in the server's process). The computer is the agent's own (or its code session's); an agent with none
+ * uses the workspace's own computers (`managed`, or the server's `host`), never a person's.
+ */
+async function proxyPlanFor(
+  deps: { db: Executor; machines: { status(machineId: string): Promise<MachineStatus | null> } },
+  agent: Agent,
+  run: AgentRun,
+  conversation: string,
+  options: { fresh?: boolean; now?: Date; promptKey?: string; peek?: boolean; codeSession?: CodeSessionContext | null },
+): Promise<BrainPlan | null> {
+  const place = options.codeSession?.place ?? null;
+  const own = place?.machineId ?? agent.machineId ?? null;
+  const candidates = own
+    ? [own]
+    : (
+        await deps.db
+          .select({ id: schema.machines.id })
+          .from(schema.machines)
+          .where(
+            and(
+              eq(schema.machines.orgId, agent.orgId),
+              inArray(schema.machines.kind, ["managed", "host"]),
+              isNull(schema.machines.deletedAt),
+            ),
+          )
+      ).map((m) => m.id);
+  for (const machineId of candidates) {
+    const status = await deps.machines.status(machineId).catch(() => null);
+    if (!proxyCapable(status)) continue;
+    const now = options.now ?? new Date();
+    const session = await sessionFor(deps.db, agent, run, "opencode", conversation, machineId, null, options, now);
+    return {
+      kind: "opencode",
+      model: MODEL_PROXY_MODEL,
+      proxy: true,
+      session: { ...session, machineId, cwd: place?.cwd ?? "", ...(place ? { codeSession: true } : {}) },
+    };
+  }
+  return null;
 }
 
 /** What a Claude Code brain's model is when nobody chose one (Codex: its own default). */
@@ -825,6 +892,8 @@ export async function resolveBrain(
     thinker?: Agent;
     peek?: boolean;
     codeSession?: CodeSessionContext | null;
+    /** Keeps an API-key agent's turn in the server's process (a confidential thread's words never leave it, ADR 9007). */
+    noProxy?: boolean;
   } = {},
 ): Promise<BrainPlan> {
   const mission: MissionTurn | null = await missionTurnFor(deps.db, run).catch(() => null);
@@ -835,6 +904,13 @@ export async function resolveBrain(
   const base = mission ? { missionId: mission.missionId } : {};
   if (kind === "model") {
     const effort = brainEffortFor(agent, kind);
+    // An API-key agent thinks through OpenCode on a computer when one can (ADR 9007), else in this process. Not a
+    // mission's turn, the right hand's (its own locked turn, ADR 0137) or one `noProxy` keeps here.
+    const proxied =
+      deps.machines && !mission && !isRightHand(agent) && !options.noProxy
+        ? await proxyPlanFor({ db: deps.db, machines: deps.machines }, agent, run, conversation, options)
+        : null;
+    if (proxied) return { ...proxied, ...(effort ? { effort } : {}) };
     return { kind, ...base, ...(effort ? { effort } : {}) };
   }
   const model = brainModelFor(kind, agent, mission);
@@ -855,9 +931,9 @@ export async function resolveBrain(
   const runs =
     kind === "claude_code" && model && !isAutoModel(model)
       ? claudeCodeModel(planOf(account?.provider), model)
-      : kind === "opencode" && isPlanId(account?.provider) && !isAutoModel(model)
-        ? opencodePlanModel(account.provider, model)
-        : model;
+      : isAutoModel(model)
+        ? model
+        : planBrainModel(kind, account?.provider, model);
   const effort = brainEffortFor(agent, kind);
   const unavailable =
     (isRightHand(agent) && (agent.brainAccountId || agent.machineId)

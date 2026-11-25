@@ -20,7 +20,7 @@ import {
 } from "./channels";
 import { hasCodeWork } from "./code-sessions";
 import { proposalsWaitingFor } from "./context/proposals";
-import { invalidateDefaults, modelInfoFor } from "./credentials";
+import { invalidateDefaults, liveKeyReach, modelInfoFor } from "./credentials";
 import { ConflictError, ForbiddenError, isUniqueViolation, NotFoundError, ValidationError } from "./errors";
 import { publishChannelEvent, publishChannelsChanged } from "./events";
 import {
@@ -161,7 +161,9 @@ export async function updateOrgSettings(
     for (const [tier, model] of Object.entries(tiers ?? {})) {
       if (!MODEL_TIERS.includes(tier as ModelTier)) throw new ValidationError(`autoModels has no tier ${tier}`);
       if (model === null) continue;
-      if ((await modelInfoFor(db, model, orgId))?.provider !== provider)
+      const info = await modelInfoFor(db, model, orgId);
+      // A model of the line itself, or of any other key the workspace has connected (it calls with that key).
+      if (info?.provider !== provider && !(info && (await liveKeyReach(db, orgId))(model)))
         throw new ValidationError(`autoModels.${provider}.${tier} must be one of ${provider}'s models`);
     }
   }
@@ -193,9 +195,10 @@ export async function updateOrgSettings(
     if (cred.provider !== provider)
       throw new ValidationError(`defaultCredentialIds.${provider} is a ${cred.provider} key`);
   }
+  let defaultProvider: string | undefined;
   if (input.defaultCredentialId) {
     const [cred] = await db
-      .select({ id: providerCredentials.id })
+      .select({ id: providerCredentials.id, provider: providerCredentials.provider })
       .from(providerCredentials)
       .where(
         and(
@@ -205,6 +208,7 @@ export async function updateOrgSettings(
         ),
       );
     if (!cred) throw new ValidationError("defaultCredentialId does not belong to this organization");
+    defaultProvider = cred.provider;
   }
   await db.transaction(async (tx) => {
     // The mode before this change, read in the transaction: a switch is audited with where it came from.
@@ -233,7 +237,24 @@ export async function updateOrgSettings(
         })
         .where(eq(organizations.id, orgId));
     }
+    // The one workspace default is also its provider's (the gateway reads that first), so an endpoint key, whose
+    // provider is `custom`, becomes the default of its provider and of the workspace in one step.
+    const alsoItsProvider =
+      defaultProvider && input.defaultCredentialId && input.defaultCredentialIds === undefined
+        ? {
+            defaultCredentialIds: {
+              ...(((
+                await tx
+                  .select({ ids: organizationSettings.defaultCredentialIds })
+                  .from(organizationSettings)
+                  .where(eq(organizationSettings.orgId, orgId))
+              )[0]?.ids ?? {}) as Record<string, string>),
+              [defaultProvider]: input.defaultCredentialId,
+            },
+          }
+        : {};
     const settings = {
+      ...alsoItsProvider,
       ...(input.defaultCredentialId !== undefined ? { defaultCredentialId: input.defaultCredentialId } : {}),
       ...(input.defaultCredentialIds !== undefined
         ? {
