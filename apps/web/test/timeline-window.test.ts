@@ -178,4 +178,44 @@ describe("computeTimelineWindow", () => {
     expect(tailOnly.end).toBe(100);
     expect(tailOnly.bottomSpacer).toBe(0);
   });
+
+  test("keeps the window drawn now while it still covers the viewport, so measured rows don't move it back and forth", () => {
+    const keys = makeKeys(200);
+    const heights = new Map<string, number>();
+    const input = { keys, heights, scrollTop: 8000, viewportHeight: 800, overscanPx: 900 };
+    const first = computeTimelineWindow(input);
+    // Rows inside the window measured shorter than estimated (an image not loaded yet as they mounted).
+    for (let i = first.start; i < first.end; i++) heights.set(keys[i] ?? "", 80);
+    const fresh = computeTimelineWindow(input);
+    const kept = computeTimelineWindow({ ...input, current: first });
+    expect(fresh.start === first.start && fresh.end === first.end).toBe(false);
+    expect([kept.start, kept.end]).toEqual([first.start, first.end]);
+    expect(kept.topSpacer + sliceHeightOf(keys, heights, kept.start, kept.end) + kept.bottomSpacer).toBe(
+      totalHeightOf(keys, heights),
+    );
+  });
+
+  test("leaves the window drawn now once the viewport passes its margin, or it is the first unvirtualized one", () => {
+    const keys = makeKeys(200);
+    const heights = new Map<string, number>();
+    const base = { keys, heights, viewportHeight: 800, overscanPx: 900 };
+    const first = computeTimelineWindow({ ...base, scrollTop: 8000 });
+    const moved = computeTimelineWindow({ ...base, scrollTop: 12_000, current: first });
+    expect(moved).toEqual(computeTimelineWindow({ ...base, scrollTop: 12_000 }));
+    const fromAll = computeTimelineWindow({ ...base, scrollTop: 8000, current: { start: 0, end: 200 } });
+    expect(fromAll).toEqual(first);
+    const stuck = computeTimelineWindow({ ...base, scrollTop: 8000, stickToBottom: true, current: first });
+    expect(stuck.end).toBe(200);
+  });
+
+  test("keeps a window stretched to a pinned row far above the viewport", () => {
+    const keys = makeKeys(200);
+    const heights = new Map<string, number>();
+    const input = { keys, heights, scrollTop: 8000, viewportHeight: 800, overscanPx: 900, pinnedIndex: 10 };
+    const first = computeTimelineWindow(input);
+    expect(first.start).toBe(10);
+    heights.set(keys[95] ?? "", 120);
+    const kept = computeTimelineWindow({ ...input, current: first });
+    expect([kept.start, kept.end]).toEqual([first.start, first.end]);
+  });
 });
