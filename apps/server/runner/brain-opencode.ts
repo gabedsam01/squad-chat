@@ -41,6 +41,7 @@ import { RunnerError } from "./errors";
 import { killTree } from "./exec";
 import { cliSpawn, envValue, OPENCODE_BIN } from "./executors";
 import { CODEX_MCP_ENV, CODEX_MCP_SERVER, type McpTaskInfo, newMcpToken, redactDeep } from "./mcp";
+import { ProxyRelay } from "./model-proxy-relay";
 import { isInside, resolveForAgent } from "./paths";
 import type { Spawn } from "./scope-gate";
 import { agentSecrets } from "./secrets";
@@ -239,6 +240,9 @@ export function opencodeConfig(input: {
   return JSON.stringify({
     permission: input.chat ? OPENCODE_CHAT_PERMISSION : opencodePermissions(input.profile),
     ...(input.model ? { model: input.model, small_model: input.model } : {}),
+    // No session title: OpenCode's `ensureTitle` makes a model call per new session unless the `title` agent is gone,
+    // a second paid call (and seconds of latency) for a name nothing here shows (ADR 9007).
+    agent: { title: { disable: true } },
     share: "disabled",
     autoupdate: false,
     ...(provider ? { provider } : {}),
@@ -1048,6 +1052,7 @@ export class OpencodeServers {
   private readonly chains = new Map<string, Promise<unknown>>();
   private readonly cwds = new Map<string, string>();
   private closed = false;
+  private readonly relay = new ProxyRelay();
   private readonly log: (line: string) => void;
 
   constructor(private readonly opts: OpencodeServersOptions) {
@@ -1072,6 +1077,7 @@ export class OpencodeServers {
       planProvider: input.account?.planKey?.provider ?? null,
       planKey: keyPrint(input.account?.planKey?.key),
       provider: modelProvider(input.model),
+      proxy: input.proxy?.baseUrl ?? null,
       profile: input.profile ?? "work",
       freeTier: Boolean(input.freeTier && !input.account),
       chat: Boolean(input.chat),
@@ -1267,6 +1273,10 @@ export class OpencodeServers {
     const apiKey = input.account?.key;
     const planKey = input.account?.planKey;
     const freeTier = Boolean(input.freeTier && !input.account);
+    // A proxied turn (ADR 9007) reaches the server through the loopback relay, which adds the running turn's bearer.
+    const relayUrl = input.proxy
+      ? this.relay.register(id, input.proxy.baseUrl, () => this.opts.runs.get(id)?.serverToken)
+      : undefined;
     const env = opencodeTurnEnv({
       inherited,
       cwd: input.cwd,
@@ -1277,8 +1287,10 @@ export class OpencodeServers {
         ...(input.model ? { model: input.model } : {}),
         key: Boolean(apiKey),
         ...(planKey ? { planKey: { provider: planKey.provider } } : {}),
+        ...(relayUrl ? { proxy: { baseUrl: relayUrl } } : {}),
         freeTier,
       }),
+      ...(relayUrl ? { proxyKey: "relay" } : {}),
       ...(input.account ? { account: input.account } : {}),
       freeTier,
       ...(input.chat ? { chat: true } : {}),
@@ -1296,6 +1308,7 @@ export class OpencodeServers {
         ...(run.windowsVerbatimArguments ? { windowsVerbatimArguments: true } : {}),
       });
     } catch {
+      this.relay.forget(id);
       return null;
     }
     let stderr = "";
@@ -1391,6 +1404,7 @@ export class OpencodeServers {
         currentModel = input.model;
       }
       if (this.closed || exited) {
+        this.relay.forget(id);
         conn.close();
         killTree(child, "SIGTERM");
         return null;
@@ -1437,6 +1451,7 @@ export class OpencodeServers {
       this.live.set(key, live);
       return live;
     } catch {
+      this.relay.forget(id);
       conn.close();
       killTree(child, "SIGTERM");
       return null;
@@ -1699,6 +1714,7 @@ export class OpencodeServers {
     live.idleTimer = null;
     if (this.live.get(live.key) === live) this.live.delete(live.key);
     this.opts.runs.delete(live.id);
+    this.relay.forget(live.id);
     live.bridge = null;
     live.conn.close();
     live.child.stdin?.end();
@@ -1716,6 +1732,7 @@ export class OpencodeServers {
   close() {
     this.closed = true;
     for (const l of [...this.live.values()]) this.drop(l);
+    this.relay.close();
   }
 }
 
@@ -1832,9 +1849,7 @@ export async function handleOpencodeBrainTurn(
       ...(ctx.bin ? { bin: ctx.bin } : {}),
       ...(ctx.spawn ? { spawn: ctx.spawn } : {}),
     };
-    // shortcut: a proxied turn's bearer changes every run and lives in the process's env, so it skips the pool and
-    // starts OpenCode cold; relay the bearer through a loopback port if that latency matters (ADR 9007).
-    if (ctx.pool && !turnInput.mcp.url && !proxy) {
+    if (ctx.pool && !turnInput.mcp.url) {
       const owned = release;
       release = undefined;
       await ctx.pool.turn(turnInput, turnOpts, owned);

@@ -952,6 +952,8 @@ test("a proxied turn's config points at the server's proxy and holds no provider
   const config = opencodeConfig({ profile: "work", model: PROXY_MODEL, proxy: { baseUrl } });
   const parsed = JSON.parse(config);
   expect(parsed.model).toBe("squadchat/agent");
+  // No second, title-writing model call per session (ADR 9007).
+  expect(parsed.agent).toEqual({ title: { disable: true } });
   expect(parsed.enabled_providers).toEqual(["squadchat"]);
   expect(parsed.provider.squadchat).toMatchObject({
     npm: "@ai-sdk/openai-compatible",
