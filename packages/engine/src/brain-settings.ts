@@ -1132,6 +1132,9 @@ async function setPersonalBrain(
   if (!account || !brain || account.kind !== brain || !isComputerBrain(brain)) {
     throw new ValidationError("Choose an account of this brain", "account.invalid", { brain: brain ?? null });
   }
+  if (isPlanId(account.provider) && brain !== "opencode") {
+    throw new ValidationError("A coding plan runs on OpenCode", "account.plan_needs_opencode", { brain });
+  }
   const lent = account.createdBy !== userId;
   if (!(await accountServes(db, orgId, account.id, userId))) {
     throw new ForbiddenError("This plan thinks only for the person who connected it", "account.not_owner");
@@ -1778,6 +1781,10 @@ async function nextBrainAccount(
     throw new ValidationError("Choose an account of this brain on the agent's computer", "account.invalid", {
       brain,
     });
+  }
+  // A coding plan thinks only through OpenCode: Claude Code, Codex and Antigravity take their own subscriptions.
+  if (isPlanId(row.provider) && brain !== "opencode") {
+    throw new ValidationError("A coding plan runs on OpenCode", "account.plan_needs_opencode", { brain });
   }
   const lent = row.createdBy !== owner;
   if (!chooses || owner === null || !(await accountServes(db, orgId, row.id, owner))) {

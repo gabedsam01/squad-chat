@@ -24,7 +24,7 @@ import {
   SHARED_GROK_PROTOCOL,
   sealSecret,
 } from "@agenteschat/adapters";
-import { and, eq, schema } from "@agenteschat/db";
+import { and, eq, inArray, schema } from "@agenteschat/db";
 import { runMigration } from "@agenteschat/db/testing";
 import {
   accountLoginStatus,
@@ -217,6 +217,7 @@ function signingRunner(
 ) {
   const keys = new Map<string, string>();
   const codes = new Map<string, string>();
+  const kinds = new Map<string, "claude_code" | "opencode">();
   return {
     codes,
     ...fakeHub(
@@ -225,6 +226,7 @@ function signingRunner(
         if (req.action === "begin") {
           const pair = await generateSecretKeyPair();
           keys.set(req.loginId, pair.privateKey);
+          kinds.set(req.loginId, req.kind === "opencode" ? "opencode" : "claude_code");
           return { url: "https://claude.ai/oauth/authorize?code=true", publicKey: pair.publicKey };
         }
         if (req.action === "code") {
@@ -233,7 +235,10 @@ function signingRunner(
         }
         if (req.action === "status") {
           return codes.has(req.loginId)
-            ? { state: "done", account: { id: req.loginId, kind: "claude_code", ...account(req.loginId) } }
+            ? {
+                state: "done",
+                account: { id: req.loginId, kind: kinds.get(req.loginId) ?? "claude_code", ...account(req.loginId) },
+              }
             : { state: "waiting" };
         }
         return {};
@@ -511,7 +516,7 @@ test("signing in: the person who connected the computer; the code is sealed to i
 });
 
 /** A runner that keeps plans' keys: a key pair per sign-in, `done` once the key arrived (its last 4 said). */
-function keyRunner(machineId: string, protocol = PLAN_KEYS_PROTOCOL) {
+function keyRunner(machineId: string, protocol = OPENCODE_PROTOCOL) {
   const keys = new Map<string, string>();
   const got = new Map<string, string>();
   return {
@@ -535,7 +540,7 @@ function keyRunner(machineId: string, protocol = PLAN_KEYS_PROTOCOL) {
                 state: "done",
                 account: {
                   id: req.loginId,
-                  kind: "claude_code",
+                  kind: "opencode",
                   loggedIn: true,
                   provider: "zai",
                   keyHint: key.slice(-4),
@@ -557,7 +562,7 @@ async function signInKey(runner: ReturnType<typeof keyRunner>, machineId: string
     f.owner.id,
     f.org.id,
     machineId,
-    "claude_code",
+    "opencode",
     undefined,
     undefined,
     "zai",
@@ -571,17 +576,18 @@ const KEY = "0123456789abcdef0123456789abcdef.AbCdEfGhIjKlMnOp";
 
 test("a coding plan's key: no sign-in page but the plan's key page, the key sealed to the computer, its last 4 only to its owner", async () => {
   f = await setup();
-  const { machineId } = await ownedMachine(PLAN_KEYS_PROTOCOL);
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
   const runner = keyRunner(machineId);
   const add = (key: string) => signInKey(runner, machineId, key);
   const { login, status } = await add(KEY);
-  expect(login).toMatchObject({ kind: "claude_code", provider: "zai", url: "https://z.ai/manage-apikey/apikey-list" });
+  expect(login).toMatchObject({ kind: "opencode", provider: "zai", url: "https://z.ai/manage-apikey/apikey-list" });
   expect(runner.calls[0]).toEqual({
     op: "account",
     action: "begin",
-    kind: "claude_code",
+    kind: "opencode",
     loginId: login.loginId,
     provider: "zai",
+    shared: true,
   });
   // The runner got the key; the server keeps only its name, plan and last 4.
   expect(runner.got.get(login.loginId)).toBe(KEY);
@@ -630,16 +636,8 @@ test("a coding plan's key: no sign-in page but the plan's key page, the key seal
       mine: true,
       canAdd: true,
       keys: true,
-      // A runner before protocol 29: a sign-in thinks for one agent.
-      shares: {
-        claude_code: false,
-        codex: false,
-        cursor: false,
-        opencode: false,
-        grok: false,
-        antigravity: false,
-        key: false,
-      },
+      // A runner on the OpenCode protocol: what it shares isn't this test's.
+      shares: expect.any(Object),
       off: expect.any(Object),
       brains: {
         claude_code: expect.any(Boolean),
@@ -701,7 +699,7 @@ test("a coding plan's key: no sign-in page but the plan's key page, the key seal
     f.owner.id,
     f.org.id,
     machineId,
-    "claude_code",
+    "opencode",
     undefined,
     undefined,
     "nope",
@@ -713,13 +711,49 @@ test("a coding plan's key: no sign-in page but the plan's key page, the key seal
     f.owner.id,
     f.org.id,
     machineId,
-    "claude_code",
+    "opencode",
     undefined,
     undefined,
     "zai",
   ).catch((e) => e);
   expect(refused).toMatchObject({ code: "account.runner_old" });
   expect(old.calls).toEqual([]);
+});
+
+test("a coding plan's key is refused on Claude Code: plans run on OpenCode only", async () => {
+  f = await setup();
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
+  const runner = keyRunner(machineId);
+  const refused = await beginAccountLogin(
+    runner.deps,
+    f.owner.id,
+    f.org.id,
+    machineId,
+    "claude_code",
+    undefined,
+    undefined,
+    "zai",
+  ).catch((e) => e);
+  expect(refused).toMatchObject({ code: "account.invalid_plan" });
+  expect(runner.calls).toEqual([]);
+});
+
+test("an agent can't think with a coding plan's account on Claude Code: plans run on OpenCode only", async () => {
+  f = await setup();
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
+  const PLAN = "0193dddd-0000-4000-8000-000000000020";
+  await addAccount(machineId, PLAN, "claude_code", {
+    provider: "zai",
+    email: null,
+    keyHint: "MnOp",
+    label: "GLM Coding",
+  });
+  await f.db.update(schema.agents).set({ machineId, brain: "claude_code" }).where(eq(schema.agents.id, f.agent.id));
+  const refused = await setAgentBrain({ db: f.db }, f.owner.id, f.org.id, f.agent.id, { account: PLAN }).catch(
+    (e) => e,
+  );
+  expect(refused).toMatchObject({ code: "account.plan_needs_opencode" });
+  expect((await agentRow()).brainAccountId).toBeNull();
 });
 
 test("a sign-in needs the computer online, a runner that knows accounts and a provider page on https", async () => {
@@ -1077,7 +1111,7 @@ function codexRunner(machineId: string, email: string) {
 
 test("one login per agent where the account allows it: a key's logins share its name, each thinks for one agent, and a rename renames them all, never another account named alike", async () => {
   f = await setup();
-  const { machineId } = await ownedMachine(PLAN_KEYS_PROTOCOL);
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
   const runner = keyRunner(machineId);
   const signedIn = async (key: string) => {
     const { account } = (await signInKey(runner, machineId, key)).status;
@@ -1093,7 +1127,7 @@ test("one login per agent where the account allows it: a key's logins share its 
   // Each login thinks for one agent.
   await f.db
     .update(schema.agents)
-    .set({ machineId, brain: "claude_code", name: "Ada" })
+    .set({ machineId, brain: "opencode", name: "Ada" })
     .where(eq(schema.agents.id, f.agent.id));
   const [theoAgent] = await f.db
     .insert(schema.agents)
@@ -1104,7 +1138,7 @@ test("one login per agent where the account allows it: a key's logins share its 
       model: "claude-sonnet-5-5",
       ownerUserId: f.owner.id,
       machineId,
-      brain: "claude_code",
+      brain: "opencode",
     })
     .returning();
   if (!theoAgent) throw new Error("no agent");
@@ -1144,7 +1178,7 @@ test("one login per agent where the account allows it: a key's logins share its 
   const DESKTOP_ID = "0193dddd-0000-4000-8000-000000000010";
   const report = (id: string, keyHint: string) => ({
     id,
-    kind: "claude_code" as const,
+    kind: "opencode" as const,
     loggedIn: true,
     provider: "zai",
     keyHint,
@@ -1686,7 +1720,7 @@ test("a Grok sign-in is asked for all agents only from protocol 67 (issue #319)"
 
 test("one sign-in for all agents (protocol 29): asked for, it thinks for two agents, once; out and gone for both", async () => {
   f = await setup();
-  const { machineId } = await ownedMachine(SHARED_ACCOUNTS_PROTOCOL);
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
   const runner = signingRunner(
     machineId,
     () => ({ loggedIn: true, email: "ana@example.com", plan: "max", shared: true }),
@@ -1794,7 +1828,7 @@ test("a person with no agent signs a plan in for all agents, and the first agent
 
 test("an account the runner no longer says is for all agents: the two agents on it let it go, then it thinks for one", async () => {
   f = await setup();
-  const { machineId } = await ownedMachine(SHARED_ACCOUNTS_PROTOCOL);
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
   const ONE_ID = "0193dddd-0000-4000-8000-000000000005";
   await addAccount(machineId, CLAUDE_ID, "claude_code", { shared: true });
   await addAccount(machineId, ONE_ID, "claude_code", { shared: true, email: "ana.two@example.com" });
@@ -1890,7 +1924,7 @@ test("where each agent is its own OS user, the switch decides: Claude's, ChatGPT
 });
 
 /** A runner on protocol 29 where every login thinks for all of its owner's agents: a plan's key, or Claude's sign-in. */
-function sharingRunner(machineId: string) {
+function sharingRunner(machineId: string, protocol = SHARED_ACCOUNTS_PROTOCOL) {
   const runner = signingRunner(
     machineId,
     (loginId) => {
@@ -1899,7 +1933,7 @@ function sharingRunner(machineId: string) {
         ? { loggedIn: true, provider: "zai", keyHint: secret.slice(-4), shared: true }
         : { loggedIn: true, email: "ana@example.com", plan: "max", shared: true };
     },
-    { protocol: SHARED_ACCOUNTS_PROTOCOL },
+    { protocol },
   );
   return runner;
 }
@@ -1916,7 +1950,7 @@ async function signInWith(
     f.owner.id,
     f.org.id,
     machineId,
-    "claude_code",
+    options.accountId === undefined && options.provider ? "opencode" : "claude_code",
     options.accountId,
     undefined,
     options.provider,
@@ -1946,7 +1980,7 @@ const newAgent = async (name: string, machineId: string, brainAccountId: string 
 
 test("logins made one per agent keep their agents when signed in again on a runner that says every login is for all agents", async () => {
   f = await setup();
-  const { machineId } = await ownedMachine(SHARED_ACCOUNTS_PROTOCOL);
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
   const KEY_1 = "0193dddd-0000-4000-8000-000000000011";
   const KEY_2 = "0193dddd-0000-4000-8000-000000000012";
   const CLAUDE_1 = "0193dddd-0000-4000-8000-000000000013";
@@ -2007,7 +2041,7 @@ test("logins made one per agent keep their agents when signed in again on a runn
 
 test("where each agent is its own OS user, a key's login made for one agent leaves room for a new one for all agents", async () => {
   f = await setup();
-  const { machineId } = await ownedMachine(SHARED_ACCOUNTS_PROTOCOL);
+  const { machineId } = await ownedMachine(OPENCODE_PROTOCOL);
   const [m] = await f.db.select().from(schema.machines).where(eq(schema.machines.id, machineId));
   await f.db
     .update(schema.machines)
@@ -2015,7 +2049,7 @@ test("where each agent is its own OS user, a key's login made for one agent leav
     .where(eq(schema.machines.id, machineId));
   const OLD = "0193dddd-0000-4000-8000-000000000015";
   // Made for Dev alone, lent to its user: it can't think for anyone else.
-  await addAccount(machineId, OLD, "claude_code", {
+  await addAccount(machineId, OLD, "opencode", {
     provider: "zai",
     email: null,
     keyHint: "MnOp",
@@ -2023,11 +2057,15 @@ test("where each agent is its own OS user, a key's login made for one agent leav
   });
   await f.db
     .update(schema.agents)
-    .set({ machineId, brain: "claude_code", brainAccountId: OLD })
+    .set({ machineId, brain: "opencode", brainAccountId: OLD })
     .where(eq(schema.agents.id, f.agent.id));
   const theo = await newAgent("Theo", machineId);
   const mila = await newAgent("Mila", machineId);
-  const status = await signInWith(sharingRunner(machineId), machineId, KEY, { provider: "zai" });
+  await f.db
+    .update(schema.agents)
+    .set({ brain: "opencode" })
+    .where(inArray(schema.agents.id, [theo.id, mila.id]));
+  const status = await signInWith(sharingRunner(machineId, OPENCODE_PROTOCOL), machineId, KEY, { provider: "zai" });
   expect(status).toMatchObject({ state: "done", account: { keyHint: "MnOp", shared: true, label: "GLM Coding" } });
   const id = status.account?.id ?? "";
   expect(id).not.toBe(OLD);
@@ -2038,7 +2076,9 @@ test("where each agent is its own OS user, a key's login made for one agent leav
   expect((await agentRow(mila.id)).brainAccountId).toBe(id);
 
   // A second sign-in for all agents of that key is the one already there.
-  expect(await signInWith(sharingRunner(machineId), machineId, KEY, { provider: "zai" })).toMatchObject({
+  expect(
+    await signInWith(sharingRunner(machineId, OPENCODE_PROTOCOL), machineId, KEY, { provider: "zai" }),
+  ).toMatchObject({
     state: "failed",
     duplicate: { account: { id } },
   });
@@ -2215,7 +2255,7 @@ test("a runner that can use Claude's own login for all agents gets it; an older 
     f.owner.id,
     f.org.id,
     machineId,
-    "claude_code",
+    "opencode",
     undefined,
     undefined,
     "zai",
