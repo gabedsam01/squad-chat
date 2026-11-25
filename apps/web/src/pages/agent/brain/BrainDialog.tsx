@@ -516,7 +516,7 @@ function BrainFlow({
         : row.type === "key" &&
           r.kind === "key" &&
           (r.keyId === row.apiKey?.id ||
-            (row.apiKey?.isDefault === true && (r.keyId === undefined || r.keyId === DEFAULT_KEY))),
+            (!!s.defaultId && row.apiKey?.id === s.defaultId && (r.keyId === undefined || r.keyId === DEFAULT_KEY))),
     );
     if (match?.current) return;
     if (match) return confirm(match);

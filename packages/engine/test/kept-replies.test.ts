@@ -64,6 +64,8 @@ describe("a reply judged untried in a person's conversation goes out at once", (
     expect(posted?.seq ?? Infinity).toBeLessThan(nudgedTurn?.seq ?? 0);
     const back = (await w.runs("rui"))[1];
     expect(back?.status).toBe("done");
+    // The answer posted before the nudge is the run's reply, though the turn after it added nothing.
+    expect(back?.replyMessageId).toBe((await w.posts("rui")).find((p) => p.body === SALES)?.id ?? "none");
     expect((back?.transcript as { held?: string } | undefined)?.held).toBeUndefined();
     await assertInvariants(w);
   });
