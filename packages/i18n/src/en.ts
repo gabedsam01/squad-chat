@@ -16100,6 +16100,7 @@ export const en = {
         "This address is on a private network. Use a public address, or on a self-hosted server allow it with `OUTBOUND_ALLOW_CIDRS`.",
       tooLong: "That's too long. Shorten it and try again.",
       updateComputerApp: "The computer's app is too old for this. Update it and try again.",
+      planNeedsOpenCode: "Coding plans only run on OpenCode. Choose OpenCode for this account.",
       computerUpdatesItself: "The workspace's computer updates itself for this. Try again in a little while.",
       notInvited: "You're not invited to this event.",
       offHere: "This is turned off here.",
