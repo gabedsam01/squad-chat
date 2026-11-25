@@ -165,9 +165,11 @@ test("an OpenRouter key: checked before it is stored, then its models listed, th
   expect(mine.every((m) => m.available)).toBe(true);
   expect(mine.map((m) => m.id)).toEqual(all.map((m) => m.id));
 
-  // Automático's tiers on the OpenRouter key: OpenRouter's models only; null puts one back on its default.
+  // Automático's tiers on the OpenRouter key: OpenRouter's models or a connected key's; null puts one back on its default.
   const tiers = async (autoModels: unknown) => api("/settings", { method: "PATCH", json: { autoModels } });
-  expect((await tiers({ openrouter: { large: "claude-opus-5-5" } })).status).toBe(400);
+  // A model of a provider with no live key is refused; the seeded Anthropic key reaches its own models.
+  expect((await tiers({ openrouter: { large: "gpt-6.2-sol" } })).status).toBe(400);
+  expect((await tiers({ openrouter: { large: "claude-opus-5-5" } })).status).toBe(200);
   expect((await tiers({ openrouter: { huge: "z-ai/glm-5.3" } })).status).toBe(400);
   const saved = await tiers({ openrouter: { large: "anthropic/claude-sonnet-5.5", small: "z-ai/glm-5.3" } });
   expect(((await saved.json()) as { autoModels: unknown }).autoModels).toEqual({
