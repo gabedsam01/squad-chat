@@ -13,6 +13,7 @@ import i18n, { type i18n as I18n, type InitOptions } from "i18next";
 import { useEffect, useState } from "react";
 import { initReactI18next, useTranslation } from "react-i18next";
 import { useApi } from "@/api/context";
+import { reloadForNewVersion } from "@/lib/app-version";
 import { loadCoreStrings, loadRestStrings } from "./split";
 
 export type LocaleCode = AppLocale;
@@ -89,6 +90,18 @@ export function savedLocale(
 
 const retryOnce = <T>(load: () => Promise<T>) => load().catch(() => load());
 
+/** The rest part is loaded after first paint, so a flaky network right after a deploy must not leave its keys raw for good. */
+export async function retryWithBackoff<T>(load: () => Promise<T>, tries = 4, delayMs = 500): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await load();
+    } catch (error) {
+      if (attempt >= tries) throw error;
+      await new Promise((resolve) => setTimeout(resolve, delayMs * 2 ** (attempt - 1)));
+    }
+  }
+}
+
 const restLoaded = new WeakMap<I18n, Set<LocaleCode>>();
 const restSetFor = (instance: I18n) => {
   let set = restLoaded.get(instance);
@@ -104,14 +117,14 @@ export async function loadLocale(code: LocaleCode, instance: I18n = i18n): Promi
   const restLoader = loadRestStrings?.[code];
   if (instance.hasResourceBundle(code, "translation")) {
     if (!restLoader || restSetFor(instance).has(code)) return;
-    const rest = await retryOnce(restLoader);
+    const rest = await retryWithBackoff(restLoader);
     instance.addResourceBundle(code, "translation", rest, true, true);
     restSetFor(instance).add(code);
     return;
   }
   const [core, rest] = await Promise.all([
     retryOnce(loadCoreStrings[code]),
-    restLoader ? retryOnce(restLoader) : Promise.resolve(null),
+    restLoader ? retryWithBackoff(restLoader) : Promise.resolve(null),
   ]);
   instance.addResourceBundle(code, "translation", core, true, true);
   if (rest) {
@@ -204,18 +217,21 @@ export async function loadI18n(lng: LocaleCode): Promise<I18n> {
   });
   if (loadRestStrings) {
     const restLoaders = loadRestStrings;
-    const schedule =
-      typeof requestIdleCallback === "function"
-        ? (fn: () => void) => requestIdleCallback(fn)
-        : (fn: () => void) => setTimeout(fn, 1);
-    schedule(() => {
+    // A timeout: a busy main thread right after boot must not hold the rest part back indefinitely.
+    const idle = (fn: () => void) =>
+      typeof requestIdleCallback === "function" ? requestIdleCallback(fn, { timeout: 2000 }) : setTimeout(fn, 1);
+    idle(() => {
       for (const code of codes) {
-        void retryOnce(restLoaders[code])
+        void retryWithBackoff(restLoaders[code])
           .then((rest) => {
             instance.addResourceBundle(code, "translation", rest, true, true);
             restSetFor(instance).add(code);
           })
-          .catch(() => {});
+          .catch((error) => {
+            // Its keys stay raw until a reload: a stale page's chunk is gone, so this takes the new version in once.
+            console.error(`i18n: the ${code} rest strings did not load`, error);
+            void reloadForNewVersion();
+          });
       }
     });
   }

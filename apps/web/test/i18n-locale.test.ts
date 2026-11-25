@@ -4,7 +4,15 @@ import { setupDom } from "@agenteschat/ui/testing/dom";
 setupDom();
 
 import { titledWithUnread } from "@agenteschat/client/lib/unread";
-import { chooseLocale, createI18n, detectedLocale, readLocaleState, savedLocale, translateTabTitle } from "../src/i18n";
+import {
+  chooseLocale,
+  createI18n,
+  detectedLocale,
+  readLocaleState,
+  retryWithBackoff,
+  savedLocale,
+  translateTabTitle,
+} from "../src/i18n";
 
 beforeEach(() => localStorage.clear());
 
@@ -49,5 +57,29 @@ describe("the tab's title", () => {
     document.title = "(3) squadchat · Your team and your agents, in the same conversation";
     await new Promise((done) => setTimeout(done, 0));
     expect(document.title).toBe("(3) squadchat · Dein Team und deine Agenten, in derselben Unterhaltung");
+  });
+});
+
+describe("the rest strings' download", () => {
+  test("is retried with backoff until it arrives, and fails loudly after the last try", async () => {
+    let calls = 0;
+    const flaky = async () => {
+      if (++calls < 3) throw new Error("offline");
+      return "ok";
+    };
+    expect(await retryWithBackoff(flaky, 4, 1)).toBe("ok");
+    expect(calls).toBe(3);
+    let tries = 0;
+    await expect(
+      retryWithBackoff(
+        async () => {
+          tries++;
+          throw new Error("gone");
+        },
+        3,
+        1,
+      ),
+    ).rejects.toThrow("gone");
+    expect(tries).toBe(3);
   });
 });
