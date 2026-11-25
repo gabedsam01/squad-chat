@@ -621,6 +621,23 @@ export async function defaultCredentials(db: Database, orgId: string) {
   return { legacy: row?.id ?? null, perProvider: (row?.ids ?? {}) as Partial<Record<string, string>> };
 }
 
+/**
+ * Whether a model can be called with one of the workspace's live keys: its provider's key, or for a workspace endpoint
+ * the very key its id names. Automático's tiers may point at any such model, not only the default key's line.
+ */
+export async function liveKeyReach(db: Executor, orgId: string): Promise<(model: string) => boolean> {
+  const rows = await db
+    .select({ id: providerCredentials.id, provider: providerCredentials.provider })
+    .from(providerCredentials)
+    .where(and(eq(providerCredentials.orgId, orgId), isNull(providerCredentials.revokedAt)));
+  const ids = new Set(rows.map((r) => r.id));
+  const providers = new Set(rows.map((r) => r.provider));
+  return (model) => {
+    const custom = parseCustomModel(model);
+    return custom ? ids.has(custom.credentialId) : providers.has(modelProvider(model) ?? "");
+  };
+}
+
 /** The workspace's default credential id (legacy single default), if one is set. */
 export async function defaultCredentialId(db: Database, orgId: string) {
   return (await defaultCredentials(db, orgId)).legacy;

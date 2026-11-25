@@ -263,6 +263,21 @@ export function modelChoices(
   return [...groups.entries()];
 }
 
+/**
+ * The provider whose line Automático's tiers are stored under (`autoModels[provider]`): the workspace default key's,
+ * else the newest live key's (the server's `orgModelProvider`). A tier may name any model of any connected key.
+ */
+export function autoLineProvider(
+  credentials: readonly (KeyLike & { createdAt?: string })[],
+  defaultCredentialId: string | null | undefined,
+): string | null {
+  const live = credentials.filter((c) => !c.revokedAt);
+  const chosen = live.find((c) => c.id === defaultCredentialId);
+  if (chosen) return chosen.provider;
+  const newest = [...live].sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? "")).at(-1);
+  return newest?.provider ?? null;
+}
+
 /** The ids of the models `modelChoices` marks usable. */
 export const usableModels = (choices: ReturnType<typeof modelChoices>) =>
   new Set(choices.flatMap(([, list]) => list.filter((c) => c.available).map((c) => c.model.id)));

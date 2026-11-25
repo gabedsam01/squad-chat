@@ -840,11 +840,12 @@ function KeysSection() {
                       {t("endpoint.models")}
                     </Button>
                   )}
-                  {c.endpoint ? (
+                  {c.endpoint && (
                     <Button variant="link" onClick={() => setDialog({ type: "models", cred: c })}>
                       {t("endpoint.models")}
                     </Button>
-                  ) : isDefault ? (
+                  )}
+                  {isDefault ? (
                     <Chip icon="check">{t("settings.default")}</Chip>
                   ) : (
                     <Button
@@ -889,7 +890,7 @@ function KeysSection() {
           })}
         </List>
       )}
-      {live.some((c) => c.provider === "openrouter") && <AutoModelsRow />}
+      {live.length > 0 && <AutoModelsRow />}
       <KeyDialog
         mode={dialog?.type === "add" ? "add" : dialog?.type === "rotate" ? "rotate" : null}
         cred={dialog && dialog.type !== "add" ? dialog.cred : undefined}

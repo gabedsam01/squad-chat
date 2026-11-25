@@ -273,6 +273,28 @@ describe("one decision, mapped per brain", () => {
     expect(autoModelFor("nobody", "large")).toBe("claude-opus-5-5");
   });
 
+  test("a tier may name a model of another connected key, called with that key", () => {
+    const other = customModelId("11111111-1111-4111-8111-111111111111", "x");
+    const endpoint = {
+      credentialId: "22222222-2222-4222-8222-222222222222",
+      models: [{ id: "good", check: "ok" as const }],
+    };
+    // Without the workspace's keys at hand a foreign pick gives way to the line's own, as before.
+    expect(autoModelFor("custom", "small", { small: other }, endpoint)).toBe(
+      customModelId(endpoint.credentialId, "good"),
+    );
+    // With a live key behind it, the pick stands, on an endpoint line and on a catalog line.
+    const reach = (m: string) => m === other || m === "claude-opus-5-5";
+    expect(autoModelFor("custom", "small", { small: other }, endpoint, null, reach)).toBe(other);
+    expect(autoModelFor("openai", "large", { large: "claude-opus-5-5" }, undefined, null, reach)).toBe(
+      "claude-opus-5-5",
+    );
+    // A model no live key reaches never stands.
+    expect(autoModelFor("openai", "large", { large: "claude-opus-5-5" }, undefined, null, () => false)).not.toBe(
+      "claude-opus-5-5",
+    );
+  });
+
   test("an OpenRouter key: its good picks per tier, or the workspace's own while OpenRouter lists them", () => {
     setOpenRouterModels(parseOpenRouterModels(fixture));
     const plan: BrainPlan = { kind: "model" };

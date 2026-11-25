@@ -31,6 +31,7 @@ import {
   ensureOpenRouterModels,
   isAutoModel,
   type ModelMessage,
+  modelProvider,
   type ModelResult,
   PROVIDERS,
   ProviderError,
@@ -240,7 +241,7 @@ import {
   triedCalls,
   verdictRecord,
 } from "./continuation";
-import { modelInfoFor, openRouterSelection } from "./credentials";
+import { liveKeyReach, modelInfoFor, openRouterSelection } from "./credentials";
 import { sha256 } from "./crypto";
 import { widgetRunWaitChanged } from "./dashboards/refresh-fire";
 import { WIDGET_FAILURES } from "./dashboards/types";
@@ -3538,6 +3539,8 @@ async function executeRunInner(
       endpoint,
       allowed,
       brainPlan.account?.provider,
+      // A tier may name a model of another connected key (Settings, Automático): it calls with that key.
+      tiers ? await liveKeyReach(db, run.orgId).catch(() => undefined) : undefined,
     );
     // No model for the tier: OpenRouter's list couldn't be read, or an endpoint offers none (never a call on the
     // wrong provider's line). Waited out like a provider outage, with the choice kept for the next attempt.
@@ -3551,6 +3554,10 @@ async function executeRunInner(
       throw outage;
     }
     ({ agent: thinker, plan: brainPlan } = withAuto(agent, brainPlan, applied));
+    // A tier's model from another line is called with that line's key, never with the agent's key of this one.
+    if (applied.apiModel && thinker.credentialId && modelProvider(applied.apiModel) !== provider) {
+      thinker = { ...thinker, credentialId: null };
+    }
     if (autoBrain) {
       const picked = autoPlanModel(brainPlan.account?.provider, brainPlan.model, brainPlan.usage);
       const model =

@@ -345,6 +345,8 @@ export function autoModelFor(
   endpoint?: AutoEndpoint | null,
   /** The models the workspace chose on this line (OpenRouter, ADR 9005); absent or null: all of them. */
   allowed?: readonly string[] | null,
+  /** Whether a model of another line has a live key of the workspace: its pick for a tier then stands (it calls with its own key). */
+  reach?: (model: string) => boolean,
 ): string | null {
   const own = tiers?.[tier];
   // Another provider's (or another endpoint's) model needs another key: only this line's own pick stands.
@@ -353,7 +355,7 @@ export function autoModelFor(
       ? endpoint?.credentialId === parseCustomModel(id)?.credentialId
       : modelInfo(id)?.provider === provider;
   const ownHere = own ? onLine(own) && (!allowed || allowed.includes(own)) : false;
-  if (own && ownHere) return own;
+  if (own && (ownHere || (!onLine(own) && reach?.(own)))) return own;
   // An endpoint declares no catalog tiers: its one best model answers for every tier.
   if (provider === "custom") return endpoint ? endpointModelId(endpoint.credentialId, endpoint.models) : null;
   // The models the workspace chose, by tier; without one of that tier, the nearest with an answer in a schema.
@@ -385,10 +387,11 @@ export function autoApplied(
   endpoint?: AutoEndpoint | null,
   allowed?: readonly string[] | null,
   planProvider?: string | null,
+  reach?: (model: string) => boolean,
 ): AutoApplied {
   const out: AutoApplied = {};
   if (autoApiModelFor(agent, plan.kind)) {
-    const model = choice.apiModel ?? autoModelFor(provider, choice.tier, tiers, endpoint, allowed);
+    const model = choice.apiModel ?? autoModelFor(provider, choice.tier, tiers, endpoint, allowed, reach);
     if (model) out.apiModel = model;
   }
   if (plan.kind === "model") {
