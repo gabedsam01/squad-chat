@@ -85,7 +85,7 @@ import {
 } from "./auto-model";
 import type { BlockSpecReader } from "./block-state";
 import { ASK_CHOICES_TOOL, SHOW_BLOCK_TOOL, someoneAnswers } from "./blocks";
-import { brainOf } from "./brain-settings";
+import { brainModelId, brainOf } from "./brain-settings";
 import { brainSessionId, missingTurnFolder, recordPlanUsage } from "./brains/claude-code";
 import { codexModelRefused } from "./brains/codex";
 import { ModelBrain, turnEffort } from "./brains/model";
@@ -5646,7 +5646,10 @@ async function executeRunInner(
                   ...(turnPlan.session?.machineId
                     ? { machineId: turnPlan.session.machineId, accountId: turnPlan.account?.id ?? null }
                     : {}),
-                  ...(u.model ? { model: u.model } : {}),
+                  // Codex's turn events name no model: an agent left on the default ran the one its picker shows.
+                  ...(usedModel(u.model, brain.kind, turnPlan.model)
+                    ? { model: usedModel(u.model, brain.kind, turnPlan.model) }
+                    : {}),
                   inputTokens: u.input,
                   outputTokens: u.output,
                   cacheReadTokens: u.cacheRead ?? 0,
@@ -7387,6 +7390,10 @@ async function thinkOnce(
       : undefined,
   };
 }
+
+/** The model a computer turn's usage row names: the one its events reported, else (Codex's name none) the picker's default. */
+const usedModel = (reported: string | undefined, kind: string, stored: string | null | undefined) =>
+  reported ?? (kind === "codex" ? brainModelId("codex", stored) : undefined);
 
 /** The tools the run may use now (Tool Gateway, scopes applied). */
 function listRunTools(deps: Pick<EngineDeps, "tools">, ctx: ToolContext): Promise<ToolDefinition[]> {

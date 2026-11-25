@@ -414,12 +414,14 @@ const stripPlanPrefix = (value: string | null | undefined): string | null | unde
 };
 
 /**
- * The model a stored value runs on a plan: one of its models by id, the model of an alias, else (`auto`, an alias
- * the plan leaves out, another plan's model, none) `sonnet`'s.
+ * The model a stored value runs on a plan: one of its models by id, the model of an alias (Claude's own `fable`, which
+ * no plan serves, runs the plan's `opus`), else (`auto`, an alias the plan leaves out, another plan's model, none)
+ * `sonnet`'s.
  */
 export function planModel(plan: CodingPlan, value: string | null | undefined): PlanModel {
   const { models } = plan.claudeCode;
-  const v = stripPlanPrefix(value);
+  const stripped = stripPlanPrefix(value);
+  const v = stripped === "fable" ? "opus" : stripped;
   const byAlias = isAlias(v) ? models.find((m) => m.alias === v) : undefined;
   return (
     models.find((m) => m.id === v) ?? byAlias ?? models.find((m) => m.alias === "sonnet") ?? (models[0] as PlanModel)
@@ -530,13 +532,15 @@ export const planModelById = (id: string): PlanModel | undefined =>
 export const isPlanModelId = (v: string) => planModelById(stripPlanPrefix(v) ?? "") !== undefined;
 
 /**
- * The `--model` of a Claude Code turn for a stored value: an alias as is (on a plan, the plan names its model);
+ * The `--model` of a Claude Code turn for a stored value: an alias as is (on a plan, the plan names its model;
+ * Claude's own `fable` stays `fable` without one and is the plan's `opus` with one);
  * with a plan, one of its models by id; without one, a Claude id. Anything else (another plan's model, none) runs
  * `sonnet`.
  */
 export function claudeCodeModel(plan: CodingPlan | undefined, stored: unknown): string {
   const value = typeof stored === "string" ? stripPlanPrefix(stored) : stored;
   if (isAlias(value)) return value;
+  if (value === "fable") return plan ? "opus" : "fable";
   if (typeof value !== "string") return "sonnet";
   if (plan) return plan.claudeCode.models.some((m) => m.id === value) ? value : "sonnet";
   return /^claude-/.test(value) ? value : "sonnet";
@@ -552,7 +556,7 @@ export function droppedPlanModel(provider: unknown, value: unknown): PlanModel |
   const plan = isPlanId(provider) ? learned.get(provider) : undefined;
   if (!isPlanId(provider) || !plan?.modelsUrl) return null;
   const v = typeof value === "string" ? stripPlanPrefix(value) : value;
-  if (typeof v !== "string" || isAlias(v) || /^claude-/.test(v)) return null;
+  if (typeof v !== "string" || isAlias(v) || v === "fable" || /^claude-/.test(v)) return null;
   if (plan.claudeCode.models.some((m) => m.id === v) || planModelById(v)) return null;
   const table: readonly PlanModel[] = CODING_PLANS[provider].claudeCode.models;
   return table.find((m) => m.id === v) ?? { id: v, label: v };
