@@ -175,7 +175,7 @@ describe("the one choice", () => {
       brain: "model",
       apiKey: { id: "k1", provider: "anthropic", label: "Claude da Acme", keyHint: "abcd", isDefault: true },
     });
-    expect(choiceText(t, key, "pt-BR", NOW)).toMatchObject({
+    expect(choiceText(t, key, "pt-BR", NOW, "k1")).toMatchObject({
       label: "Claude da Acme",
       sub: "Chave de API · padrão do workspace",
     });
