@@ -15,11 +15,11 @@ describe('the composer\'s "+"', () => {
     expect(src("features/i18n/keys.en.ts")).not.toContain("missionHint");
   });
 
-  test("every sheet ends 24 over its bottom edge: the home indicator's room is the sheet's own", () => {
+  // iOS: 24, the home indicator's room is the sheet's own; Android adds its navigation bar (sheet-bottom.test.ts).
+  test("every sheet ends 24 over its bottom edge, plus Android's navigation bar", () => {
     const sheet = src("ui/Sheet.tsx");
     const body = sheet.slice(sheet.indexOf("export function useSheetBody("), sheet.indexOf("const styles"));
-    expect(body).toContain("paddingBottom: 24,");
-    expect(body).not.toContain("insets");
+    expect(body).toContain("paddingBottom: sheetBottom(Platform.OS, bottom),");
   });
 
   test("GIFs and stickers sit beside the mic in the empty field too, where they can be sent", () => {
