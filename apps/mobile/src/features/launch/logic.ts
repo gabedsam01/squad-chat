@@ -1,4 +1,6 @@
-import { ditherCells, idlePose, inBody, mixHex, type Pose, toneAt } from "@agenteschat/ui/agent/engine";
+import { dark, light } from "@agenteschat/tokens";
+import { ditherCells, mixHex } from "@agenteschat/ui/agent/engine";
+import { markPart } from "@agenteschat/ui/brand/squad-mark";
 import { bayerAt } from "@agenteschat/ui/sky/math";
 
 /**
@@ -34,21 +36,26 @@ export const LAUNCH = {
 
 /** The native launch image (assets/images/splash-icon.png, 512 px with the body at 56–456) is 120 pt wide. */
 export const NATIVE_IMAGE = 120;
-/** So the agent's body there is this wide, centered on the screen: the splash starts exactly on it. */
+/** So the mark's 32 grid there is this wide, centered on the screen: the splash starts exactly on it. */
 export const LOGO = (NATIVE_IMAGE * 400) / 512;
-/** The agent in the logo (the same as the app icon). */
-export const LOGO_LOOK = { color: "sky", eyes: "round" } as const;
+/**
+ * The mark's bubble, dots and square, in the theme's ink, ground and agent colors (the native image's, drawn by
+ * packages/ui/scripts/app-icons.mjs): never the workspace's accent, which the native image can't know.
+ */
+export const launchMarkColors = (isDark: boolean): [bubble: string, dot: string, square: string] => {
+  const t = isDark ? dark : light;
+  return [t.ink, t.bg, t.agent];
+};
+const MARK_TONE = { bubble: 0, dot: 1, square: 2 } as const;
 
 /**
- * Leaving into the app (motion on): the agent faces front, smiles and squashes (`gather`), then comes apart into its
- * own pixels while a ring of pixel sky goes out from it to past every corner (`wave`). Outside the ring the splash is
- * still there, inside it the app, already drawn under the splash, settling from a little larger. All on the UI
- * thread; times in seconds from the moment it leaves.
+ * Leaving into the app (motion on): the mark holds a moment (`gather`), then comes apart into its own pixels while a
+ * ring of pixel sky goes out from it to past every corner (`wave`). Outside the ring the splash is still there, inside
+ * it the app, already drawn under the splash, settling from a little larger. All on the UI thread; times in seconds
+ * from the moment it leaves.
  */
 export const EXIT = {
   gather: 0.08,
-  /** How far the agent squashes as it gathers itself (the engine's `squash`). */
-  squash: 2.2,
   wave: 0.5,
   /** The ring's band of pixel sky, in points. */
   band: 72,
@@ -153,8 +160,8 @@ export interface BurstCell {
 }
 
 /**
- * The logo agent's body cells (the engine's dither grid, facing front): each drifts out a little and goes out on its
- * own, from the middle first in the dither's order, between 0.02 and 0.26 s after the ring starts.
+ * The mark's cells (the engine's dither grid over its 32 grid), each in its part's tone: each drifts out a little and
+ * goes out on its own, from the middle first in the dither's order, between 0.02 and 0.26 s after the ring starts.
  */
 export function burstCells(): BurstCell[] {
   const n = ditherCells(LOGO);
@@ -164,12 +171,13 @@ export function burstCells(): BurstCell[] {
     for (let i = 0; i < n; i++) {
       const u = (i + 0.5) / n;
       const v = (j + 0.5) / n;
-      if (!inBody(u, v)) continue;
+      const part = markPart(u * 32, v * 32);
+      if (part === null) continue;
       const b = bayerAt(i, j);
       cells.push({
         dx: (i + 0.5) * p - LOGO / 2,
         dy: (j + 0.5) * p - LOGO / 2,
-        tone: toneAt(i, j, n, [0, 0]),
+        tone: MARK_TONE[part],
         drift: 0.2 + 0.45 * ((((i * 73 + j * 151) % 97) + 0.5) / 97),
         gone: 0.02 + 0.14 * (1 - Math.hypot(u - 0.5, v - 0.5) / 0.71) + 0.1 * b,
       });
@@ -184,36 +192,6 @@ export function burstDrift(cell: BurstCell, k: number): number | null {
   return 1 + cell.drift * outQuint(k / EXIT.burst);
 }
 
-/**
- * The agent's opening, drawn ahead (`OPENING_FPS` frames a second up to `OPENING_END`) and shown by the UI thread:
- * the app loads on the JS thread under it, and an agent drawn there stuttered.
- */
-export const OPENING_FPS = 30;
-/** Where its choreography ends (`launchPose`): past it the agent idles, drawn as it goes. */
-export const OPENING_END = 0.9;
-export const OPENING_FRAMES = Math.round(OPENING_END * OPENING_FPS) + 1;
-
-/** The frame for `a` seconds into the opening, of the `count` drawn so far; -1 past the opening. */
-export function openingFrame(a: number, count: number): number {
-  "worklet";
-  if (a >= OPENING_END) return -1;
-  return Math.max(0, Math.min(count - 1, Math.floor(a * OPENING_FPS)));
-}
-
-/** The gather's frames: the pose it left in, turned to face front, smiling and squashing. */
-export const GATHER_FRAMES = 4;
-export function gatherPose(held: Pose, j: number): Pose {
-  const g = smooth01((j + 1) / GATHER_FRAMES);
-  const [tx, ty] = held.turn ?? [0, 0];
-  return { turn: [tx * (1 - g), ty * (1 - g)], expression: "happy", squash: EXIT.squash * g };
-}
-
-/** The gather frame for `e` seconds after leaving. */
-export function gatherFrame(e: number): number {
-  "worklet";
-  return Math.max(0, Math.min(GATHER_FRAMES - 1, Math.floor((e / EXIT.gather) * GATHER_FRAMES)));
-}
-
 /** Whether the app, ready `readyMs` after the splash came up, skips its minimum (`LAUNCH.quick`). */
 export const launchesAtOnce = (readyMs: number) => readyMs <= LAUNCH.quick * 1000;
 
@@ -221,28 +199,6 @@ export const launchesAtOnce = (readyMs: number) => readyMs <= LAUNCH.quick * 100
 export function waitLine(late: boolean, offline: boolean): "offline" | "slow" | null {
   if (!late) return null;
   return offline ? "offline" : "slow";
-}
-
-const ease = (x: number) => {
-  const k = Math.min(1, Math.max(0, x));
-  return k * k * (3 - 2 * k);
-};
-
-/**
- * The logo agent `a` seconds in: it looks down at the sky coming up, back up, smiles, then idles. Without a
- * network, after a while, it closes its eyes; leaving, it smiles.
- */
-export function launchPose(a: number, opts: { offline?: boolean; leaving?: boolean } = {}): Pose {
-  let pose: Pose;
-  if (a < 0.5) pose = { turn: [0, 0.75 * ease(a / 0.3)], blink: a > 0.08 && a < 0.16 };
-  else if (a < 0.9) pose = { turn: [0, 0.75 - 0.95 * ease((a - 0.5) / 0.4)] };
-  else {
-    pose = { ...idlePose(a, 1.4, { every: 4.5, expressions: ["happy"] }), turn: [Math.sin(a * 0.9) * 0.35, -0.2] };
-    if (a < 1.5) pose.expression = "happy";
-  }
-  if (opts.leaving) return { ...pose, expression: "happy", blink: false };
-  if (opts.offline && a > LAUNCH.lineAfter) return { ...pose, expression: "closed" };
-  return pose;
 }
 
 /** The little pixel agents going up through the sky: a column each, their own pace and start. */

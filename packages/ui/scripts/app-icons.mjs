@@ -30,8 +30,10 @@ import {
   MADE_SKIES,
   madeScene,
   monoLayers,
+  notificationLayers,
   PHONE_APP_ICON_ID,
   SCENES,
+  splashLayers,
   tiled,
 } from "./app-icons/scenes.mjs";
 
@@ -86,6 +88,11 @@ for (const id of APP_ICON_IDS) {
     write("apps/web/public/icon-512.png", png(resize(light, 512), { opaque: true }));
   }
 }
+
+// The phone's launch image, light and dark, and its notification icon.
+write("apps/mobile/assets/images/splash-icon.png", png(render(512, splashLayers("light"))));
+write("apps/mobile/assets/images/splash-icon-dark.png", png(render(512, splashLayers("dark"))));
+write("apps/mobile/assets/images/notification-icon.png", png(render(96, notificationLayers())));
 
 for (const pose of MADE_POSES)
   for (const sky of MADE_SKIES) {

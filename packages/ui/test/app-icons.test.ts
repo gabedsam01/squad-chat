@@ -14,6 +14,7 @@ import {
 import { ico, png, render, resize } from "../scripts/app-icons/raster.mjs";
 import {
   APP_ICON_IDS,
+  backLayers,
   MADE_ACCESSORIES,
   MADE_COLORS,
   MADE_FACES,
@@ -66,12 +67,13 @@ describe("app icons (ADR 0179)", () => {
         expect(sizeOf(read(`apps/mobile/assets/app-icons/made/${name}.png`))).toEqual([360, 360]);
   });
 
-  test("a made icon's agent leans in as the Peeking icons' agent, in its color and with its face", () => {
+  test("a made icon's agent leans in on the Peeking icons' sky, in its color and with its face", () => {
     const picture = (icon: { sky: string; color: string; look: string; pose?: string }) =>
       [...render(64, madeScene(icon), { k: 16 }).px].join();
-    // The shipped color and face, leaning in the night, is the Peeking at night icon.
-    expect(picture({ sky: "night", color: "sky", look: "round", pose: "peek" })).toBe(
-      [...render(64, SCENES.peekNight.light(), { k: 16 }).px].join(),
+    // Leaning in the night, its sky is the Peeking at night icon's.
+    const sky = (layers: ReturnType<typeof madeScene>) => [...render(64, backLayers(layers), { k: 16 }).px].join();
+    expect(sky(madeScene({ sky: "night", color: "sky", look: "round", pose: "peek" }))).toBe(
+      sky(SCENES.peekNight.light()),
     );
     const leaning = picture({ sky: "night", color: "rose", look: "heart", pose: "peek" });
     expect(leaning).not.toBe(picture({ sky: "night", color: "rose", look: "heart" }));
@@ -107,9 +109,9 @@ describe("app icons (ADR 0179)", () => {
   });
 
   test("the peeking agent leans to the left: its right eye sits higher than its left", () => {
-    for (const look of ["light", "dark"] as const) {
+    for (const color of ["sky", "rose"]) {
       const N = 128;
-      const { px } = render(N, SCENES.peekNight[look](), { k: 1024 / N });
+      const { px } = render(N, madeScene({ sky: "night", color, look: "round", pose: "peek" }), { k: 1024 / N });
       // Each row's fully white pixels: the eyes.
       const eyes: number[][] = [];
       for (let y = 0; y < N; y++) {
@@ -131,13 +133,19 @@ describe("app icons (ADR 0179)", () => {
     }
   });
 
-  test("the 16 px favicon's eyes sit on whole pixels", () => {
-    const { px } = render(16, SCENES.night.favicon(16));
-    let white = 0;
-    for (let i = 0; i < px.length; i += 4)
-      if (px[i] === 255 && px[i + 1] === 255 && px[i + 2] === 255 && px[i + 3] === 1) white++;
-    // Two eyes of 1 × 4 pixels, fully white, nothing half covered.
-    expect(white).toBe(8);
+  test("every icon is the squadchat mark: its bubble, the people's two dots and the agent's orange square", () => {
+    /** How many of the picture's pixels are fully the square's orange. */
+    const orange = ({ px }: { px: Float32Array }) => {
+      let n = 0;
+      for (let i = 0; i < px.length; i += 4)
+        if (px[i] === 0xff && px[i + 1] === 0xb4 && px[i + 2] === 0x6a && px[i + 3] === 1) n++;
+      return n;
+    };
+    for (const scene of Object.values(SCENES)) {
+      expect(orange(render(64, scene.light(), { k: 16 }))).toBeGreaterThan(0);
+      expect(orange(render(64, scene.dark(), { k: 16 }))).toBeGreaterThan(0);
+      expect(orange(render(32, scene.favicon(32)))).toBeGreaterThan(0);
+    }
   });
 });
 
