@@ -164,3 +164,10 @@ test("Answer now that fails says why when the person pressed it", () => {
   expect(card).toContain('if (code !== "ai.still_missing") failed(error);');
   expect(card).toContain("if (tapped) failed(error);");
 });
+
+test("a key's unset effort reads Model default, a choice of its own, never a Medium its ramp may lack", () => {
+  const choice = source("ai/AiChoice.tsx");
+  expect(choice).toContain('const shownEffort = effort ?? (onKey ? null : "medium");');
+  expect(choice).toContain("...(onKey ? [{ key: AUTO, label: effortName(null) }] : []),");
+  expect(choice).toContain("value={effortName(shownEffort)}");
+});
