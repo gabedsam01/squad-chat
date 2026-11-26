@@ -180,3 +180,13 @@ describe("the server's address and the QR scanner", () => {
     expect(read("src/features/server/ServerDown.tsx")).toContain("onCancel={() => setSwitching(false)}");
   });
 });
+
+describe("a QR code's one-time sign-in", () => {
+  test("moving to the link's server remounts the screen mid-trade: it comes back signing in, not asking again", () => {
+    const connect = read("app/connect.tsx");
+    expect(connect).toContain("const trading = new Set<string>();");
+    expect(connect).toContain("useState(() => token !== undefined && trading.has(token))");
+    expect(connect).toContain("if (token) trading.add(token);");
+    expect(connect).toContain("if (token) trading.delete(token);");
+  });
+});
