@@ -2,11 +2,21 @@ import { type SheetDetent, TrueSheet } from "@lodev09/react-native-true-sheet";
 import { useNavigation } from "expo-router";
 import { type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Keyboard, ScrollView, type ScrollViewInstance, StyleSheet, View, type ViewStyle } from "react-native";
+import {
+  Keyboard,
+  Platform,
+  ScrollView,
+  type ScrollViewInstance,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { hintBack } from "./hints";
 import { sheetColors } from "./palette";
 import { SHEET_GAP, SHEET_X } from "./rhythm";
+import { sheetBottom } from "./sheet-bottom";
 import { ThemeColorsOverride, useTheme } from "./theme";
 
 /** A sheet's own height: its content's, up to the screen's. */
@@ -248,13 +258,14 @@ function OnSheet({ children }: { children: ReactNode }) {
  * The body of every sheet's content (a screen's sheets, their steps, the sheets that are routes): `SHEET_X` at the
  * sides, `top` (room for the grabber), 24 over the bottom edge, and `SHEET_GAP` between its blocks. The home indicator's
  * room is TrueSheet's own (`insetAdjustment` and `contentInsetAdjustment`, both automatic): added here as well, every
- * sheet ended on an empty band twice that tall.
+ * sheet ended on an empty band twice that tall. Android adds the navigation bar's height (`sheetBottom`).
  */
 export function useSheetBody(top = 24): ViewStyle {
+  const { bottom } = useSafeAreaInsets();
   return {
     paddingHorizontal: SHEET_X,
     paddingTop: top,
-    paddingBottom: 24,
+    paddingBottom: sheetBottom(Platform.OS, bottom),
     gap: SHEET_GAP,
   };
 }
