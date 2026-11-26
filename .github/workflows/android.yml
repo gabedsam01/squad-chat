@@ -30,6 +30,10 @@ on:
         description: "Release notes (optional; default = commit subjects since the last release)"
         type: string
         required: false
+      architectures:
+        description: "ABIs, comma-separated (empty = the variant's default; x86_64 for an emulator)"
+        type: string
+        required: false
 
 permissions:
   contents: read
@@ -81,7 +85,8 @@ jobs:
       APP_VARIANT: ${{ inputs.variant }}
       APP_PLATFORM: android
     steps:
-      # Fails in seconds, before anything is installed, when the key isn't there.
+      # Fails in seconds, before anything is installed, when the key isn't there. A preview without it is built with
+      # the template's debug signing (with-android-release-signing), good to install on a test device or emulator.
       - name: Upload key is set
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -94,7 +99,10 @@ jobs:
             value=$(printenv "$name" || true)
             if [ -z "$value" ] || [ "$value" = PLACEHOLDER ]; then echo "::error::Secret $name is not set"; missing=1; fi
           done
-          if [ "$missing" = 1 ]; then echo "See apps/mobile/README.md, \"Android on GitHub Actions\"."; exit 1; fi
+          if [ "$missing" = 1 ] && [ "$APP_VARIANT" != production ]; then
+            echo "::warning::No upload key: this preview is signed with the debug key."
+            echo "NO_UPLOAD_KEY=true" >> "$GITHUB_ENV"
+          elif [ "$missing" = 1 ]; then echo "See apps/mobile/README.md, \"Android on GitHub Actions\"."; exit 1; fi
       # Toolchains this build never uses (the Android SDK stays), and 8 GB more swap so a peak of the C++ compiles
       # slows the build down instead of killing the runner.
       - name: Disk and swap
@@ -141,8 +149,10 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           GOOGLE_SERVICES_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
         run: |
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
+          if [ "$NO_UPLOAD_KEY" != true ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.keystore"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.keystore" >> "$GITHUB_ENV"
+          fi
           package=chat.agentes.app
           if [ "$APP_VARIANT" != production ]; then package="$package.$APP_VARIANT"; fi
           if [ -z "$GOOGLE_SERVICES_BASE64" ] || [ "$GOOGLE_SERVICES_BASE64" = PLACEHOLDER ]; then
@@ -171,6 +181,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ARCHITECTURES: ${{ inputs.architectures }}
         run: |
           if [ "$APP_VARIANT" = production ]; then
             task=bundleRelease
@@ -179,6 +190,7 @@ jobs:
             task=assembleRelease
             architectures=arm64-v8a
           fi
+          architectures=${ARCHITECTURES:-$architectures}
           ./gradlew --no-daemon --max-workers=2 "-Dorg.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g" \
             "-Pkotlin.daemon.jvmargs=-Xmx2g" "-PreactNativeArchitectures=$architectures" "$task"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

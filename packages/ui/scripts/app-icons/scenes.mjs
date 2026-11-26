@@ -1,9 +1,9 @@
 /**
- * The app icons a person can pick (ADR 0179), drawn from the agent engine: the same body, dither and eyes as the
- * avatar and the logo. Each icon is a 1024 scene on a grid of 32 cells (one dither cell of the agent = one cell of
- * its sky), in light and dark, plus its favicon drawn pixel by pixel at 16 and 32 px (a 1024 drawing scaled down
- * blurs there). Layers: `mask`/`color` (see raster.mjs), `bg` for what Android puts on the icon's back layer, and
- * `part` ("agent", "eyes", "moon", "accessory") for the one-color icon.
+ * The app icons a person can pick (ADR 0179): the squadchat mark (src/brand/squad-mark.js, the web's `LogoMark`) on
+ * the pixel skies. Each icon is a 1024 scene on a grid of 32 cells, in light and dark, plus its favicon at 16 and
+ * 32 px. Layers: `mask`/`color` (see raster.mjs), `bg` for what Android puts on the icon's back layer, and `part`
+ * ("agent" for the agent's body or the mark's bubble, "eyes" for its eyes or the mark's dots and square, "moon",
+ * "accessory") for the one-color icon.
  *
  * Besides those, the icons a person makes on their phone (`madeScene`): a sky, a color and either a face or an
  * accessory, every combination drawn when the phone app is built.
@@ -15,11 +15,11 @@ import {
   AGENT_GRADIENTS,
   bodyTones,
   EYE_STYLES,
-  EYE_X,
   eyeShapes,
   inBody,
   toneAt,
 } from "../../src/agent/engine.js";
+import { markPart } from "../../src/brand/squad-mark.js";
 
 /** The ids, in the order the pickers show them; the first is the icon the apps ship with. */
 export const APP_ICON_IDS = ["night", "moon", "sky", "peekNight", "peekSky"];
@@ -30,14 +30,11 @@ const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => 
 const by = (x, y) => BAYER[(x & 3) + (y & 3) * 4];
 const pick = (list, i) => list[Math.max(0, Math.min(list.length - 1, i))];
 
-const SKY_T = bodyTones("sky");
 /** The sky's small agents are navy (`spriteBody`); this is that navy in five tones, deep to light. */
-const NAVY_T = ["#010b17", "#04203f", "#0a3263", "#124585", "#1d5aa5"];
-const NIGHT = ["#03101f", "#061a31", "#0a2645", "#0f345c"];
+const NIGHT = ["#0b0a1f", "#13113a", "#1c1a4d", "#272463"];
 const DAY = ["#4693e8", "#8cc3ff", "#c6e1ff", "#e8f2ff"];
-const NAVY_TILE = "#06192f";
-const SPRITE_NAVY = "#06264a";
-const BLACK_NIGHT = "#03070d";
+const NAVY_TILE = "#0e0c2a";
+const BLACK_NIGHT = "#07061a";
 const WHITE = "#ffffff";
 
 /* ---------- Layers in the 1024 scene ---------- */
@@ -234,6 +231,27 @@ function agent({ x, y, s, n, tones, solid, style = "round", pose = {}, turn }) {
   return turn ? layers.map((l) => turned(l, turn)) : layers;
 }
 
+/** The mark's colors: light on the night (the web's dark theme), ink on the day (the web's favicon). */
+const MARK_ON_NIGHT = { bubble: "#eeecfa", dot: "#0e0c2a", square: "#ffb46a" };
+const MARK_ON_DAY = { bubble: "#0e0c2a", dot: "#eeecfa", square: "#ffb46a" };
+/** The squadchat mark: its 32 grid drawn `s` wide at (x, y), its dots and square cut in the one-color icon. */
+function mark({ x, y, s, turn }, colors) {
+  const k = s / 32;
+  const at = (X, Y) => markPart((X - x) / k, (Y - y) / k);
+  const layers = [
+    { part: "agent", mask: (X, Y) => at(X, Y) !== null, color: () => colors.bubble },
+    {
+      part: "eyes",
+      mask: (X, Y) => {
+        const p = at(X, Y);
+        return p === "dot" || p === "square";
+      },
+      color: (X, Y) => (at(X, Y) === "square" ? colors.square : colors.dot),
+    },
+  ];
+  return turn ? layers.map((l) => turned(l, turn)) : layers;
+}
+
 function nightAt(halo) {
   return (i, j, cols) => {
     const u = (i + 0.5) / cols;
@@ -247,42 +265,47 @@ const dayAt = (i, j, cols) => pick(DAY, Math.floor(((j + 0.5) / cols) * 2.7 + by
 
 /** The agent on the 32-cell grid: cells 7..24 × 6..23, one dither cell = one cell of the sky. */
 const AG = { x: 224, y: 192, s: 576, n: 18 };
-/** Smaller and to the left, so the moon fits: cells 6..22 × 8..24. */
-const AG_MOON = { x: 192, y: 256, s: 544, n: 17 };
 /**
  * Big, leaning in from the bottom right corner and looking up: 30 cells a side, turned around the middle of its eyes,
  * so its cells lean with it and no longer sit on the sky's.
  */
 const PEEK = { x: 170, y: 202, s: 960, n: 30, pose: { look: [-0.035, -0.045] }, turn: { deg: -18, about: [650, 600] } };
-const LOOK_UP_RIGHT = { look: [0.035, -0.05] };
+/** The mark in the middle (its 32 grid's middle on the icon's). */
+const MK = { x: 224, y: 220, s: 576 };
+/** Smaller and to the left, so the moon fits. */
+const MK_MOON = { x: 176, y: 272, s: 544 };
+/** Big, coming in from the bottom right corner, leaning. */
+const MK_PEEK = { x: 400, y: 420, s: 700, turn: { deg: -8, about: [700, 700] } };
+/** The favicon's mark on its tile, in pixels. */
+const markFav = (N) => ({ x: N * 0.0625, y: N * 0.03, s: N * 0.875 });
 
 const STARS = [
-  [4, 4, "#c6e1ff"],
-  [27, 5, "#8cc3ff"],
-  [16, 2, "#4693e8"],
-  [3, 18, "#4693e8"],
-  [28, 25, "#c6e1ff"],
-  [9, 28, "#8cc3ff"],
-  [22, 28, "#4693e8"],
+  [4, 4, "#eeecfa"],
+  [27, 5, "#ffb46a"],
+  [16, 2, "#6f69b8"],
+  [3, 18, "#6f69b8"],
+  [28, 25, "#eeecfa"],
+  [9, 28, "#ffb46a"],
+  [22, 28, "#6f69b8"],
 ];
 const STARS_MOON = [
-  [4, 4, "#c6e1ff"],
-  [11, 3, "#8cc3ff"],
-  [16, 5, "#4693e8"],
-  [3, 14, "#4693e8"],
-  [28, 17, "#8cc3ff"],
-  [27, 26, "#c6e1ff"],
-  [4, 27, "#8cc3ff"],
-  [26, 12, "#4693e8"],
+  [4, 4, "#eeecfa"],
+  [11, 3, "#ffb46a"],
+  [16, 5, "#6f69b8"],
+  [3, 14, "#6f69b8"],
+  [28, 17, "#ffb46a"],
+  [27, 26, "#eeecfa"],
+  [4, 27, "#ffb46a"],
+  [26, 12, "#6f69b8"],
 ];
 /** The stars around the leaning agent: over it and down its left side. */
 const STARS_PEEK = [
-  [4, 3, "#c6e1ff"],
-  [24, 1, "#8cc3ff"],
-  [16, 2, "#4693e8"],
-  [9, 6, "#4693e8"],
-  [2, 15, "#c6e1ff"],
-  [4, 25, "#8cc3ff"],
+  [4, 3, "#eeecfa"],
+  [24, 1, "#ffb46a"],
+  [16, 2, "#6f69b8"],
+  [9, 6, "#6f69b8"],
+  [2, 15, "#eeecfa"],
+  [4, 25, "#ffb46a"],
 ];
 const CLOUD_A = ["..XX...", ".XXXXX.", "XXXXXXX"];
 const CLOUD_B = [".XXX.", "XXXXX"];
@@ -302,145 +325,69 @@ const tile = (N, r, color) => ({
   mask: (x, y) => inRound(x, y, 0, 0, N, N, r),
   color: typeof color === "function" ? color : () => color,
 });
-const body = (bx, by_, bs, color) => ({
-  mask: (x, y) => inBody((x - bx) / bs, (y - by_) / bs),
-  color: typeof color === "function" ? color : () => color,
-});
 const clipped = (N, r, layer) => ({ ...layer, mask: (x, y) => inRound(x, y, 0, 0, N, N, r) && layer.mask(x, y) });
-/** The body dithered in cells of `cell` pixels. */
-const dith = (bx, by_, bs, cell, tones) => (x, y) =>
-  tones[toneAt(Math.floor((x - bx) / cell), Math.floor((y - by_) / cell), bs / cell)];
-/** The body in three flat bands, light to deep (at 16 px a dither is noise). */
-function bands(bx, by_, bs, tones) {
-  const set = [tones[1], tones[2], tones[3]];
-  return (x, y) => {
-    const u = (x - bx) / bs;
-    const v = (y - by_) / bs;
-    return pick(set, Math.floor((0.92 - 0.75 * v - 0.12 * u) * set.length));
-  };
-}
-/** Eyes on whole pixels and mirrored around the body's middle, so both are the same. */
-function snapEyes(bx, by_, bs, { style = "round", look = [0, 0] } = {}) {
-  const base = EYE_STYLES[style];
-  const W = Math.max(1, Math.round(base.w * bs));
-  const H = Math.max(2, Math.round(base.h * bs));
-  const xL = Math.round(bx + EYE_X[0] * bs - W / 2);
-  const xR = Math.round(2 * bx + bs - xL - W);
-  const y = Math.round(by_ + base.cy * bs - H / 2);
-  const dx = Math.round(look[0] * bs);
-  const dy = Math.round(look[1] * bs);
-  const rects = [
-    [xL + dx, y + dy],
-    [xR + dx, y + dy],
-  ];
-  return {
-    mask: (px, py) => rects.some(([ex, ey]) => px >= ex && px < ex + W && py >= ey && py < ey + H),
-    color: () => WHITE,
-  };
-}
-const pixels = (list, color) => ({
-  mask: (x, y) => list.some(([i, j]) => Math.floor(x) === i && Math.floor(y) === j),
-  color: () => color,
-});
 const crescent = ([cx, cy, r], [cx2, cy2, r2], color) => ({
   mask: (x, y) => (x - cx) ** 2 + (y - cy) ** 2 <= r * r && (x - cx2) ** 2 + (y - cy2) ** 2 > r2 * r2,
   color: () => color,
 });
-/** The day sky at 32 px: dithered in 2-pixel cells. */
-const skyTile32 = (x, y) => pick(DAY, Math.floor(((Math.floor(y) + 0.5) / 32) * 2.2 + by(x >> 1, y >> 1)));
 
 /* ---------- The icons ---------- */
 
 export const SCENES = {
-  /** Noite: the night sky, a glow in dither around the agent (the landing's giant), loose stars. */
+  /** Noite: the night sky, a glow in dither around the mark, loose stars. */
   night: {
-    light: () => [grid(32, nightAt(true)), cells(32, STARS), ...agent({ ...AG, tones: SKY_T })],
-    dark: () => [fill(BLACK_NIGHT), cells(32, STARS), ...agent({ ...AG, tones: SKY_T })],
-    favicon: (N) =>
-      N === 32
-        ? [tile(32, 7, NAVY_TILE), body(5, 5, 22, dith(5, 5, 22, 2, SKY_T)), snapEyes(5, 5, 22)]
-        : [tile(16, 3.5, NAVY_TILE), body(2, 2, 12, bands(2, 2, 12, SKY_T)), snapEyes(2, 2, 12, { style: "wide" })],
+    light: () => [grid(32, nightAt(true)), cells(32, STARS), ...mark(MK, MARK_ON_NIGHT)],
+    dark: () => [fill(BLACK_NIGHT), cells(32, STARS), ...mark(MK, MARK_ON_NIGHT)],
+    favicon: (N) => [tile(N, N * 0.22, NAVY_TILE), ...mark(markFav(N), MARK_ON_NIGHT)],
   },
-  /** Lua: a pixel moon in the corner and the agent looking up at it. */
+  /** Lua: a pixel moon in the corner over the mark. */
   moon: {
     light: () => [
       grid(32, nightAt(false)),
       cells(32, STARS_MOON),
-      moon(32, MOON[0], MOON[1], "#e8f2ff"),
-      ...agent({ ...AG_MOON, tones: SKY_T, pose: LOOK_UP_RIGHT }),
+      moon(32, MOON[0], MOON[1], "#eeecfa"),
+      ...mark(MK_MOON, MARK_ON_NIGHT),
     ],
     dark: () => [
       fill(BLACK_NIGHT),
       cells(32, STARS_MOON),
-      moon(32, MOON[0], MOON[1], "#c6e1ff"),
-      ...agent({ ...AG_MOON, tones: SKY_T, pose: LOOK_UP_RIGHT }),
+      moon(32, MOON[0], MOON[1], "#ffd09e"),
+      ...mark(MK_MOON, MARK_ON_NIGHT),
     ],
-    favicon: (N) =>
-      N === 32
-        ? [
-            tile(32, 7, NAVY_TILE),
-            crescent([26.5, 5.5, 3.6], [28, 4.3, 3], "#e8f2ff"),
-            body(3, 7, 22, dith(3, 7, 22, 2, SKY_T)),
-            snapEyes(3, 7, 22, LOOK_UP_RIGHT),
-          ]
-        : [
-            tile(16, 3.5, NAVY_TILE),
-            pixels(
-              [
-                [12, 1],
-                [13, 1],
-                [12, 2],
-                [13, 2],
-              ],
-              "#e8f2ff",
-            ),
-            body(2, 3, 12, bands(2, 3, 12, SKY_T)),
-            snapEyes(2, 3, 12, { style: "wide", ...LOOK_UP_RIGHT }),
-          ],
+    favicon: (N) => [
+      tile(N, N * 0.22, NAVY_TILE),
+      crescent([N * 0.83, N * 0.17, N * 0.11], [N * 0.875, N * 0.13, N * 0.094], "#eeecfa"),
+      ...mark({ x: 0, y: N * 0.1, s: N * 0.8 }, MARK_ON_NIGHT),
+    ],
   },
-  /** Céu: the landing's sky by day, two pixel clouds and the navy agent of the sky's sprites; at night, the night. */
+  /** Céu: the landing's sky by day, two pixel clouds and the mark in ink; at night, the night. */
   sky: {
     light: () => [
       grid(32, dayAt),
       shape(32, CLOUD_A, 3, 2, WHITE),
       shape(32, CLOUD_B, 26, 12, WHITE),
-      ...agent({ ...AG, tones: NAVY_T }),
+      ...mark(MK, MARK_ON_DAY),
     ],
-    dark: () => [grid(32, nightAt(false)), cells(32, STARS), ...agent({ ...AG, tones: SKY_T })],
-    favicon: (N) =>
-      N === 32
-        ? [tile(32, 7, skyTile32), body(5, 6, 22, dith(5, 6, 22, 2, NAVY_T)), snapEyes(5, 6, 22)]
-        : [tile(16, 3.5, "#8cc3ff"), body(2, 3, 12, SPRITE_NAVY), snapEyes(2, 3, 12, { style: "wide" })],
+    dark: () => [grid(32, nightAt(false)), cells(32, STARS), ...mark(MK, MARK_ON_NIGHT)],
+    favicon: (N) => [tile(N, N * 0.22, "#8cc3ff"), ...mark(markFav(N), MARK_ON_DAY)],
   },
-  /** Espiando à noite: the agent big, coming up from the bottom edge and looking up, under the night's stars. */
+  /** Espiando à noite: the mark big, coming in from the bottom right corner, under the night's stars. */
   peekNight: {
-    light: () => [...PEEK_BACK.night(), ...agent({ ...PEEK, tones: SKY_T })],
-    dark: () => [fill(BLACK_NIGHT), cells(32, STARS_PEEK), ...agent({ ...PEEK, tones: SKY_T })],
-    favicon: (N) =>
-      N === 32
-        ? [
-            tile(32, 7, NAVY_TILE),
-            clipped(32, 7, body(-2, 9, 36, dith(-2, 9, 36, 2, SKY_T))),
-            snapEyes(-2, 9, 36, PEEK.pose),
-          ]
-        : [
-            tile(16, 3.5, NAVY_TILE),
-            clipped(16, 3.5, body(-1, 5, 18, bands(-1, 5, 18, SKY_T))),
-            snapEyes(-1, 5, 18, PEEK.pose),
-          ],
+    light: () => [...PEEK_BACK.night(), ...mark(MK_PEEK, MARK_ON_NIGHT)],
+    dark: () => [fill(BLACK_NIGHT), cells(32, STARS_PEEK), ...mark(MK_PEEK, MARK_ON_NIGHT)],
+    favicon: (N) => [
+      tile(N, N * 0.22, NAVY_TILE),
+      ...mark({ x: N * 0.2, y: N * 0.25, s: N * 1.1 }, MARK_ON_NIGHT).map((l) => clipped(N, N * 0.22, l)),
+    ],
   },
-  /** Espiando no céu: the same, in the day sky with clouds, the agent navy. */
+  /** Espiando no céu: the same, in the day sky with clouds, the mark in ink. */
   peekSky: {
-    light: () => [...PEEK_BACK.sky(), ...agent({ ...PEEK, tones: NAVY_T })],
-    dark: () => [...PEEK_BACK.night(), ...agent({ ...PEEK, tones: SKY_T })],
-    favicon: (N) =>
-      N === 32
-        ? [
-            tile(32, 7, skyTile32),
-            clipped(32, 7, body(-2, 9, 36, dith(-2, 9, 36, 2, NAVY_T))),
-            snapEyes(-2, 9, 36, PEEK.pose),
-          ]
-        : [tile(16, 3.5, "#8cc3ff"), clipped(16, 3.5, body(-1, 5, 18, SPRITE_NAVY)), snapEyes(-1, 5, 18, PEEK.pose)],
+    light: () => [...PEEK_BACK.sky(), ...mark(MK_PEEK, MARK_ON_DAY)],
+    dark: () => [...PEEK_BACK.night(), ...mark(MK_PEEK, MARK_ON_NIGHT)],
+    favicon: (N) => [
+      tile(N, N * 0.22, "#8cc3ff"),
+      ...mark({ x: N * 0.2, y: N * 0.25, s: N * 1.1 }, MARK_ON_DAY).map((l) => clipped(N, N * 0.22, l)),
+    ],
   },
 };
 
@@ -506,6 +453,20 @@ export function madeScene({ sky, color, look, pose = "front" }) {
       : [grid(32, dayAt), shape(32, CLOUD_A, 3, 2, WHITE), shape(32, CLOUD_B, 26, 12, WHITE)];
   return [...back, ...agent({ ...at, tones: bodyTones(color), ...eyes }), ...(wears ? [accessory(at, look)] : [])];
 }
+
+/* ---------- The phone's launch image and notification icon ---------- */
+
+/**
+ * The launch image (512 px, the mark 400 wide in the middle, on nothing): in the theme's ink, ground and agent colors
+ * (packages/tokens), as the animated splash draws it over that ground (apps/mobile/src/features/launch).
+ */
+export const LAUNCH_MARK = {
+  light: { bubble: "#12102b", dot: "#f6f6fb", square: "#b34d00" },
+  dark: { bubble: "#eeecfa", dot: "#0e0c2a", square: "#ffb46a" },
+};
+export const splashLayers = (look) => mark({ x: 56, y: 56, s: 400 }, LAUNCH_MARK[look]);
+/** Android's notification icon (96 px): the mark in white, its dots and square cut out. */
+export const notificationLayers = () => monoLayers(mark({ x: 3, y: 1, s: 90 }, MARK_ON_NIGHT));
 
 /* ---------- The same scene for each place ---------- */
 

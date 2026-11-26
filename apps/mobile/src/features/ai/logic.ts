@@ -185,11 +185,13 @@ export function modelSections(rows: ModelRow[]): { maker?: string; rows: ModelRo
 export function accountInput(
   view: Pick<AgentBrain, "brain" | "account" | "accounts" | "effectiveModel">,
   a: Pick<MachineAccount, "id" | "kind" | "provider"> | null,
-): Pick<AgentBrainInput, "account" | "model"> {
+): Pick<AgentBrainInput, "brain" | "account" | "model"> {
   const kind = accountKindOf(view.brain);
   const next = a ? planOfAccount(a) : kind ? planOfAccount({ kind, provider: null }) : null;
   if (next === aiChoiceOf(view)) return { account: a?.id ?? null };
-  return { account: a?.id ?? null, model: isAuto(view.effectiveModel) ? AUTO : null };
+  // From the API or another plan's CLI the brain moves too: the server reads an account against the saved brain's kind.
+  const moves = a && a.kind !== kind ? { brain: a.kind } : {};
+  return { ...moves, account: a?.id ?? null, model: isAuto(view.effectiveModel) ? AUTO : null };
 }
 
 type ThinkingView = Pick<AgentBrain, "brain" | "effectiveModel" | "options" | "accounts" | "account">;

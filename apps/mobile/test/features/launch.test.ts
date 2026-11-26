@@ -7,19 +7,12 @@ import {
   burstDrift,
   EXIT,
   EXIT_TOTAL,
-  GATHER_FRAMES,
-  gatherFrame,
-  gatherPose,
   LAUNCH,
   LOGO,
   launchesAtOnce,
-  launchPose,
+  launchMarkColors,
   launchSkyTones,
   nameUnderRing,
-  OPENING_END,
-  OPENING_FPS,
-  OPENING_FRAMES,
-  openingFrame,
   panelOut,
   ringCell,
   ringRadius,
@@ -33,7 +26,7 @@ import {
 const source = (path: string) => readFileSync(join(import.meta.dir, "../..", path), "utf8");
 
 describe("launch splash", () => {
-  test("starts on the native image: the body is 400 of its 512 px at 120 pt", () => {
+  test("starts on the native image: the mark is 400 of its 512 px at 120 pt", () => {
     expect(LOGO).toBeCloseTo(93.75, 5);
   });
 
@@ -41,17 +34,6 @@ describe("launch splash", () => {
     expect(waitLine(false, true)).toBeNull();
     expect(waitLine(true, false)).toBe("slow");
     expect(waitLine(true, true)).toBe("offline");
-  });
-
-  test("the agent looks down at the sky, back up, smiles; closes its eyes offline; smiles leaving", () => {
-    // Native frame: facing ahead, eyes open, like the launch image.
-    expect(launchPose(0)).toEqual({ turn: [0, 0], blink: false });
-    expect(launchPose(0.4).turn?.[1]).toBeGreaterThan(0.5);
-    expect(launchPose(0.89).turn?.[1]).toBeLessThan(0);
-    expect(launchPose(1.2).expression).toBe("happy");
-    expect(launchPose(LAUNCH.lineAfter + 0.1, { offline: true }).expression).toBe("closed");
-    expect(launchPose(1, { offline: true }).expression).not.toBe("closed");
-    expect(launchPose(3, { offline: true, leaving: true }).expression).toBe("happy");
   });
 
   test("the sprites stay inside the sky as they rise, and wait while it is low", () => {
@@ -103,30 +85,12 @@ describe("launch splash", () => {
     );
   });
 
-  test("the agent's opening is drawn ahead and shown by the UI thread; past it, it idles drawn as it goes", () => {
-    expect(OPENING_FRAMES).toBe(Math.round(OPENING_END * OPENING_FPS) + 1);
-    // The frame for each moment, never past what is drawn so far; none past the opening.
-    expect(openingFrame(0, 1)).toBe(0);
-    expect(openingFrame(0.5, 4)).toBe(3);
-    expect(openingFrame(0.5, OPENING_FRAMES)).toBe(15);
-    expect(openingFrame(OPENING_END, OPENING_FRAMES)).toBe(-1);
+  test("the mark is still, the native image's twin, in the theme's colors and never the workspace's accent", () => {
     const splash = source("src/features/launch/LaunchSplash.tsx");
-    expect(splash).toContain("list.push(agentPicture(launchPose(list.length / OPENING_FPS)));");
-    expect(splash).toContain("const i = openingFrame(clock.value / 1000, list.length);");
-    // No frames of it on the JS thread during the opening (the app loads there), nor while it leaves.
-    expect(splash).toContain("const now = useFrameTime(!reduced && idling && !leaving, heldAt);");
-  });
-
-  test("leaving, the agent gathers itself: faces front from where it was, smiles and squashes", () => {
-    const held = launchPose(0.4);
-    const last = gatherPose(held, GATHER_FRAMES - 1);
-    expect(last.turn).toEqual([0, 0]);
-    expect(last.expression).toBe("happy");
-    expect(last.squash).toBeCloseTo(EXIT.squash, 5);
-    expect(gatherPose(held, 0).turn?.[1]).toBeGreaterThan(0);
-    expect(gatherFrame(0)).toBe(0);
-    expect(gatherFrame(EXIT.gather)).toBe(GATHER_FRAMES - 1);
-    expect(EXIT_TOTAL).toBeCloseTo(EXIT.gather + EXIT.wave, 5);
+    expect(splash).toContain('const picture = useMemo(() => markPicture(scheme === "dark"), [scheme]);');
+    expect(splash).toContain("<Picture picture={picture} />");
+    expect(launchMarkColors(false)).toEqual(["#12102b", "#f6f6fb", "#b34d00"]);
+    expect(launchMarkColors(true)).toEqual(["#eeecfa", "#0e0c2a", "#ffb46a"]);
   });
 
   test("the ring starts just outside the agent and ends past every corner of any screen", () => {
@@ -166,9 +130,11 @@ describe("launch splash", () => {
     expect(ringTones("#0f0f0e", true, true)[0]).toBe("#0f0f0e");
   });
 
-  test("the agent comes apart into its own pixels, all gone early in the wave", () => {
+  test("the mark comes apart into its own pixels, each in its part's tone, all gone early in the wave", () => {
     const cells = burstCells();
-    expect(cells.length).toBeGreaterThan(300);
+    expect(cells.length).toBeGreaterThan(150);
+    // The bubble, the people's dots and the agent's square each come apart in their own color.
+    expect(new Set(cells.map((c) => c.tone))).toEqual(new Set([0, 1, 2]));
     for (const c of cells) {
       expect(Math.abs(c.dx)).toBeLessThan(LOGO / 2);
       expect(Math.abs(c.dy)).toBeLessThan(LOGO / 2);

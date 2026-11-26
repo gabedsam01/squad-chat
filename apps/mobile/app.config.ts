@@ -109,13 +109,13 @@ export const LEGACY_REDIRECTS = [
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: variant === "production" ? "agentes" : `agentes ${variant}`,
+  name: variant === "production" ? "squadchat" : `squadchat ${variant}`,
   slug: "agentes",
   scheme: "agenteschat",
   version,
   // Upright everywhere (the plugin below); only the agent's screen, in control, lies down (`useSideways`).
   orientation: "default",
-  // The icon the app ships with (ADR 0179): the agent leaning in, Espiando, on the night sky (packages/client's
+  // The icon the app ships with (ADR 0179): the squadchat mark leaning in, Espiando, on the night sky (packages/client's
   // `PHONE_APP_ICON`); the others a person may pick are added by ./plugins/with-app-icons. All of them come from
   // packages/ui/scripts/app-icons.mjs.
   icon: `${ICONS}/peekNight/ios.png`,
@@ -141,13 +141,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     // brings its own Firebase project.
     ...(process.env.GOOGLE_SERVICES_JSON ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON } : {}),
     ...(process.env.ANDROID_VERSION_CODE ? { versionCode: Number(process.env.ANDROID_VERSION_CODE) } : {}),
-    // Two layers (the night sky, the agent), so the launcher's mask and motion cut them like the iOS icon, and the
-    // agent alone in one color for Android 13's themed icons.
+    // Two layers (the night sky, the mark), so the launcher's mask and motion cut them like the iOS icon, and the
+    // mark alone in one color for Android 13's themed icons.
     adaptiveIcon: {
       foregroundImage: `${ICONS}/peekNight/android-foreground.png`,
       backgroundImage: `${ICONS}/peekNight/android-background.png`,
       monochromeImage: `${ICONS}/peekNight/android-monochrome.png`,
-      backgroundColor: "#03101f",
+      backgroundColor: "#0b0a1f",
     },
     predictiveBackGestureEnabled: false,
     // Never read the phone's photos or play in the background: the image picker is Android's photo picker, Salvar em
@@ -208,12 +208,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-splash-screen",
       {
         // The first frame of the animated splash (src/features/launch): same image, size and background as
-        // the app (white in light), so the hand-over doesn't show. Keep LOGO in launch/logic.ts in step.
+        // the app (its theme's ground, packages/tokens `bg`), so the hand-over doesn't show. Keep LOGO in
+        // launch/logic.ts in step.
         image: "./assets/images/splash-icon.png",
         imageWidth: 120,
         resizeMode: "contain",
-        backgroundColor: "#ffffff",
-        dark: { image: "./assets/images/splash-icon.png", backgroundColor: "#0f0f0e" },
+        backgroundColor: "#f6f6fb",
+        dark: { image: "./assets/images/splash-icon-dark.png", backgroundColor: "#0e0c2a" },
       },
     ],
     [
@@ -224,7 +225,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       "expo-notifications",
       {
         icon: "./assets/images/notification-icon.png",
-        color: "#0063d1",
+        color: "#b34d00",
       },
     ],
     // Android release builds signed with the upload key from the environment (the Android build workflow).

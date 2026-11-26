@@ -17,6 +17,12 @@ import { Text } from "@/ui/Text";
 const SIGN_IN_WAIT_MS = 15_000;
 
 /**
+ * Tokens being traded now. Moving to the link's server remounts the app's tree (`setServer`) in the middle of the
+ * trade, so this screen comes back new: it must know the sign-in is under way instead of asking to Connect again.
+ */
+const trading = new Set<string>();
+
+/**
  * A connect link, `agenteschat://connect?server=…[&token=…]` (the web app's QR code, the self-host setup):
  * the server is checked and shown under the question, on that server's own sky (dusk on a team's own: you see where
  * you are going), and nothing changes until the person confirms, so a QR code never points the app somewhere else on
@@ -33,7 +39,7 @@ export default function Connect() {
   const [check, setCheck] = useState<ServerCheck | null>(null);
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState(false);
-  const [signingIn, setSigningIn] = useState(false);
+  const [signingIn, setSigningIn] = useState(() => token !== undefined && trading.has(token));
   const [slow, setSlow] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` asks again (Tentar de novo)
@@ -79,7 +85,10 @@ export default function Connect() {
   const confirm = async () => {
     if (!check?.ok) return;
     setBusy(true);
-    const ok = await connectToServer({ server: check.server, token });
+    if (token) trading.add(token);
+    const ok = await connectToServer({ server: check.server, token }).finally(() => {
+      if (token) trading.delete(token);
+    });
     if (token && ok) return setSigningIn(true);
     if (token) {
       haptics.warning();

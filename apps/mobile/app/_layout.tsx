@@ -256,7 +256,6 @@ function Gate() {
           onShown={hideNative}
           onDone={launched}
           waiting={down ? <ServerDownPanel down={down} /> : null}
-          eyesClosed={down !== null && !down.checking}
           dusk={down !== null && skyHourOf(serverHost(down.server)) === "dusk"}
         />
       ) : null}

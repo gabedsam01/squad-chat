@@ -8,7 +8,7 @@ import type {
   MachineAccount,
 } from "@agenteschat/client";
 import { ACCOUNT_KINDS, compareInOrder, orderAccounts, runMayMoveTo } from "@agenteschat/client/lib/ai-accounts";
-import type { AiChoice, AiChoiceRow } from "@agenteschat/client/lib/ai-choice";
+import { type AiChoice, type AiChoiceRow, effortFor } from "@agenteschat/client/lib/ai-choice";
 import { firstName } from "@agenteschat/client/lib/format";
 import { planMeterText } from "@agenteschat/client/lib/plan-usage";
 import { planName } from "@agenteschat/client/lib/plans";
@@ -214,9 +214,14 @@ export function choiceText(
   };
 }
 
-/** A choice with another model: Automático picks the effort too; a fixed model keeps the effort, medium after Automático. */
-export function withModel(choice: AiChoice, model: string): AiChoice {
+/**
+ * A choice with another model: Automático picks the effort too; a fixed model keeps the effort when its `scale` (the
+ * levels it takes) has it, else the closest level it has (`effortFor`), so the stored effort is one the ramp offers.
+ * Without a `scale` (unknown here) the effort is kept, medium after Automático.
+ */
+export function withModel(choice: AiChoice, model: string, scale?: readonly string[] | null): AiChoice {
   if (isAuto(model)) return { ...choice, model: AUTO, effort: "auto" };
+  if (scale !== undefined) return { ...choice, model, effort: effortFor(choice.effort, scale) };
   return { ...choice, model, effort: !choice.effort || isAuto(choice.effort) ? "medium" : choice.effort };
 }
 

@@ -186,6 +186,10 @@ describe("the one choice", () => {
     expect(withModel(now, "auto")).toMatchObject({ model: "auto", effort: "auto" });
     expect(withModel({ ...now, effort: "auto" }, "sonnet")).toMatchObject({ model: "sonnet", effort: "medium" });
     expect(withModel(now, "opus")).toMatchObject({ model: "opus", effort: "high" });
+    // A model scale without Médio (a custom key): the stored effort is a level it offers.
+    expect(withModel({ ...now, effort: "auto" }, "k", ["low", "high", "max"])).toMatchObject({ effort: "low" });
+    expect(withModel({ ...now, effort: "medium" }, "k", ["low", "high"])).toMatchObject({ effort: "low" });
+    expect(withModel(now, "k", null)).toMatchObject({ effort: null });
   });
 
   test("the picker's options run under their section's header", () => {

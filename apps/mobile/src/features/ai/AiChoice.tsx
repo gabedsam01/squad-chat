@@ -8,7 +8,7 @@ import {
 } from "@agenteschat/client/lib/ai-choice";
 import { EFFORT_LEVELS, type EffortLevel } from "@agenteschat/client/lib/brain-advanced";
 import { errorText } from "@agenteschat/client/lib/errors";
-import { isAuto } from "@agenteschat/client/lib/providers";
+import { AUTO, isAuto } from "@agenteschat/client/lib/providers";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "@/providers/org";
 import { GroupedList, GroupedRow, ProviderLogo, useToast } from "@/ui";
@@ -136,7 +136,9 @@ export function AiChoiceFields({
       lit: true,
     });
     if (picked === null || picked === model?.value) return;
-    apply(withModel(current, picked));
+    apply(
+      withModel(current, picked, active && target.kind !== "mission" ? state.effortScale(active, picked) : undefined),
+    );
   };
 
   // The levels the chosen model takes (live catalog, ADR 9004/9005); none for an API model never checked.
@@ -147,15 +149,23 @@ export function AiChoiceFields({
       ? ((current.effort === "xhigh" && !efforts.includes("xhigh") ? "high" : current.effort) as EffortLevel)
       : null;
   const effortName = (e: EffortLevel | null) => t(`agentPage.work.brain.efforts.${e ?? "none"}`);
+  // On a key no level is the model's own default: "Model default" is a choice of its own (auto), as on the web, never a
+  // Medium the model's ramp may not have. A CLI's unset effort is its medium.
+  const onKey = active?.brain === "model";
+  const shownEffort = effort ?? (onKey ? null : "medium");
   const pickEffort = async () => {
     if (!current) return;
     const picked = await pickOne({
       title: t("mobile.aiHub.choice.effort"),
-      options: efforts.map((e) => ({ key: e, label: effortName(e) })),
-      value: effort,
+      options: [
+        ...(onKey ? [{ key: AUTO, label: effortName(null) }] : []),
+        ...efforts.map((e) => ({ key: e, label: effortName(e) })),
+      ],
+      value: shownEffort ?? AUTO,
       lit: true,
     });
-    if (picked === null || picked === effort) return;
+    if (picked === null || picked === (shownEffort ?? AUTO)) return;
+    if (picked === AUTO) return apply({ ...current, effort: AUTO });
     // A model sold at thinking levels (Antigravity) runs a level by its own id, saved with it.
     const id = active ? state.effortModel(active, model?.value, picked as EffortLevel) : undefined;
     apply({ ...current, ...(id ? { model: id } : {}), effort: picked as EffortLevel });
@@ -185,7 +195,7 @@ export function AiChoiceFields({
       {efforts.length > 0 && !autoModel ? (
         <GroupedRow
           label={t("mobile.aiHub.choice.effort")}
-          value={effortName(effort ?? "medium")}
+          value={effortName(shownEffort)}
           menu
           disabled={locked}
           onPress={() => void pickEffort()}

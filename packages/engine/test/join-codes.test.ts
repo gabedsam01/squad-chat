@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, setSystemTime, test } from "bun:test";
 import { createFakeEmailSender, createMemoryRateLimiter, type EmailSender } from "@agenteschat/adapters";
 import { eq, inArray, schema } from "@agenteschat/db";
 import {
@@ -403,8 +403,14 @@ describe("approving a proven request", () => {
     await ask(token, { email: "rui@example.com", code: await send(token, "rui@example.com", at(MIN)) }, at(MIN));
     // A server without email: typed and filed by its job, unproven.
     await person("u_eva", "eva@example.com", true);
-    await askToJoin(deps(), PUBLIC, { token, user: null, name: "Eva", email: "eva@example.com" }, NOW);
-    await drainOutbox(fx().db, fx().handlers);
+    // Its job files it on the server's clock: the ask's moment, not the day the test runs (the link would be gone).
+    setSystemTime(at(2 * MIN));
+    try {
+      await askToJoin(deps(), PUBLIC, { token, user: null, name: "Eva", email: "eva@example.com" }, at(2 * MIN));
+      await drainOutbox(fx().db, fx().handlers);
+    } finally {
+      setSystemTime();
+    }
 
     const list = await listWaitingJoinRequests(fx().db, fx().owner.id, fx().org.id, NOW);
     expect(list.map((r) => [r.email, r.verified, r.confirmed])).toEqual([
