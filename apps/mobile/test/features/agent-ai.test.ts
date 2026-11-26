@@ -890,6 +890,13 @@ describe("the agent's AI", () => {
       account: "oc2",
     });
     expect(accountInput(view("opus", null), claude)).toEqual({ account: "cl" });
+    // From the API brain, or another CLI's, the plan's brain goes with the account: an account alone is read against
+    // the saved brain's kind and refused.
+    expect(accountInput({ ...view("gpt-5", null), brain: "model" }, claude)).toEqual({
+      brain: "claude_code",
+      account: "cl",
+      model: null,
+    });
   });
 
   test("an account of another plan says what thinks now, its model changed with it; one of the same plan, the account", async () => {
