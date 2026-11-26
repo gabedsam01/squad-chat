@@ -136,7 +136,9 @@ export function AiChoiceFields({
       lit: true,
     });
     if (picked === null || picked === model?.value) return;
-    apply(withModel(current, picked));
+    apply(
+      withModel(current, picked, active && target.kind !== "mission" ? state.effortScale(active, picked) : undefined),
+    );
   };
 
   // The levels the chosen model takes (live catalog, ADR 9004/9005); none for an API model never checked.

@@ -12,6 +12,7 @@ import {
   aiChoiceRows,
   aiChoiceSetup,
   effortFamilyOf,
+  effortFor,
   startLevel,
 } from "../src/lib/ai-choice";
 
@@ -244,6 +245,13 @@ describe("what a row chooses and saves", () => {
     expect(startLevel(["high", "xhigh"])).toBe("high");
     expect(startLevel([])).toBeNull();
     expect(startLevel(null)).toBeNull();
+  });
+
+  test("a model switch keeps an effort the new model takes, else snaps to one it offers, else none", () => {
+    expect(effortFor("high", ["low", "high", "max"])).toBe("high");
+    expect(effortFor("medium", ["low", "high", "max"])).toBe("low");
+    expect(effortFor(null, ["low", "high"])).toBe("low");
+    expect(effortFor("medium", null)).toBeNull();
   });
 
   test("models: a key's from its provider's catalog with Automático first; efforts by brain", () => {

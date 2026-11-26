@@ -326,3 +326,16 @@ export function startLevel(scale: readonly string[] | null | undefined): EffortL
     null,
   );
 }
+
+/**
+ * The effort a fixed model carries: the current one when the model's scale takes it, else the closest level it has
+ * (`startLevel`), else none (null: no ramp, or the scale holds no level). Keeps the stored effort one the ramp offers.
+ */
+export function effortFor(
+  current: string | null | undefined,
+  scale: readonly string[] | null | undefined,
+): EffortLevel | null {
+  if (current && EFFORT_LEVELS.includes(current as EffortLevel) && scale?.includes(current))
+    return current as EffortLevel;
+  return startLevel(scale);
+}
